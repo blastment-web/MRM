@@ -14,8 +14,21 @@
 ## 파일 구성
 
 ```
-index.html    포털 화면 전체 (HTML + CSS + JS 단일 파일)
+index.html                포털 화면 전체 (HTML + CSS + JS 단일 파일)
+tools/build_preview.py    디자인 미리보기 생성 스크립트
+preview/                  빌드 산출물 (git 제외 — 언제든 재생성 가능)
 ```
+
+## 미리보기 생성
+
+백엔드 없이 화면만 확인할 때 사용합니다.
+
+```bash
+python3 tools/build_preview.py          # → preview/aims-preview.html
+```
+
+원본에서 래퍼 태그(`<!DOCTYPE>`/`<html>`/`<head>`/`<body>`)를 제거하고, 공유·Q&A·게시판·공지 4개 영역에 샘플 데이터를 주입하는 shim을 덧붙입니다.
+**`index.html`은 수정하지 않습니다** — 추출과 append만 수행하며, shim은 원본 로직 대신 전역 로더 함수(`loadShare` 등)만 교체합니다.
 
 `index.html` 하나에 마크업·스타일·스크립트가 모두 들어 있습니다. 스크립트는 3개 블록으로 나뉩니다.
 

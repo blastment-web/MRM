@@ -1,0 +1,13 @@
+# 빌드 산출물 — tools/build_preview.py 로 언제든 재생성됨
+preview/
+
+# OS / 편집기
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
