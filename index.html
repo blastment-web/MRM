@@ -996,6 +996,201 @@
   .brandmark::before{background:linear-gradient(90deg,transparent,var(--accent) 14%,var(--accent) 86%,transparent)}
   .brandmark::after{background:var(--accent-2)}
 
+
+  /* ==========================================================================
+     V2 — 4메뉴 구조 / 대시보드 · TOP5 · 신규 Agent 카드
+     ========================================================================== */
+
+  /* 메뉴 클릭 시 섹션이 잘리지 않게. 부드러운 스크롤은 유지한다. */
+  html{scroll-padding-top:var(--nav-h)}
+  .sec{scroll-margin-top:var(--nav-h)}
+  #secDashboard,#secTop5,#secPlatform,#secCommunity{
+    min-height:calc(100vh - var(--nav-h));
+    display:flex;flex-direction:column;
+    padding:calc(var(--nav-h) * 0.55) 0}
+  /* 1화면에 들어오는 섹션은 세로 중앙, 내용이 긴 섹션은 위에서부터 */
+  #secDashboard,#secTop5{justify-content:center}
+  #secPlatform,#secCommunity{justify-content:flex-start;padding-top:calc(var(--nav-h) * 0.9)}
+
+  /* ---------- §1 대시보드 ---------- */
+  .sec-dash{position:relative;overflow:hidden}
+  .sec-dash::after{
+    content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+    background:
+      radial-gradient(820px 560px at 78% 12%, rgba(77,216,232,.12), transparent 62%),
+      radial-gradient(680px 500px at 12% 88%, rgba(139,123,255,.11), transparent 62%),
+      linear-gradient(180deg, transparent 68%, var(--ink) 100%)}
+  .dash-inner{position:relative;z-index:2;display:flex;flex-direction:column;gap:26px;width:100%}
+
+  /* Hero — V1 대비 축소 (폰트·여백 비례 축소, 이미지 스케일 아님) */
+  .dash-hero{max-width:820px}
+  .sec-dash .eyebrow{
+    display:block;font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:12px}
+  .sec-dash .hero-title{
+    font-size:clamp(26px,3.5vw,46px);font-weight:900;line-height:1.12;
+    letter-spacing:-0.035em;margin:0;white-space:nowrap}
+  .sec-dash .hero-tagline{margin-top:12px;font-size:clamp(12px,1vw,14px);font-weight:700;color:var(--txt-dim)}
+  .sec-dash .sub{margin-top:8px;max-width:560px;font-size:clamp(13px,1vw,14.5px);color:var(--txt-dim)}
+  .sec-dash .hero-cta{margin-top:20px}
+  .sec-dash .cta-primary{font-size:13px;padding:11px 22px}
+  @media(max-width:900px){.sec-dash .hero-title{white-space:normal}}
+
+  /* 통계 4개 */
+  .sec-dash .stat-row{
+    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;
+    background:var(--panel-line);border:1px solid var(--panel-line);
+    border-radius:var(--radius-lg);overflow:hidden}
+  .sec-dash .stat-card{
+    background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.01)),var(--ink);
+    padding:20px 18px;text-align:center}
+  .sec-dash .stat-num{
+    font-size:clamp(24px,2.6vw,36px);font-weight:900;letter-spacing:-0.035em;line-height:1;
+    background:var(--grad);-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;font-variant-numeric:tabular-nums}
+  .sec-dash .stat-label{margin-top:7px;font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--txt-dim)}
+
+  /* 하단 2단 (차트 / 공지) */
+  .dash-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;align-items:stretch}
+  .dash-card{
+    display:flex;flex-direction:column;
+    border-radius:var(--radius-lg);border:1px solid var(--panel-line);
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.012));
+    padding:20px 22px}
+  .dash-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .dash-card-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:var(--txt)}
+  .dash-card-title .dc-ico{font-size:14px;line-height:1}
+  .dash-card-actions{display:flex;align-items:center;gap:10px}
+
+  /* 그룹 필터 */
+  .group-filter{display:flex;gap:6px;flex-wrap:wrap}
+  .gf-btn{
+    font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:999px;cursor:pointer;
+    background:rgba(255,255,255,.05);border:1px solid var(--panel-line);color:var(--txt-dim);
+    transition:background .15s,border-color .15s,color .15s}
+  .gf-btn:hover{background:rgba(255,255,255,.1);color:var(--txt)}
+  .gf-btn.on{background:rgba(77,216,232,.14);border-color:var(--accent);color:var(--accent)}
+
+  /* 카테고리 막대차트 — 막대를 넉넉하게 */
+  .cat-chart{display:flex;flex-direction:column;gap:14px;flex:1;justify-content:center}
+  .cc-row{display:grid;grid-template-columns:minmax(96px,150px) 1fr 34px;align-items:center;gap:12px}
+  .cc-label{font-size:12.5px;font-weight:700;color:var(--txt-dim);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cc-track{position:relative;height:30px;border-radius:8px;background:rgba(255,255,255,.05);overflow:hidden}
+  .cc-bar{
+    position:absolute;left:0;top:0;bottom:0;border-radius:8px;min-width:6px;
+    background:linear-gradient(90deg,color-mix(in srgb,var(--cat) 55%,transparent),var(--cat));
+    box-shadow:0 0 18px -4px var(--cat);
+    transition:width .5s cubic-bezier(.22,.7,.3,1)}
+  .cc-val{font-size:13px;font-weight:800;color:var(--txt);text-align:right;font-variant-numeric:tabular-nums}
+
+  /* 대시보드 액션 버튼 */
+  .dash-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  .dash-act{
+    display:inline-flex;align-items:center;gap:8px;flex:1;justify-content:center;
+    font-family:inherit;font-size:13px;font-weight:800;padding:11px 18px;border-radius:var(--radius);
+    background:rgba(255,255,255,.05);border:1px solid var(--panel-line);color:var(--txt-dim);
+    cursor:pointer;transition:background .16s,border-color .16s,color .16s,transform .16s}
+  .dash-act:hover{background:rgba(255,255,255,.1);border-color:rgba(77,216,232,.45);color:var(--accent);transform:translateY(-1px)}
+  .dash-act .da-ico{font-size:14px;line-height:1}
+  .dash-act-primary{background:var(--grad);border-color:transparent;color:#04121a;box-shadow:var(--glow)}
+  .dash-act-primary:hover{color:#04121a;filter:brightness(1.06);box-shadow:0 0 30px rgba(77,216,232,.4)}
+
+  /* 공지 카드 */
+  .dash-notice-card .ih-notice-list{flex:1}
+  .dash-notice-card .ih-notice:first-child{border-top:none}
+
+  @media(max-width:1000px){.dash-grid{grid-template-columns:1fr}}
+  @media(max-width:680px){
+    .sec-dash .stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .cc-row{grid-template-columns:minmax(76px,110px) 1fr 28px;gap:8px}
+  }
+
+  /* ---------- §2 TOP5 ---------- */
+  .top5-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+  .top5-head .sec-desc{margin-top:0;max-width:420px}
+  .top5-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;align-items:stretch}
+  .t5-item{position:relative;display:flex}
+  .t5-item .acard{flex:1;padding:44px 18px 18px;min-height:clamp(290px,46vh,410px);gap:10px}
+  .t5-item .ac-name{font-size:17px;line-height:1.3}
+  .t5-item .ac-desc{font-size:13px;line-height:1.62}
+  .t5-item .ac-cat{font-size:11.5px}
+  .t5-item .ac-like{padding:5px 11px;font-size:12px}
+  .t5-item .ac-group{font-size:11.5px}
+  .t5-item .ac-fav{top:14px;right:13px;font-size:18px}
+  .t5-rank{
+    position:absolute;top:-11px;left:14px;z-index:3;
+    width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+    font-size:14px;font-weight:900;color:#04121a;background:var(--grad);
+    box-shadow:0 4px 14px rgba(0,0,0,.45)}
+  .t5-item:nth-child(1) .t5-rank{box-shadow:0 4px 18px rgba(77,216,232,.5)}
+  .t5-item:nth-child(n+4) .t5-rank{background:var(--surface-bright);color:var(--txt)}
+  @media(max-width:1100px){.top5-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:600px){.top5-grid{grid-template-columns:1fr}}
+
+  /* ---------- Agent 카드 (TOP5 · 카테고리별 공통) ---------- */
+  .acard{
+    position:relative;display:flex;flex-direction:column;gap:7px;
+    text-decoration:none;color:inherit;cursor:pointer;overflow:hidden;
+    padding:17px 16px 15px;border-radius:var(--radius);
+    border:1px solid var(--panel-line);background:rgba(255,255,255,.035);
+    transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
+  .acard::before{
+    content:"";position:absolute;left:0;right:0;top:0;height:3px;
+    background:var(--cat);opacity:.95}
+  .acard:hover{
+    transform:translateY(-3px);background:rgba(255,255,255,.062);
+    border-color:color-mix(in srgb,var(--cat) 45%,var(--panel-line));
+    box-shadow:0 12px 30px rgba(0,0,0,.45)}
+  .acard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .acard[aria-disabled="true"]{cursor:default}
+  .acard[aria-disabled="true"]:hover{transform:none}
+
+  .ac-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-right:26px}
+  .ac-cat{font-size:11px;font-weight:800;color:var(--cat);letter-spacing:-0.01em}
+  .ac-status{
+    display:inline-flex;align-items:center;gap:4px;
+    font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;white-space:nowrap}
+  .ac-status i{font-style:normal;font-size:8px;line-height:1}
+  .ac-status.st-ok{background:rgba(61,219,160,.14);color:#4fe0af}
+  .ac-status.st-prep{background:rgba(232,179,74,.14);color:#eec063}
+  .ac-status.st-fail{background:rgba(255,107,129,.15);color:#ff8fa0}
+
+  .ac-name{font-size:15px;font-weight:800;color:#fff;line-height:1.32;word-break:keep-all}
+  .ac-desc{font-size:12px;color:var(--txt-dim);line-height:1.55;word-break:keep-all;flex:1}
+
+  .ac-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
+  .ac-like{
+    display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;
+    font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;
+    background:rgba(255,255,255,.05);border:1px solid var(--panel-line);color:var(--txt-faint);
+    transition:color .15s,border-color .15s,background .15s}
+  .ac-like:hover{color:#ff8fa0;border-color:rgba(255,107,129,.45)}
+  .ac-like.on{color:#ff5b7f;border-color:#ff5b7f;background:rgba(255,91,127,.12)}
+  .ac-heart{font-size:12px;line-height:1}
+  .ac-likenum{font-variant-numeric:tabular-nums}
+  .ac-right{display:inline-flex;align-items:center;gap:6px;min-width:0}
+  .ac-group{font-size:11px;font-weight:700;color:var(--txt-faint);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .ac-fav{
+    position:absolute;top:12px;right:11px;z-index:3;
+    background:none;border:none;cursor:pointer;padding:2px;
+    font-size:16px;line-height:1;color:var(--txt-faint);transition:color .15s,transform .12s}
+  .ac-fav:hover{color:#ffd54a;transform:scale(1.15)}
+  .ac-fav.on{color:#ffd54a}
+
+  .acard .lockmark{margin-left:5px;font-size:11px}
+  .acard .cell-meta{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;
+    background:rgba(255,255,255,.07);color:var(--txt-dim);white-space:nowrap}
+  .acard .cell-meta-soon{color:#ffd98a;background:rgba(217,154,0,.2)}
+  .acard .newflag{top:auto;bottom:10px;right:11px}
+  .acard .waivebtn{bottom:auto;top:38px;right:8px}
+
+  /* 그리드 안에서 카드가 균일한 높이를 갖도록 */
+  .col .cells .acard{height:100%}
+  .col.expanded .cells{align-items:stretch}
+
   /* 게시판·Q&A 화면은 고정 네비 아래로 밀어준다 */
   #boardSection,#loungeSection{padding-top:var(--nav-h)}
 
@@ -1037,11 +1232,10 @@
   <div class="nav-inner">
     <h1 id="homeTitle" title="홈으로" role="link" tabindex="0"><span id="brandLogo"><svg id="introStage" viewBox="0 0 400 92" role="img" aria-label="AIMS"><g id="lnkG"></g><g id="ndG"></g><g id="plsG"></g><text class="wm" x="4" y="62">AIMS</text><circle class="wmdot" id="wmDot" cx="152" cy="55" r="7"/></svg></span></h1>
     <nav class="nav-links">
-      <a href="#secMission">OUR MISSION</a>
-      <a href="#secWhy">플랫폼 목적</a>
+      <a href="#secDashboard">대시보드</a>
+      <a href="#secTop5">TOP5</a>
       <a href="#secPlatform">카테고리별 AI Agent</a>
-      <a href="#secModules">자료 업로드</a>
-      <a href="#secRoadmap">향후계획</a>
+      <a href="#secCommunity">커뮤니티</a>
     </nav>
     <div class="nav-actions">
             <div class="banner-row" id="bannerRow">
@@ -1078,129 +1272,95 @@
 
 <main class="landing" id="mainView">
 
-  <!-- ===================== §1 HERO ===================== -->
-  <section class="sec hero" id="secHero">
+  <!-- ===================== §1 대시보드 ===================== -->
+  <section class="sec sec-dash" id="secDashboard">
     <canvas id="pxNet" aria-hidden="true"></canvas>
-    <div class="hero-inner">
-      <div class="eyebrow reveal">생산기술혁신센터 AI 플랫폼</div>
-      <h2 class="hero-title reveal" data-d="1">생산기술의 미래를 이끄는<br><span class="grad">통합 AI 플랫폼</span></h2>
-      <div class="brand-tagline hero-tagline reveal" data-d="2"><span class="aria-ltr">A</span>I <span class="aria-ltr">I</span>nnovation <span class="aria-ltr">M</span>anufacturing <span class="aria-ltr">S</span>ystem</div>
-      <p class="sub reveal" data-d="2">생산 효율화와 기술 혁신, 센터가 지향하는 목표에 맞춘 AI Agent를 한 곳에서.</p>
-      <div class="hero-cta reveal" data-d="3">
-        <a class="cta-primary" href="#secPlatform">AI Agent 둘러보기 <span>→</span></a>
+    <div class="sec-inner dash-inner">
+
+      <div class="dash-hero">
+        <div class="eyebrow reveal">생산기술혁신센터 AI 플랫폼</div>
+        <h2 class="hero-title reveal" data-d="1">생산기술의 미래를 이끄는 <span class="grad">통합 AI 플랫폼</span></h2>
+        <div class="brand-tagline hero-tagline reveal" data-d="2"><span class="aria-ltr">A</span>I <span class="aria-ltr">I</span>nnovation <span class="aria-ltr">M</span>anufacturing <span class="aria-ltr">S</span>ystem</div>
+        <p class="sub reveal" data-d="2">생산 효율화와 기술 혁신, 센터가 지향하는 목표에 맞춘 AI Agent를 한 곳에서.</p>
+        <div class="hero-cta reveal" data-d="3">
+          <a class="cta-primary" href="#secTop5">AI Agent 둘러보기 <span>→</span></a>
+        </div>
       </div>
+
+      <div class="stat-row reveal" data-d="1">
+        <div class="stat-card"><div class="stat-num" data-stat="agents">0</div><div class="stat-label">전체 Agent</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="teams">0</div><div class="stat-label">참여 팀</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="cats">0</div><div class="stat-label">카테고리</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="favs">0</div><div class="stat-label">내 즐겨찾기</div></div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="dash-card dash-chart-card reveal" data-d="2">
+          <div class="dash-card-head">
+            <div class="dash-card-title">카테고리별 Agent 현황</div>
+            <div class="group-filter" id="groupFilter"></div>
+          </div>
+          <div class="cat-chart" id="catChart"></div>
+          <div class="dash-actions">
+            <button class="dash-act dash-act-primary" id="btnAiRecommend" type="button">
+              <span class="da-ico">✦</span><span>AI 매니저 추천</span>
+            </button>
+            <button class="dash-act" id="btnAgentRegister" type="button">
+              <span class="da-ico">＋</span><span>AI Agent 등록</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="dash-card dash-notice-card reveal" data-d="3">
+          <div class="dash-card-head">
+            <div class="dash-card-title"><span class="dc-ico">🔔</span>공지사항</div>
+            <div class="dash-card-actions">
+              <button class="ih-more" id="ihNoticeWrite" type="button">글쓰기</button>
+              <button class="ih-more" id="ihNoticeMore" type="button">더보기 +</button>
+            </div>
+          </div>
+          <div class="ih-notice-list" id="ihNoticeList"><div class="ih-empty">공지를 불러오는 중…</div></div>
+        </div>
+      </div>
+
     </div>
-    <div class="scroll-hint" aria-hidden="true">SCROLL</div>
   </section>
 
-  <!-- ===================== §2 MISSION ===================== -->
-  <section class="sec sec-mission" id="secMission">
-    <div class="sec-inner sec-narrow">
-      <div class="sec-eyebrow reveal">Our Mission</div>
-      <h2 class="mission-line reveal" data-d="1">흩어져 있던 AI Agent를,<br><span class="grad">하나의 목표로.</span></h2>
-      <!-- 미션 문구: V4에서 확정 -->
-      <p class="mission-desc reveal" data-d="2">끊임없이 고도화되는 배터리 제조 공정과 AX 추진 속에서, 부서별로 흩어져 있던 AI Agent를 AIMS 하나로 통합합니다. 기획부터 양산까지, 필요한 사람이 가장 정확한 도구를 적시에 활용할 수 있도록 든든한 기반을 제공하는 것. 그것이 AIMS의 시작이자 생산기술혁신센터의 목표입니다.</p>
-    </div>
-  </section>
-
-  <!-- ===================== §3 WHY ===================== -->
-  <section class="sec sec-why" id="secWhy">
+  <!-- ===================== §2 TOP5 ===================== -->
+  <section class="sec sec-top5" id="secTop5">
     <div class="sec-inner">
-      <div class="sec-head">
-        <div class="sec-eyebrow reveal">플랫폼 목적</div>
-        <h2 class="sec-title reveal" data-d="1">실제 쓰이는 AI만<br>모았습니다</h2>
+      <div class="sec-head top5-head">
+        <div>
+          <div class="sec-eyebrow reveal">TOP 5</div>
+          <h2 class="sec-title reveal" data-d="1">가장 많이 <span class="grad">추천받은 AI Agent</span></h2>
+        </div>
+        <p class="sec-desc reveal" data-d="2">구성원이 누른 좋아요를 기준으로 실시간 집계됩니다. 순위는 언제든 바뀝니다.</p>
       </div>
-      <!-- TODO: 실제 가치 제안으로 교체 -->
-      <div class="why-grid">
-        <div class="why-card reveal" data-d="1">
-          <div class="why-ico">🏭</div>
-          <div class="why-title">현장에서 검증된</div>
-          <div class="why-desc">데모로 끝나는 모델이 아니라, 실제 라인과 설비에서 매일 돌아가며 결과를 내는 모듈만 등록됩니다.</div>
-        </div>
-        <div class="why-card reveal" data-d="2">
-          <div class="why-ico">🧩</div>
-          <div class="why-title">누구나 만들고 공유하는</div>
-          <div class="why-desc">전문 개발자가 아니어도 직접 만든 도구를 올릴 수 있습니다. 좋은 AI Agent는 센터 내에 빠르게 퍼집니다.</div>
-        </div>
-        <div class="why-card reveal" data-d="3">
-          <div class="why-ico">🛰️</div>
-          <div class="why-title">한 곳에서 관리되는</div>
-          <div class="why-desc">운영 상태·접속 현황·담당자가 한 화면에 모입니다. 무엇이 문제인지 찾아다닐 필요가 없습니다.</div>
-        </div>
-      </div>
+      <div class="top5-grid" id="top5Grid"></div>
     </div>
   </section>
 
-  <!-- ===================== §4 STATS ===================== -->
-  <section class="sec sec-stats" id="secStats">
-    <div class="sec-inner">
-      <div class="stat-row reveal">
-        <div class="stat-card"><div class="stat-num" data-stat="orgs">0</div><div class="stat-label">담당 조직</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="modules">0</div><div class="stat-label">등록 모듈</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="live">0</div><div class="stat-label">운영중</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="ready">0</div><div class="stat-label">준비중</div></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================== §5 INSIGHT (공지 · 인기 모듈) ===================== -->
-  <section class="sec sec-insight" id="secInsight">
-    <div class="sec-inner sec-headonly">
-      <div class="sec-head">
-        <div class="sec-eyebrow reveal">Insight</div>
-        <h2 class="sec-title reveal" data-d="1">공지사항 및 현황</h2>
-      </div>
-    </div>
-    <div class="reveal" data-d="2">
-      <section class="wrap infohub" id="infoHub">
-  <a class="ih-card ih-brand" style="text-decoration:none;color:inherit" title="준비중" aria-disabled="true">
-    <div class="ih-grid-bg"></div>
-    <!-- TODO: 센터 슬로건 확정 후 채움 (V5에서 문구 비움) -->
-    <div class="ih-mission"></div>
-    <div class="ih-vision"></div>
-    <div class="ih-slogan"></div>
-  </a>
-  <div class="ih-right">
-    <div class="ih-card ih-pane">
-      <div class="ih-pane-head">
-        <div class="ih-pane-title"><span class="ih-ico">🔔</span>공지사항</div>
-        <button class="ih-more" id="ihNoticeMore" type="button">더보기 +</button>
-      </div>
-      <div class="ih-notice-list" id="ihNoticeList"><div class="ih-empty">공지를 불러오는 중…</div></div>
-    </div>
-    <div class="ih-card ih-pane">
-      <div class="ih-pane-head">
-        <div class="ih-pane-title"><span class="ih-ico">📈</span>실시간 인기 모듈</div>
-        <button class="ih-more" id="ihPopMore" type="button">더보기 +</button>
-      </div>
-      <div class="ih-pop-list" id="ihPopList"><div class="ih-empty">불러오는 중…</div></div>
-    </div>
-  </div>
-</section>
-    </div>
-  </section>
-
-  <!-- ===================== §6 PLATFORM (대시보드 그리드) ===================== -->
+  <!-- ===================== §3 카테고리별 AI Agent ===================== -->
   <section class="sec sec-platform" id="secPlatform">
     <div class="sec-inner sec-headonly">
       <div class="sec-head">
         <div class="sec-eyebrow reveal">카테고리별 AI Agent</div>
         <h2 class="sec-title reveal" data-d="1">센터 업무 <span class="grad">카테고리별 AI Agent</span></h2>
-        <p class="sec-desc reveal" data-d="2">카테고리를 눌러 펼치면 전체 모듈이 보입니다. 운영중인 모듈은 클릭하면 바로 이동합니다.</p>
+        <p class="sec-desc reveal" data-d="2">카테고리를 눌러 펼치면 전체 Agent가 보입니다. 사용 가능한 Agent는 클릭하면 바로 이동합니다.</p>
       </div>
     </div>
     <div class="reveal" data-d="2">
         <div class="grid-toolbar">
     <div class="gt-status">
       <span class="legend-label">상태</span>
-      <span class="chip live">운영중</span><span class="chip cwarn">임시중단</span><span class="chip fail">접속장애</span><span class="chip soon">준비중</span>
+      <span class="chip live">사용 가능</span><span class="chip soon">준비중</span><span class="chip fail">접속 장애</span>
     </div>
     <div class="search-wrap">
       <select id="searchField" title="검색 조건">
         <option value="all">전체</option><option value="name">타이틀</option><option value="desc">설명</option><option value="owner">담당자</option>
       </select>
       <div class="search-box">
-        <input id="searchInput" name="dash_q" placeholder="대시보드 검색…" autocomplete="off" data-lpignore="true" data-1p-ignore readonly>
+        <input id="searchInput" name="dash_q" placeholder="AI Agent 검색…" autocomplete="off" data-lpignore="true" data-1p-ignore readonly>
         <div class="ac-list" id="acList"></div>
       </div>
     </div>
@@ -1218,16 +1378,33 @@
     </div>
   </section>
 
-  <!-- ===================== §7 MODULES (자료 업로드) ===================== -->
-  <section class="sec sec-modules" id="secModules">
-    <div class="sec-inner sec-headonly">
+  <!-- ===================== §4 커뮤니티 ===================== -->
+  <section class="sec sec-community" id="secCommunity">
+    <div class="sec-inner">
       <div class="sec-head">
-        <div class="sec-eyebrow reveal">자료 업로드</div>
-        <h2 class="sec-title reveal" data-d="1">구성원이 만든 자료 업로드</h2>
-        <p class="sec-desc reveal" data-d="2">파일이나 주소로 AI 자료를 공유하세요. 로그인 없이 누구나 등록됩니다.</p>
+        <div class="sec-eyebrow reveal">Community</div>
+        <h2 class="sec-title reveal" data-d="1">함께 쓰고, 함께 만듭니다</h2>
       </div>
-    </div>
-    <div class="reveal" data-d="2">
+      <div class="comm-grid">
+        <div class="comm-card reveal" data-d="1" data-go="lounge" role="link" tabindex="0">
+          <div>
+            <div class="comm-ico">💬</div>
+            <div class="comm-title">Q&A</div>
+            <div class="comm-desc">AI 활용 팁, 막힌 부분, 발견한 것들을 가볍게 스레드로 나눕니다. 실명·익명 모두 가능합니다.</div>
+          </div>
+          <div class="comm-go">Q&A 열기 <span>→</span></div>
+        </div>
+        <div class="comm-card reveal" data-d="2" data-go="board" role="link" tabindex="0">
+          <div>
+            <div class="comm-ico">📋</div>
+            <div class="comm-title">게시판</div>
+            <div class="comm-desc">공지·자료 공유·교육 안내·문의를 한곳에서. 첨부파일과 이미지도 함께 올릴 수 있습니다.</div>
+          </div>
+          <div class="comm-go">게시판 열기 <span>→</span></div>
+        </div>
+      </div>
+
+      <div class="reveal" data-d="3">
         <section class="share-sec" id="shareSec">
     <div class="share-head">
       <span class="share-bar"></span>
@@ -1265,73 +1442,6 @@
     <button class="more-btn" id="shareMoreBtn" style="display:none"></button>
     <div class="share-meta" id="shareMeta"></div>
   </section>
-    </div>
-  </section>
-
-  <!-- ===================== §8 ROADMAP ===================== -->
-  <section class="sec sec-roadmap" id="secRoadmap">
-    <div class="sec-inner sec-narrow">
-      <div class="sec-head">
-        <div class="sec-eyebrow reveal">향후계획</div>
-        <h2 class="sec-title reveal" data-d="1">향후 실행 계획</h2>
-      </div>
-      <!-- TODO: 실제 로드맵으로 교체 -->
-      <div class="road-list">
-        <div class="road-item now reveal" data-d="1">
-          <div class="road-dot"></div>
-          <div class="road-year">2026</div>
-          <div class="road-body">
-            <div class="road-title">플랫폼 기반 구축</div>
-            <div class="road-desc">AI Agent를 한 곳에 모으고, 운영 상태와 접속 현황을 자동으로 집계합니다. 구성원 누구나 자료를 공유할 수 있는 통로를 엽니다.</div>
-            <div class="road-tags"><span>대시보드 통합</span><span>자료 공유</span><span>운영 모니터링</span></div>
-          </div>
-        </div>
-        <div class="road-item reveal" data-d="2">
-          <div class="road-dot"></div>
-          <div class="road-year">2027</div>
-          <div class="road-body">
-            <div class="road-title">데이터 연결 확장</div>
-            <div class="road-desc">개별 모듈이 각자 보던 데이터를 공통 기반으로 옮깁니다. 한 모듈의 결과를 다른 모듈이 이어받아 쓸 수 있게 만듭니다.</div>
-            <div class="road-tags"><span>데이터 표준화</span><span>모듈 간 연계</span></div>
-          </div>
-        </div>
-        <div class="road-item reveal" data-d="3">
-          <div class="road-dot"></div>
-          <div class="road-year">2028</div>
-          <div class="road-body">
-            <div class="road-title">자율 운영으로</div>
-            <div class="road-desc">사람이 확인하고 판단하던 과정을 모듈이 먼저 제안하고, 승인만 받아 실행하는 구조로 넘어갑니다.</div>
-            <div class="road-tags"><span>이상 자동 대응</span><span>의사결정 지원</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================== §9 COMMUNITY ===================== -->
-  <section class="sec sec-community" id="secCommunity">
-    <div class="sec-inner">
-      <div class="sec-head">
-        <div class="sec-eyebrow reveal">Community</div>
-        <h2 class="sec-title reveal" data-d="1">함께 쓰고, 함께 만듭니다</h2>
-      </div>
-      <div class="comm-grid">
-        <div class="comm-card reveal" data-d="1" data-go="lounge" role="link" tabindex="0">
-          <div>
-            <div class="comm-ico">💬</div>
-            <div class="comm-title">Q&A</div>
-            <div class="comm-desc">AI 활용 팁, 막힌 부분, 발견한 것들을 가볍게 스레드로 나눕니다. 실명·익명 모두 가능합니다.</div>
-          </div>
-          <div class="comm-go">Q&A 열기 <span>→</span></div>
-        </div>
-        <div class="comm-card reveal" data-d="2" data-go="board" role="link" tabindex="0">
-          <div>
-            <div class="comm-ico">📋</div>
-            <div class="comm-title">게시판</div>
-            <div class="comm-desc">공지·자료 공유·교육 안내·문의를 한곳에서. 첨부파일과 이미지도 함께 올릴 수 있습니다.</div>
-          </div>
-          <div class="comm-go">게시판 열기 <span>→</span></div>
-        </div>
       </div>
     </div>
   </section>
@@ -1343,13 +1453,13 @@
   <div class="foot-inner">
     <div class="foot-brand">
       <div class="foot-logo brandmark">AIMS</div>
-      <div class="foot-tag">AI Innovation Manufacturing System — 센터 업무 카테고리별 AI Agent를 한 곳에서.</div>
+      <div class="foot-tag"><span class="ft-line1">AI Innovation Manufacturing System</span><span class="ft-line2">생산기술혁신센터 업무 카테고리별 AI Agent를 한 곳에서.</span></div>
     </div>
     <div class="foot-col">
       <h4>Platform</h4>
+      <a href="#secDashboard">대시보드</a>
+      <a href="#secTop5">TOP5</a>
       <a href="#secPlatform">카테고리별 AI Agent</a>
-      <a href="#secModules">자료 업로드</a>
-      <a href="#secRoadmap">향후계획</a>
     </div>
     <div class="foot-col">
       <h4>Community</h4>
@@ -1677,60 +1787,88 @@ function normAddr(a){a=(a||"").trim();if(!a)return"";return /^https?:\/\//i.test
    addr 가 비어 있으면 "준비중", 주소가 있으면 "운영중(LIVE)"으로 표시된다.
    V6에서 인프라그룹 ARIA 주소를 모두 제거했다 — PTIC 실주소가 확보되면 해당 항목의 addr 에 넣으면 된다. */
 const FALLBACK={columns:[
- {team:"기술개발 도출 지원",tag:"Technology Development Planning Support",items:[
-  {name:"기술 트렌드 스캐닝 Agent",desc:"특허·논문·시장 동향 자동 요약",owner:"",addr:"",order:1},
-  {name:"과제 아이디어 발굴 Agent",desc:"미해결 이슈 기반 개발 과제 제안",owner:"",addr:"",order:2},
-  {name:"선행기술 조사 Agent",desc:"유사 기술·경쟁사 동향 대조",owner:"",addr:"",order:3},
-  {name:"기술 로드맵 초안 생성",desc:"목표 성능 기반 단계별 계획 도출",owner:"",addr:"",order:4},
-  {name:"개발 타당성 검토 지원",desc:"난이도·기대효과 정량 비교",owner:"",addr:"",order:5},
-  {name:"사내 기술자산 검색",desc:"과거 과제·보고서 통합 검색",owner:"",addr:"",order:6}]},
- {team:"이슈 원인분석",tag:"Root Cause Analysis",items:[
-  {name:"공정 이상 원인분석 Agent",desc:"불량 발생 구간 역추적 · 원인 후보 제시",owner:"",addr:"",order:1},
-  {name:"설비 알람 원인 진단 Agent",desc:"알람 이력 패턴 기반 원인 분류",owner:"",addr:"",order:2},
-  {name:"온습도 이상감지 Agent",desc:"전극·조립·활성화 공정 4단계 알람",owner:"",addr:"",order:3},
-  {name:"품질 편차 원인 탐색",desc:"공정 변수 상관 분석 · 기여도 산출",owner:"",addr:"",order:4},
-  {name:"수율 저하 요인 분석",desc:"로트별 수율 드리프트 추적",owner:"",addr:"",order:5},
-  {name:"반복 이슈 클러스터링",desc:"유사 이슈 자동 그룹화 · 재발 감지",owner:"",addr:"",order:6}]},
- {team:"MRM 과제 운영",tag:"MRM Task Operation",items:[
-  {name:"MRM 과제 진척 모니터링",desc:"과제별 마일스톤 지연 위험 알림",owner:"",addr:"",order:1},
-  {name:"과제 리스크 조기경보",desc:"일정·비용·품질 리스크 사전 탐지",owner:"",addr:"",order:2},
-  {name:"산출물 검토 Agent",desc:"보고서 누락·정합성 자동 점검",owner:"",addr:"",order:3},
-  {name:"과제 리소스 배분 최적화",desc:"인력·예산 배분안 추천",owner:"",addr:"",order:4},
-  {name:"과제 성과 정량화",desc:"목표 대비 달성도 자동 집계",owner:"",addr:"",order:5}]},
- {team:"제품 개발 프로세스 개선",tag:"Product Development Process Improvement",items:[
-  {name:"개발 프로세스 병목 진단",desc:"단계별 리드타임 분석 · 지연 구간 도출",owner:"",addr:"",order:1},
-  {name:"설계 변경 영향 분석",desc:"변경 파급 범위 자동 추적",owner:"",addr:"",order:2},
-  {name:"검증 항목 자동 도출",desc:"요구사항 기반 시험 항목 생성",owner:"",addr:"",order:3},
-  {name:"표준 프로세스 준수 점검",desc:"게이트별 산출물 충족도 확인",owner:"",addr:"",order:4},
-  {name:"개발 이력 지식화",desc:"과거 개발 판단 근거 검색",owner:"",addr:"",order:5}]}
+ {team:"新 공정/공법 개발",tag:"New Process & Method Development",items:[
+  {name:"공정 조건 최적화 Agent",desc:"신규 공법 파라미터 조합을 시뮬레이션으로 좁힘",owner:"김도현",group:"전극기술그룹",addr:"",order:1},
+  {name:"신공법 검증 리포트 생성",desc:"파일럿 결과를 표준 양식으로 자동 정리",owner:"한지우",group:"전극기술그룹",addr:"",order:2},
+  {name:"설비 사양 비교 Agent",desc:"도입 후보 설비의 성능·비용 정량 대조",owner:"박서연",group:"조립기술그룹",addr:"",order:3},
+  {name:"선행기술 조사 Agent",desc:"특허·논문에서 유사 공법 자동 수집",owner:"한지우",group:"인프라그룹",addr:"",order:4},
+  {name:"스케일업 리스크 예측",desc:"파일럿 대비 양산 전환 시 위험 구간 도출",owner:"이준호",group:"활성화기술그룹",addr:"",order:5},
+  {name:"신규 소재 적용성 검토",desc:"소재 물성과 공정 적합도 매칭",owner:"정민아",group:"전극기술그룹",addr:"",order:6}]},
+ {team:"해외법인 양산 지원",tag:"Overseas Plant Mass-Production Support",items:[
+  {name:"공정 이상 원인분석 Agent",desc:"불량 발생 구간 역추적 · 원인 후보 제시",owner:"김도현",group:"조립기술그룹",addr:"",order:1},
+  {name:"설비 알람 원인 진단 Agent",desc:"알람 이력 패턴 기반 원인 분류",owner:"최우식",group:"조립기술그룹",addr:"",order:2},
+  {name:"온습도 이상감지 Agent",desc:"전극·조립·활성화 공정 4단계 알람",owner:"이준호",group:"인프라그룹",addr:"",order:3},
+  {name:"법인별 수율 비교 Agent",desc:"동일 공정의 법인 간 수율 격차 분석",owner:"박서연",group:"활성화기술그룹",addr:"",order:4},
+  {name:"현지 이슈 번역·요약",desc:"해외법인 보고서를 국문으로 요약",owner:"정민아",group:"인프라그룹",addr:"",order:5},
+  {name:"반복 이슈 클러스터링",desc:"유사 이슈 자동 그룹화 · 재발 감지",owner:"김도현",group:"조립기술그룹",addr:"",order:6}]},
+ {team:"제품 개발 대응",tag:"Product Development Response",items:[
+  {name:"개발 과제 진척 모니터링",desc:"과제별 마일스톤 지연 위험 알림",owner:"최우식",group:"활성화기술그룹",addr:"",order:1},
+  {name:"과제 리스크 조기경보",desc:"일정·비용·품질 리스크 사전 탐지",owner:"최우식",group:"활성화기술그룹",addr:"",order:2},
+  {name:"설계 변경 영향 분석",desc:"변경 파급 범위 자동 추적",owner:"정민아",group:"전극기술그룹",addr:"",order:3},
+  {name:"고객 요구사항 정합성 점검",desc:"스펙 대비 설계 반영 여부 확인",owner:"박서연",group:"조립기술그룹",addr:"",order:4},
+  {name:"검증 항목 자동 도출",desc:"요구사항 기반 시험 항목 생성",owner:"이준호",group:"활성화기술그룹",addr:"",order:5}]},
+ {team:"공통 및 루틴 업무",tag:"Common & Routine Operations",items:[
+  {name:"주간 보고서 자동 작성",desc:"산재된 실적 데이터를 보고 양식으로 취합",owner:"정민아",group:"인프라그룹",addr:"",order:1},
+  {name:"사내 기술자산 검색",desc:"과거 과제·보고서 통합 검색",owner:"한지우",group:"인프라그룹",addr:"",order:2},
+  {name:"회의록 요약 Agent",desc:"녹취를 요약하고 액션 아이템 추출",owner:"박서연",group:"인프라그룹",addr:"",order:3},
+  {name:"표준 문서 양식 점검",desc:"제출 문서의 필수 항목 누락 확인",owner:"최우식",group:"조립기술그룹",addr:"",order:4},
+  {name:"데이터 전처리 자동화",desc:"설비 로그 정제·결측 보정 파이프라인",owner:"김도현",group:"전극기술그룹",addr:"",order:5}]}
 ]};
 
-let STATE={columns:[]}, DRAFT=null, ME={auth:false}, FAVORITES=[];
-function isFav(team,name){return FAVORITES.includes(team+"::"+name);}
-async function loadFavorites(){
-  if(!ME.auth){FAVORITES=[];renderGrid();return;}
-  try{const r=await fetch("api/favorites",{cache:"no-store"});const j=await r.json();FAVORITES=j.favorites||[];}catch(e){FAVORITES=[];}
-  renderGrid();
+let STATE={columns:[]}, DRAFT=null, ME={auth:false}, FAVORITES=[], LIKES={};
+
+/* ---------- 즐겨찾기 · 좋아요 (localStorage) ----------
+   백엔드가 없는 동안 로그인 없이 동작한다. 서버 연결 시 이 4개 함수의
+   내부만 fetch 로 바꾸면 나머지 코드는 그대로 쓸 수 있다. */
+const LS_FAV="aims_fav", LS_LIKE="aims_likes";
+function agentKey(team,name){return team+"::"+name;}
+function lsGet(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v==null?def:v;}catch(e){return def;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+function isFav(team,name){return FAVORITES.includes(agentKey(team,name));}
+function loadFavorites(){
+  FAVORITES=lsGet(LS_FAV,[]);
+  LIKES=lsGet(LS_LIKE,{});
+  renderAll();
 }
-async function toggleFav(team,name){
-  const key=team+"::"+name, on=!isFav(team,name);
-  try{const r=await fetch("api/favorites",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key,on})});const j=await r.json();if(j.ok){FAVORITES=j.favorites;renderGrid();}}catch(e){}
+function toggleFav(team,name){
+  const key=agentKey(team,name), i=FAVORITES.indexOf(key);
+  if(i>=0)FAVORITES.splice(i,1); else FAVORITES.push(key);
+  lsSet(LS_FAV,FAVORITES);
+  renderAll();
+}
+function likeCount(team,name){return +(LIKES[agentKey(team,name)]||0);}
+function isLiked(team,name){return likeCount(team,name)>0;}
+function toggleLikeAgent(team,name){
+  const key=agentKey(team,name);
+  if(LIKES[key])delete LIKES[key]; else LIKES[key]=1;
+  lsSet(LS_LIKE,LIKES);
+  renderAll();
+}
+/* 그리드·TOP5·통계·차트를 한 번에 갱신 */
+function renderAll(){
+  renderGrid();
+  if(typeof renderTop5==="function")renderTop5();
+  if(typeof renderDashboard==="function")renderDashboard();
 }
 
 /* ---------- 데이터 로드/렌더 ---------- */
 async function loadData(){
   try{const r=await fetch("data/dashboards.json",{cache:"no-store"});if(!r.ok)throw 0;STATE=await r.json();}
   catch(e){STATE=JSON.parse(JSON.stringify(FALLBACK));}
-  renderGrid();
+  renderAll();
   if(typeof refreshPopularHub==="function")refreshPopularHub();
   if(typeof loadRank==="function")loadRank();
 }
 let RANK7={};
 async function loadRank(){
   try{const r=await fetch("api/dash-rank",{cache:"no-store"});if(r.ok){const j=await r.json();if(j.ok&&j.items)RANK7=j.items;}}catch(e){}
-  renderGrid();
+  renderAll();
 }
-const ORG_ORDER=["기술개발 도출 지원","이슈 원인분석","MRM 과제 운영","제품 개발 프로세스 개선"];
+const ORG_ORDER=["新 공정/공법 개발","해외법인 양산 지원","제품 개발 대응","공통 및 루틴 업무"];
+/* 카테고리별 강조색 — 카드 상단선·라벨·막대차트가 공유한다 */
+const CAT_COLORS={"新 공정/공법 개발":"#6fb4ff","해외법인 양산 지원":"#3ddba0","제품 개발 대응":"#8b7bff","공통 및 루틴 업무":"#e05a8f"};
+function catColor(team){return CAT_COLORS[team]||"#6fb4ff";}
 function orgRank(team){for(let i=0;i<ORG_ORDER.length;i++){if((team||"").startsWith(ORG_ORDER[i]))return i;}return 999;}
 function orderedColumns(cols){return (cols||[]).slice().sort((a,b)=>orgRank(a.team)-orgRank(b.team));}
 function displayTeam(t){return t;}
@@ -1744,37 +1882,72 @@ function matchItem(it,field,q){
   if(field==="owner")return o.includes(q);
   return n.includes(q)||d.includes(q)||o.includes(q);
 }
+function agentStatus(col,it){
+  /* 3종 상태: ok(사용 가능) / prep(준비중) / fail(접속 장애) */
+  if(it.prep||!hasAddr(it))return "prep";
+  const h=HEALTH[agentKey(col.team,it.name)];
+  const st=h&&h.state;
+  return (st==="fail"||st==="warn")?"fail":"ok";
+}
+const STATUS_LABEL={ok:"사용 가능",prep:"준비중",fail:"접속 장애"};
+const STATUS_ICON={ok:"●",prep:"◌",fail:"▲"};
+
 function buildCell(col,it){
-  const a=document.createElement("a");const prep=!!it.prep,hasA=hasAddr(it),isAdmin=(ME.role==="admin");
-  const live=hasA&&!prep,adminEnter=prep&&hasA&&isAdmin,clickable=live||adminEnter;
-  const key=col.team+"::"+it.name;
-  const st=live?((HEALTH[key]&&HEALTH[key].state)||"ok"):null;
-  const cc=live?(st==="fail"?"var(--cell-fail)":st==="warn"?"var(--cell-warn)":LIVE_COLOR):(prep?"var(--cell-warn)":SOON_COLOR);
-  a.className="cell"+(live?"":" dark")+(adminEnter?" prep-admin":"");a.style.setProperty("--cellcolor",cc);
-  if(clickable){a.href=normAddr(it.addr);a.target="_blank";a.rel="noopener";
+  const a=document.createElement("a");
+  const isAdmin=(ME.role==="admin");
+  const prep=!!it.prep, hasA=hasAddr(it);
+  const stt=agentStatus(col,it);
+  const live=(stt!=="prep");
+  const adminEnter=prep&&hasA&&isAdmin;
+  const clickable=(live&&hasA)||adminEnter;
+  const key=agentKey(col.team,it.name);
+  const color=catColor(col.team);
+
+  a.className="acard st-"+stt+(adminEnter?" prep-admin":"");
+  a.style.setProperty("--cat",color);
+
+  if(clickable){
+    a.href=normAddr(it.addr);a.target="_blank";a.rel="noopener";
     a.addEventListener("click",()=>{try{navigator.sendBeacon("api/dash-access",new Blob([JSON.stringify({key:key,name:it.name,team:col.team})],{type:"application/json"}));}catch(e){}});
-  }else{a.href="#";a.setAttribute("aria-disabled","true");a.addEventListener("click",e=>e.preventDefault());}
-  let badge;
-  if(prep){badge='<span class="badge-prep">준비중'+(adminEnter?' · 관리자':'')+'</span>';}
-  else if(!live){badge='<span class="badge-soon">준비중</span>';}
-  else{badge=(st==="fail"?'<span class="badge-live">■ 접속장애</span>':st==="warn"?'<span class="badge-live">▴ 임시중단</span>':'<span class="badge-live">● LIVE</span>');}
-  const lock=prep?'<span class="lockmark" title="준비중 — 관리자만 접속할 수 있습니다">🔒</span>':((live&&it.locked)?'<span class="lockmark" title="접속 시 별도 로그인이 필요한 대시보드입니다">🔒</span>':'');
-  const meta=live?(it.version?`<span class="cell-meta cell-meta-ver">${esc(it.version)}</span>`:""):(it.openDate?`<span class="cell-meta cell-meta-soon">${esc(it.openDate)}</span>`:"");
-  a.innerHTML=`<div class="cell-name">${esc(it.name)}</div><div class="cell-desc">${esc(it.desc)}</div><div class="cell-foot"><span class="cf-left">${it.pin?'<span class="badge-pin" title="관리자 상단 고정">📌</span>':''}${badge}${lock}${meta}</span><span class="owner">${it.owner?esc(it.owner):""}</span></div>`;
-  if(ME.auth){
-    const fav=isFav(col.team,it.name);
-    const star=document.createElement("button");
-    star.className="favstar"+(fav?" on":"");star.innerHTML=fav?"★":"☆";
-    star.title=fav?"즐겨찾기 해제":"즐겨찾기";
-    star.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();toggleFav(col.team,it.name);});
-    a.appendChild(star);
+  }else{
+    a.href="#";a.setAttribute("aria-disabled","true");
+    a.addEventListener("click",e=>e.preventDefault());
   }
+
+  const lock=(prep||it.locked)?'<span class="lockmark" title="'+(prep?"준비중 — 관리자만 접속할 수 있습니다":"접속 시 별도 로그인이 필요합니다")+'">🔒</span>':"";
+  const meta=live?(it.version?'<span class="cell-meta">'+esc(it.version)+'</span>':"")
+                 :(it.openDate?'<span class="cell-meta cell-meta-soon">'+esc(it.openDate)+'</span>':"");
+  const liked=isLiked(col.team,it.name), lc=likeCount(col.team,it.name);
+  const fav=isFav(col.team,it.name);
+
+  a.innerHTML=
+    '<div class="ac-top">'
+    +   '<span class="ac-cat">'+esc(col.team)+'</span>'
+    +   '<span class="ac-status st-'+stt+'"><i>'+STATUS_ICON[stt]+'</i>'+STATUS_LABEL[stt]+(adminEnter?" · 관리자":"")+'</span>'
+    + '</div>'
+    + '<div class="ac-name">'+esc(it.name)+lock+'</div>'
+    + '<div class="ac-desc">'+esc(it.desc||"")+'</div>'
+    + '<div class="ac-foot">'
+    +   '<button class="ac-like'+(liked?" on":"")+'" type="button" title="좋아요">'
+    +     '<span class="ac-heart">'+(liked?"♥":"♡")+'</span><span class="ac-likenum">'+lc+'</span>'
+    +   '</button>'
+    +   '<span class="ac-right">'+meta+'<span class="ac-group">'+esc(it.group||it.owner||"")+'</span></span>'
+    + '</div>'
+    + '<button class="ac-fav'+(fav?" on":"")+'" type="button" title="'+(fav?"즐겨찾기 해제":"즐겨찾기")+'">'+(fav?"★":"☆")+'</button>';
+
+  a.querySelector(".ac-like").addEventListener("click",e=>{
+    e.preventDefault();e.stopPropagation();toggleLikeAgent(col.team,it.name);
+  });
+  a.querySelector(".ac-fav").addEventListener("click",e=>{
+    e.preventDefault();e.stopPropagation();toggleFav(col.team,it.name);
+  });
+
   if(live && isFreshDays(it.linkedAt,3)){
     a.classList.add("hasnew");
     const nf=document.createElement("span");nf.className="newflag";nf.textContent="NEW";
     a.appendChild(nf);
   }
-  /* 관리자: 장애표시 유예/해제 (유예 중이면 모두에게 정상으로 표시됨) */
+  /* 관리자: 장애표시 유예/해제 */
   if(isAdmin&&live){
     const hi=HEALTH[key]||{};
     if(hi.waived){
@@ -1783,7 +1956,7 @@ function buildCell(col,it){
       wb.title="장애표시 유예 중"+(hi.waiveUntil?(" (~"+hi.waiveUntil+")"):" (무기한)")+" — 클릭하여 해제";
       wb.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();waiveHealth(key,false);});
       a.appendChild(wb);
-    }else if(st==="fail"||st==="warn"){
+    }else if(stt==="fail"){
       const wb=document.createElement("button");
       wb.className="waivebtn";wb.textContent="유예";
       wb.title="장애 표시를 유예하고 정상으로 표시";
@@ -1793,6 +1966,7 @@ function buildCell(col,it){
   }
   return a;
 }
+
 async function waiveHealth(key,flag){
   let until="";
   if(flag){
@@ -1855,7 +2029,7 @@ async function checkMe(){
   updateHeader();
   if(typeof refreshBoardDot==="function")refreshBoardDot();
   if(typeof refreshNotice==="function")refreshNotice();
-  if(ME.auth)loadFavorites(); else {FAVORITES=[];renderGrid();}
+  loadFavorites();
 }
 function updateHeader(){
   document.body.classList.toggle("role-admin", !!(ME.auth&&ME.role==="admin"));
@@ -1891,7 +2065,7 @@ document.getElementById("gear").addEventListener("click",async()=>{
 });
 document.getElementById("logoutBtn").addEventListener("click",async()=>{
   await fetch("api/logout",{method:"POST"});ME={auth:false};updateHeader();loadData();
-  showHome();refreshBoardDot();refreshNotice();FAVORITES=[];renderGrid();
+  showHome();refreshBoardDot();refreshNotice();renderAll();
 });
 /* 타이틀 클릭 → 홈 화면으로 */
 (function(){
@@ -3051,9 +3225,124 @@ function renderAC(){
 
 /* 자동 헬스체크 상태 반영(주기적 폴링) */
 async function loadHealth(){
-  try{const r=await fetch("api/health",{cache:"no-store"});const j=await r.json();if(j.ok){HEALTH=j.items||{};renderGrid();}}catch(e){}
+  try{const r=await fetch("api/health",{cache:"no-store"});const j=await r.json();if(j.ok){HEALTH=j.items||{};renderAll();}}catch(e){}
 }
 setInterval(loadHealth,60000);
+
+/* ====================== 대시보드 · TOP5 ====================== */
+let ACTIVE_GROUP="전체";
+
+/* 전체 Agent 를 평탄화해서 반환 */
+function allAgents(){
+  const out=[];
+  (STATE.columns||[]).forEach(col=>(col.items||[]).forEach(it=>out.push({col,it})));
+  return out;
+}
+/* 데이터에서 그룹 목록을 자동 수집 — 그룹명이 바뀌어도 코드 수정 불필요 */
+function allGroups(){
+  const seen=[];
+  allAgents().forEach(({it})=>{
+    const g=(it.group||"").trim();
+    if(g&&seen.indexOf(g)<0)seen.push(g);
+  });
+  return seen;
+}
+function agentsOfGroup(g){
+  const list=allAgents();
+  return (!g||g==="전체")?list:list.filter(x=>(x.it.group||"")===g);
+}
+
+/* ---------- 통계 4개 ---------- */
+function renderStats(){
+  const row=document.querySelector(".stat-row");if(!row)return;
+  const list=agentsOfGroup(ACTIVE_GROUP);
+  const v={
+    agents:list.length,
+    teams:(ACTIVE_GROUP==="전체")?allGroups().length:1,
+    cats:(STATE.columns||[]).length,
+    favs:FAVORITES.length
+  };
+  Object.keys(v).forEach(k=>{
+    const el=row.querySelector('[data-stat="'+k+'"]');
+    if(el)el.textContent=String(v[k]);
+  });
+}
+
+/* ---------- 그룹 필터 버튼 ---------- */
+function renderGroupFilter(){
+  const box=document.getElementById("groupFilter");if(!box)return;
+  const groups=["전체"].concat(allGroups());
+  if(groups.indexOf(ACTIVE_GROUP)<0)ACTIVE_GROUP="전체";
+  box.innerHTML=groups.map(g=>
+    '<button type="button" class="gf-btn'+(g===ACTIVE_GROUP?" on":"")+'" data-g="'+esc(g)+'">'+esc(g)+'</button>'
+  ).join("");
+  box.querySelectorAll("[data-g]").forEach(b=>b.addEventListener("click",()=>{
+    ACTIVE_GROUP=b.dataset.g;renderDashboard();
+  }));
+}
+
+/* ---------- 카테고리별 막대차트 ---------- */
+function renderCatChart(){
+  const box=document.getElementById("catChart");if(!box)return;
+  const list=agentsOfGroup(ACTIVE_GROUP);
+  const rows=orderedColumns(STATE.columns).map(col=>({
+    team:col.team,
+    n:list.filter(x=>x.col.team===col.team).length,
+    color:catColor(col.team)
+  }));
+  const max=Math.max(1,...rows.map(r=>r.n));
+  if(!rows.length){box.innerHTML='<div class="ih-empty">표시할 카테고리가 없습니다.</div>';return;}
+  box.innerHTML=rows.map(r=>
+    '<div class="cc-row">'
+    + '<span class="cc-label" title="'+esc(r.team)+'">'+esc(r.team)+'</span>'
+    + '<span class="cc-track"><span class="cc-bar" style="--cat:'+r.color+';width:'+Math.round(r.n/max*100)+'%"></span></span>'
+    + '<span class="cc-val">'+r.n+'</span>'
+    + '</div>'
+  ).join("");
+}
+
+function renderDashboard(){
+  renderGroupFilter();
+  renderStats();
+  renderCatChart();
+}
+
+/* ---------- TOP5 (좋아요 내림차순) ---------- */
+function renderTop5(){
+  const box=document.getElementById("top5Grid");if(!box)return;
+  const ranked=allAgents().slice().sort((a,b)=>{
+    const la=likeCount(a.col.team,a.it.name), lb=likeCount(b.col.team,b.it.name);
+    if(lb!==la)return lb-la;
+    return (+a.it.order||0)-(+b.it.order||0);
+  }).slice(0,5);
+  if(!ranked.length){box.innerHTML='<div class="ih-empty">등록된 AI Agent가 없습니다.</div>';return;}
+  box.innerHTML="";
+  ranked.forEach((x,i)=>{
+    const wrap=document.createElement("div");
+    wrap.className="t5-item";
+    const rank=document.createElement("span");
+    rank.className="t5-rank";rank.textContent=String(i+1);
+    wrap.appendChild(rank);
+    wrap.appendChild(buildCell(x.col,x.it));
+    box.appendChild(wrap);
+  });
+}
+
+/* ---------- 대시보드 액션 버튼 (디자인 우선 · 기능은 추후) ---------- */
+(function dashActions(){
+  const rec=document.getElementById("btnAiRecommend");
+  const reg=document.getElementById("btnAgentRegister");
+  if(rec)rec.addEventListener("click",()=>alert("AI 매니저 추천 기능은 준비 중입니다."));
+  if(reg)reg.addEventListener("click",()=>{
+    const b=document.getElementById("dashReqBtn");
+    if(b)b.click(); else alert("AI Agent 등록 기능은 준비 중입니다.");
+  });
+  const w=document.getElementById("ihNoticeWrite");
+  if(w)w.addEventListener("click",()=>{
+    showBoard();
+    setTimeout(()=>{const n=document.getElementById("newPostBtn");if(n)n.click();},80);
+  });
+})();
 
 /* ---------- 기존 시스템 링크(동적) ---------- */
 let SYSTEMS=[];
@@ -3662,75 +3951,6 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
       });
     }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
     for(var i=0;i<els.length;i++) io.observe(els[i]);
-  })();
-
-  /* ---------------------------------------------------------------
-     3) STATS 카운트업 — 전역 STATE 에서 실제 수치를 계산
-     --------------------------------------------------------------- */
-  (function stats(){
-    var row = document.querySelector(".stat-row");
-    if(!row) return;
-
-    function calc(){
-      /* 기존 코드는 STATE 를 let 으로 선언하므로 window.STATE 로는 잡히지 않는다.
-         전역 렉시컬 스코프의 STATE 를 직접 참조하되, 미정의 시점을 대비해 typeof 로 방어한다. */
-      var st = null;
-      try{ st = (typeof STATE !== "undefined") ? STATE : null; }catch(e){ st = null; }
-      var cols = (st && st.columns) ? st.columns : null;
-      if(!cols || !cols.length) return null;
-      var modules = 0, live = 0;
-      cols.forEach(function(c){
-        (c.items || []).forEach(function(it){
-          modules++;
-          var on = it.addr && String(it.addr).trim() !== "" && !it.prep;
-          if(on) live++;
-        });
-      });
-      return { orgs: cols.length, modules: modules, live: live, ready: modules - live };
-    }
-
-    function animate(el, to){
-      var from = 0, dur = 1100, t0 = null;
-      if(REDUCED || to === 0){ el.textContent = String(to); return; }
-      function frame(ts){
-        if(t0 === null) t0 = ts;
-        var p = Math.min(1, (ts - t0) / dur);
-        var e = 1 - Math.pow(1 - p, 3);
-        el.textContent = String(Math.round(from + (to - from) * e));
-        if(p < 1) requestAnimationFrame(frame);
-      }
-      requestAnimationFrame(frame);
-    }
-
-    var done = false;
-    function run(){
-      if(done) return;
-      var v = calc();
-      if(!v) return;                       /* STATE 아직 미로드 */
-      done = true;
-      Object.keys(v).forEach(function(key){
-        var el = row.querySelector('[data-stat="' + key + '"]');
-        if(el) animate(el, v[key]);
-      });
-    }
-
-    /* STATE 는 loadData() 로 비동기 로드되므로 진입 시점에 없을 수 있다 → 짧게 재시도 */
-    function runWithRetry(){
-      run();
-      if(done) return;
-      var tries = 0;
-      var iv = setInterval(function(){
-        tries++; run();
-        if(done || tries > 40) clearInterval(iv);   /* 최대 약 12초 */
-      }, 300);
-    }
-
-    if("IntersectionObserver" in window){
-      var io = new IntersectionObserver(function(es){
-        if(es[0].isIntersecting){ io.disconnect(); runWithRetry(); }
-      }, { threshold: 0.3 });
-      io.observe(row);
-    }else runWithRetry();
   })();
 
   /* ---------------------------------------------------------------
