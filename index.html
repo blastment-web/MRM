@@ -1581,6 +1581,42 @@
     left:calc(var(--gut) * -0.5);right:auto;top:-4%;width:min(1180px,86%);height:108%;
     background:radial-gradient(60% 70% at 26% 46%, rgba(5,7,14,.62), transparent 72%)}
 
+
+  /* ==========================================================================
+     PTIC AI Platform V14 — 조직 칩 가운데 정렬 · 카드 글자/버튼 확대
+     V13 블록 뒤에서 덮어쓴다. HTML의 ID/클래스 계약은 그대로 유지.
+     ========================================================================== */
+
+  /* ---------- 1) 대시보드 — 조직 칩을 막대차트 폭에 맞춰 키우고 가운데로 ----------
+     칩 줄과 차트는 같은 패널 폭을 쓰므로, 가운데 정렬하면 차트 영역과 시각적으로 맞는다.
+     한 줄 유지는 그대로 — 글자·여백을 폭에 연동해 어떤 해상도에서도 넘치지 않게 한다. */
+  #secHome .p-chart .org-filter{justify-content:center;gap:clamp(3px,.3vw,6px)}
+  #secHome .org-chip{
+    font-size:clamp(9.5px,.68vw,13px);padding:6px clamp(5px,.5vw,11px)}
+
+  /* ---------- 2) TOP5 ---------- */
+  /* 설명 문구가 두 줄로 접히지 않게 */
+  .sec-desc{max-width:min(1200px,100%)}
+  /* 카드 크기에 맞춰 글자·버튼 확대 */
+  #secTop5 .t5-name{font-size:21px;margin-top:16px;line-height:1.28}
+  #secTop5 .t5-desc{font-size:15px;margin-top:11px}
+  #secTop5 .t5-foot{padding-top:16px}
+  .t5 .v10cat{font-size:12px;padding:4px 11px}
+  .t5 .v10badge{height:24px;padding:0 10px;font-size:11.5px}
+  .t5 .v10org{font-size:12.5px}
+  .t5 .v10like{font-size:13.5px;padding:8px 15px;gap:7px}
+  .t5 .favstar{font-size:21px;top:13px;right:15px}
+  .t5-rank{font-size:clamp(78px,9.6vw,140px)}
+
+  /* ---------- 3) 카테고리별 AI Agent ---------- */
+  .cell.v10cell .cell-name{font-size:16.5px;margin-top:11px}
+  .cell.v10cell .cell-desc{font-size:13.5px;margin-top:7px}
+  .cell.v10cell .v10cat{font-size:11.5px;padding:3px 10px}
+  .cell.v10cell .v10badge{height:22px;padding:0 9px;font-size:11px}
+  .cell.v10cell .v10org{font-size:12px}
+  .v10like{font-size:12.5px;padding:6px 13px;gap:7px}
+  .favstar{font-size:19px;top:11px;right:12px}
+
 </style>
 </head>
 <body>
@@ -1708,7 +1744,7 @@
     <div class="sec-inner sec-headonly">
       <div class="sec-head">
         <div class="sec-eyebrow reveal">Category</div>
-        <h2 class="sec-title reveal" data-d="1"><span class="grad">카테고리별 AI Agent</span></h2>
+        <h2 class="sec-title reveal" data-d="1">카테고리별 <span class="grad">AI Agent</span></h2>
         <p class="sec-desc reveal" data-d="2">카테고리를 눌러 펼치면 전체 모듈이 보입니다. 운영중인 모듈은 클릭하면 바로 이동합니다.</p>
       </div>
     </div>
