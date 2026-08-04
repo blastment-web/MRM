@@ -607,7 +607,7 @@
      기존 컴포넌트 CSS 뒤에서 덮어쓴다. HTML의 ID/클래스 계약은 그대로 유지.
      ========================================================================== */
 
-  html{color-scheme:dark;scroll-behavior:smooth;scroll-padding-top:calc(var(--nav-h) + 20px)}
+  html{color-scheme:dark;scroll-behavior:smooth;scroll-padding-top:var(--nav-h)}
   ::selection{background:rgba(77,216,232,.30);color:#fff}
   .theme-wrap{display:none}                      /* 다크 단일 운영 */
 
@@ -695,8 +695,10 @@
   .reveal[data-d="2"]{transition-delay:.18s}
   .reveal[data-d="3"]{transition-delay:.27s}
   .reveal[data-d="4"]{transition-delay:.36s}
+  /* V10 — reduced-motion 이라고 부드러운 스크롤까지 끄지 않는다.
+     회사 PC 는 MinAnimate=0 이 기본이라 이 규칙이 걸리면 메뉴 이동이 뚝뚝 끊긴다.
+     멀미를 유발하는 리빌의 이동·스케일만 계속 차단한다. (V9 의 판단을 스크롤에도 적용) */
   @media (prefers-reduced-motion:reduce){
-    html{scroll-behavior:auto}
     .reveal{opacity:1;transform:none;transition:none}
   }
 
@@ -953,6 +955,13 @@
     border:1px solid var(--panel-line);border-radius:var(--radius-lg);
     backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur))}
   .overlay{background:rgba(3,5,11,.80);backdrop-filter:blur(7px)}
+
+  /* ===== 저사양·VDI 자동 감지 시 (body.lite) =====
+     Citrix 등 원격 화면 전송 환경에서 backdrop-filter 는 스크롤마다 매우 비싸다.
+     --blur 를 0 으로 눕히면 var(--blur) 를 쓰는 규칙이 한 번에 무력화된다. */
+  body.lite{--blur:0px}
+  body.lite .overlay{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(3,5,11,.93)}
+  body.lite .modal{backdrop-filter:none;-webkit-backdrop-filter:none}
   .btn,.minibtn,.home-btn,.board-open-btn,.orgtab,.lfile-btn,.sf-file,.share-fchip,.lchip,.prep-btn,.chip-q,.like-btn{border-radius:var(--radius)}
   .btn-ghost,.minibtn,.home-btn,.board-open-btn,.orgtab,.lfile-btn,.sf-file,.share-fchip,.lchip,.prep-btn,.chip-q,.like-btn{
     background:rgba(255,255,255,.05);border:1px solid var(--panel-line);color:var(--txt-dim)}
@@ -996,201 +1005,6 @@
   .brandmark::before{background:linear-gradient(90deg,transparent,var(--accent) 14%,var(--accent) 86%,transparent)}
   .brandmark::after{background:var(--accent-2)}
 
-
-  /* ==========================================================================
-     V2 — 4메뉴 구조 / 대시보드 · TOP5 · 신규 Agent 카드
-     ========================================================================== */
-
-  /* 메뉴 클릭 시 섹션이 잘리지 않게. 부드러운 스크롤은 유지한다. */
-  html{scroll-padding-top:var(--nav-h)}
-  .sec{scroll-margin-top:var(--nav-h)}
-  #secDashboard,#secTop5,#secPlatform,#secCommunity{
-    min-height:calc(100vh - var(--nav-h));
-    display:flex;flex-direction:column;
-    padding:calc(var(--nav-h) * 0.55) 0}
-  /* 1화면에 들어오는 섹션은 세로 중앙, 내용이 긴 섹션은 위에서부터 */
-  #secDashboard,#secTop5{justify-content:center}
-  #secPlatform,#secCommunity{justify-content:flex-start;padding-top:calc(var(--nav-h) * 0.9)}
-
-  /* ---------- §1 대시보드 ---------- */
-  .sec-dash{position:relative;overflow:hidden}
-  .sec-dash::after{
-    content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
-    background:
-      radial-gradient(820px 560px at 78% 12%, rgba(77,216,232,.12), transparent 62%),
-      radial-gradient(680px 500px at 12% 88%, rgba(139,123,255,.11), transparent 62%),
-      linear-gradient(180deg, transparent 68%, var(--ink) 100%)}
-  .dash-inner{position:relative;z-index:2;display:flex;flex-direction:column;gap:26px;width:100%}
-
-  /* Hero — V1 대비 축소 (폰트·여백 비례 축소, 이미지 스케일 아님) */
-  .dash-hero{max-width:820px}
-  .sec-dash .eyebrow{
-    display:block;font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--accent);margin-bottom:12px}
-  .sec-dash .hero-title{
-    font-size:clamp(26px,3.5vw,46px);font-weight:900;line-height:1.12;
-    letter-spacing:-0.035em;margin:0;white-space:nowrap}
-  .sec-dash .hero-tagline{margin-top:12px;font-size:clamp(12px,1vw,14px);font-weight:700;color:var(--txt-dim)}
-  .sec-dash .sub{margin-top:8px;max-width:560px;font-size:clamp(13px,1vw,14.5px);color:var(--txt-dim)}
-  .sec-dash .hero-cta{margin-top:20px}
-  .sec-dash .cta-primary{font-size:13px;padding:11px 22px}
-  @media(max-width:900px){.sec-dash .hero-title{white-space:normal}}
-
-  /* 통계 4개 */
-  .sec-dash .stat-row{
-    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;
-    background:var(--panel-line);border:1px solid var(--panel-line);
-    border-radius:var(--radius-lg);overflow:hidden}
-  .sec-dash .stat-card{
-    background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.01)),var(--ink);
-    padding:20px 18px;text-align:center}
-  .sec-dash .stat-num{
-    font-size:clamp(24px,2.6vw,36px);font-weight:900;letter-spacing:-0.035em;line-height:1;
-    background:var(--grad);-webkit-background-clip:text;background-clip:text;
-    -webkit-text-fill-color:transparent;font-variant-numeric:tabular-nums}
-  .sec-dash .stat-label{margin-top:7px;font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--txt-dim)}
-
-  /* 하단 2단 (차트 / 공지) */
-  .dash-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;align-items:stretch}
-  .dash-card{
-    display:flex;flex-direction:column;
-    border-radius:var(--radius-lg);border:1px solid var(--panel-line);
-    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.012));
-    padding:20px 22px}
-  .dash-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-  .dash-card-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:var(--txt)}
-  .dash-card-title .dc-ico{font-size:14px;line-height:1}
-  .dash-card-actions{display:flex;align-items:center;gap:10px}
-
-  /* 그룹 필터 */
-  .group-filter{display:flex;gap:6px;flex-wrap:wrap}
-  .gf-btn{
-    font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:999px;cursor:pointer;
-    background:rgba(255,255,255,.05);border:1px solid var(--panel-line);color:var(--txt-dim);
-    transition:background .15s,border-color .15s,color .15s}
-  .gf-btn:hover{background:rgba(255,255,255,.1);color:var(--txt)}
-  .gf-btn.on{background:rgba(77,216,232,.14);border-color:var(--accent);color:var(--accent)}
-
-  /* 카테고리 막대차트 — 막대를 넉넉하게 */
-  .cat-chart{display:flex;flex-direction:column;gap:14px;flex:1;justify-content:center}
-  .cc-row{display:grid;grid-template-columns:minmax(96px,150px) 1fr 34px;align-items:center;gap:12px}
-  .cc-label{font-size:12.5px;font-weight:700;color:var(--txt-dim);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cc-track{position:relative;height:30px;border-radius:8px;background:rgba(255,255,255,.05);overflow:hidden}
-  .cc-bar{
-    position:absolute;left:0;top:0;bottom:0;border-radius:8px;min-width:6px;
-    background:linear-gradient(90deg,color-mix(in srgb,var(--cat) 55%,transparent),var(--cat));
-    box-shadow:0 0 18px -4px var(--cat);
-    transition:width .5s cubic-bezier(.22,.7,.3,1)}
-  .cc-val{font-size:13px;font-weight:800;color:var(--txt);text-align:right;font-variant-numeric:tabular-nums}
-
-  /* 대시보드 액션 버튼 */
-  .dash-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
-  .dash-act{
-    display:inline-flex;align-items:center;gap:8px;flex:1;justify-content:center;
-    font-family:inherit;font-size:13px;font-weight:800;padding:11px 18px;border-radius:var(--radius);
-    background:rgba(255,255,255,.05);border:1px solid var(--panel-line);color:var(--txt-dim);
-    cursor:pointer;transition:background .16s,border-color .16s,color .16s,transform .16s}
-  .dash-act:hover{background:rgba(255,255,255,.1);border-color:rgba(77,216,232,.45);color:var(--accent);transform:translateY(-1px)}
-  .dash-act .da-ico{font-size:14px;line-height:1}
-  .dash-act-primary{background:var(--grad);border-color:transparent;color:#04121a;box-shadow:var(--glow)}
-  .dash-act-primary:hover{color:#04121a;filter:brightness(1.06);box-shadow:0 0 30px rgba(77,216,232,.4)}
-
-  /* 공지 카드 */
-  .dash-notice-card .ih-notice-list{flex:1}
-  .dash-notice-card .ih-notice:first-child{border-top:none}
-
-  @media(max-width:1000px){.dash-grid{grid-template-columns:1fr}}
-  @media(max-width:680px){
-    .sec-dash .stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .cc-row{grid-template-columns:minmax(76px,110px) 1fr 28px;gap:8px}
-  }
-
-  /* ---------- §2 TOP5 ---------- */
-  .top5-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px}
-  .top5-head .sec-desc{margin-top:0;max-width:420px}
-  .top5-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;align-items:stretch}
-  .t5-item{position:relative;display:flex}
-  .t5-item .acard{flex:1;padding:44px 18px 18px;min-height:clamp(290px,46vh,410px);gap:10px}
-  .t5-item .ac-name{font-size:17px;line-height:1.3}
-  .t5-item .ac-desc{font-size:13px;line-height:1.62}
-  .t5-item .ac-cat{font-size:11.5px}
-  .t5-item .ac-like{padding:5px 11px;font-size:12px}
-  .t5-item .ac-group{font-size:11.5px}
-  .t5-item .ac-fav{top:14px;right:13px;font-size:18px}
-  .t5-rank{
-    position:absolute;top:-11px;left:14px;z-index:3;
-    width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
-    font-size:14px;font-weight:900;color:#04121a;background:var(--grad);
-    box-shadow:0 4px 14px rgba(0,0,0,.45)}
-  .t5-item:nth-child(1) .t5-rank{box-shadow:0 4px 18px rgba(77,216,232,.5)}
-  .t5-item:nth-child(n+4) .t5-rank{background:var(--surface-bright);color:var(--txt)}
-  @media(max-width:1100px){.top5-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:600px){.top5-grid{grid-template-columns:1fr}}
-
-  /* ---------- Agent 카드 (TOP5 · 카테고리별 공통) ---------- */
-  .acard{
-    position:relative;display:flex;flex-direction:column;gap:7px;
-    text-decoration:none;color:inherit;cursor:pointer;overflow:hidden;
-    padding:17px 16px 15px;border-radius:var(--radius);
-    border:1px solid var(--panel-line);background:rgba(255,255,255,.035);
-    transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
-  .acard::before{
-    content:"";position:absolute;left:0;right:0;top:0;height:3px;
-    background:var(--cat);opacity:.95}
-  .acard:hover{
-    transform:translateY(-3px);background:rgba(255,255,255,.062);
-    border-color:color-mix(in srgb,var(--cat) 45%,var(--panel-line));
-    box-shadow:0 12px 30px rgba(0,0,0,.45)}
-  .acard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .acard[aria-disabled="true"]{cursor:default}
-  .acard[aria-disabled="true"]:hover{transform:none}
-
-  .ac-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-right:26px}
-  .ac-cat{font-size:11px;font-weight:800;color:var(--cat);letter-spacing:-0.01em}
-  .ac-status{
-    display:inline-flex;align-items:center;gap:4px;
-    font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;white-space:nowrap}
-  .ac-status i{font-style:normal;font-size:8px;line-height:1}
-  .ac-status.st-ok{background:rgba(61,219,160,.14);color:#4fe0af}
-  .ac-status.st-prep{background:rgba(232,179,74,.14);color:#eec063}
-  .ac-status.st-fail{background:rgba(255,107,129,.15);color:#ff8fa0}
-
-  .ac-name{font-size:15px;font-weight:800;color:#fff;line-height:1.32;word-break:keep-all}
-  .ac-desc{font-size:12px;color:var(--txt-dim);line-height:1.55;word-break:keep-all;flex:1}
-
-  .ac-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
-  .ac-like{
-    display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;
-    font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;
-    background:rgba(255,255,255,.05);border:1px solid var(--panel-line);color:var(--txt-faint);
-    transition:color .15s,border-color .15s,background .15s}
-  .ac-like:hover{color:#ff8fa0;border-color:rgba(255,107,129,.45)}
-  .ac-like.on{color:#ff5b7f;border-color:#ff5b7f;background:rgba(255,91,127,.12)}
-  .ac-heart{font-size:12px;line-height:1}
-  .ac-likenum{font-variant-numeric:tabular-nums}
-  .ac-right{display:inline-flex;align-items:center;gap:6px;min-width:0}
-  .ac-group{font-size:11px;font-weight:700;color:var(--txt-faint);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-  .ac-fav{
-    position:absolute;top:12px;right:11px;z-index:3;
-    background:none;border:none;cursor:pointer;padding:2px;
-    font-size:16px;line-height:1;color:var(--txt-faint);transition:color .15s,transform .12s}
-  .ac-fav:hover{color:#ffd54a;transform:scale(1.15)}
-  .ac-fav.on{color:#ffd54a}
-
-  .acard .lockmark{margin-left:5px;font-size:11px}
-  .acard .cell-meta{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;
-    background:rgba(255,255,255,.07);color:var(--txt-dim);white-space:nowrap}
-  .acard .cell-meta-soon{color:#ffd98a;background:rgba(217,154,0,.2)}
-  .acard .newflag{top:auto;bottom:10px;right:11px}
-  .acard .waivebtn{bottom:auto;top:38px;right:8px}
-
-  /* 그리드 안에서 카드가 균일한 높이를 갖도록 */
-  .col .cells .acard{height:100%}
-  .col.expanded .cells{align-items:stretch}
-
   /* 게시판·Q&A 화면은 고정 네비 아래로 밀어준다 */
   #boardSection,#loungeSection{padding-top:var(--nav-h)}
 
@@ -1224,6 +1038,396 @@
     .nav-actions .banner-row{display:none}
     .foot-inner{gap:28px}
   }
+  /* ==========================================================================
+     PTIC AI Platform V10 — 4화면 재편 (대시보드 · TOP5 · 카테고리 · 커뮤니티)
+     앞선 모든 CSS 뒤에서 덮어쓴다. HTML의 ID/클래스 계약은 그대로 유지.
+     ========================================================================== */
+
+  :root{
+    /* 카테고리 색 — 캡쳐 3의 상단선 색. 기존 --accent 계열과 같은 채도대로 골랐다. */
+    --cat-1:#5aa9ff;   /* 新 공정/공법 개발   파랑 */
+    --cat-2:#3ddba0;   /* 해외법인 양산 지원  초록 */
+    --cat-3:#8b7bff;   /* 제품 개발 대응     보라 */
+    --cat-4:#e0537d;   /* 공통 및 루틴 업무  자주 */
+    --like:#ff5b7f;
+    --star:#ffd54a;
+    --soon:#e8b34a;
+  }
+
+  /* ---------- 상단 메뉴: 5개 → 4개, 간격 확보 ---------- */
+  .nav-links{gap:20px;margin-left:20px}
+  .nav-links a{font-size:15px;padding:9px 18px;letter-spacing:.01em}
+  @media (max-width:1300px){.nav-links{gap:12px;margin-left:12px}
+    .nav-links a{font-size:14px;padding:8px 13px}}
+  @media (max-width:1120px){.nav-links{gap:6px;margin-left:6px}
+    .nav-links a{font-size:12.5px;padding:7px 9px}}
+
+  /* ---------- 화면 단위 섹션 — 메뉴를 누르면 잘리지 않고 한 화면에 들어온다 ----------
+     scroll-padding-top 이 정확히 --nav-h 이므로 섹션 상단이 네비 바로 아래에 붙는다.
+     따라서 사용 가능한 높이는 (100svh - --nav-h) 이고, 그 안에 내용을 맞춘다.
+     scroll-snap 은 쓰지 않는다 — 중간에서 멈추려 할 때 튕겨 오히려 답답해진다. */
+  .sec.screen{
+    min-height:calc(100svh - var(--nav-h));
+    padding:30px 0;display:flex;flex-direction:column;justify-content:center}
+  #secHome{min-height:100svh;padding-top:calc(var(--nav-h) + 8px);padding-bottom:24px}
+  #archivedSections{display:none !important}
+
+  /* ---------- §1 대시보드 ---------- */
+  #secHome{position:relative;overflow:hidden;align-items:stretch}
+  /* 히어로가 화면 전체가 아니라 한 블록이 되었으므로 배경 오버레이를 섹션으로 옮긴다 */
+  .hero::after{display:none}
+  #secHome::after{
+    content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+    background:
+      radial-gradient(880px 620px at 78% 16%, rgba(77,216,232,.13), transparent 62%),
+      radial-gradient(760px 560px at 12% 90%, rgba(139,123,255,.12), transparent 62%),
+      linear-gradient(180deg, transparent 68%, var(--ink) 100%)}
+  /* 카탈로그 화면은 내용이 한 화면보다 길 수 있다 — 위에서부터 정렬해 제목이 네비 바로 아래에 붙게 한다 */
+  #secTop5,#secPlatform,#secCommunity{justify-content:flex-start}
+  #secTop5 .sec-head,#secPlatform .sec-head,#secCommunity .sec-head{margin-bottom:clamp(14px,2.4vh,28px)}
+  .home-inner{
+    max-width:1320px;margin:0 auto;padding:0 28px;position:relative;z-index:2;width:100%;
+    display:flex;flex-direction:column;gap:clamp(14px,2.4vh,30px)}
+
+  /* 히어로 축소 — transform 스케일을 쓰지 않는다(늘어나 보이는 원인). 폰트·여백만 줄인다. */
+  .hero{min-height:0;padding:0;display:block;overflow:visible}
+  .hero .eyebrow{font-size:11.5px;margin-bottom:clamp(6px,1.2vh,14px);letter-spacing:.14em}
+  .hero-title{
+    font-size:min(3.7vw,50px);font-weight:900;line-height:1.06;
+    letter-spacing:-0.036em;margin:0;white-space:nowrap}
+  .hero-tagline{margin-top:clamp(6px,1.2vh,14px);font-size:clamp(12px,1.05vw,14.5px)}
+  .hero .sub{margin-top:clamp(4px,0.8vh,10px);font-size:clamp(12.5px,1.05vw,15px);max-width:680px}
+  .hero-cta{margin-top:clamp(10px,1.8vh,22px)}
+  .cta-primary,.cta-ghost{font-size:13.5px;padding:11px 24px}
+  .scroll-hint{display:none}
+
+  /* 하단 2열 — 왼쪽 현황+차트 / 오른쪽 버튼+공지 */
+  .home-cols{display:grid;grid-template-columns:1.55fr 1fr;gap:20px;align-items:stretch}
+  .home-left,.home-right{display:flex;flex-direction:column;gap:clamp(10px,1.6vh,18px);min-width:0}
+
+  /* STATS 4종 — 이모지 원형 아이콘 + 숫자 + 라벨 */
+  .stat-row{
+    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;
+    background:none;border:none;border-radius:0;overflow:visible}
+  .stat-card{
+    background:none;padding:0;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:6px}
+  .stat-ico{
+    width:clamp(34px,4.6vh,46px);height:clamp(34px,4.6vh,46px);border-radius:50%;
+    display:grid;place-items:center;font-size:clamp(16px,2.2vh,21px);
+    background:linear-gradient(135deg,rgba(77,216,232,.18),rgba(139,123,255,.14));
+    border:1px solid var(--panel-line)}
+  .stat-num{font-size:clamp(20px,3.2vh,30px);line-height:1;margin-top:2px}
+  .stat-label{margin-top:0;font-size:11.5px;letter-spacing:.02em;word-break:keep-all}
+
+  /* 조직 필터 버튼 */
+  .org-filter{display:flex;flex-wrap:wrap;gap:7px}
+  .org-chip{
+    font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;cursor:pointer;
+    background:rgba(255,255,255,.045);border:1px solid var(--panel-line);color:var(--txt-dim);
+    white-space:nowrap;transition:background .16s,border-color .16s,color .16s}
+  .org-chip:hover{background:rgba(255,255,255,.09);color:var(--txt)}
+  .org-chip.active{
+    background:rgba(77,216,232,.14);border-color:rgba(77,216,232,.5);
+    color:var(--accent);box-shadow:var(--glow)}
+
+  /* 카테고리 막대 차트 — 요청대로 막대를 넓게 */
+  .cat-chart{
+    flex:1;min-height:clamp(120px,20vh,190px);
+    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;
+    align-items:end;padding:14px 16px 12px;border-radius:var(--radius-lg);
+    border:1px solid var(--panel-line);
+    background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.010))}
+  .cc-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;min-width:0}
+  .cc-num{font-size:13px;font-weight:800;color:var(--txt);font-variant-numeric:tabular-nums;line-height:1}
+  .cc-bar{
+    width:clamp(38px,6vw,62px);min-height:5px;border-radius:7px 7px 3px 3px;
+    background:var(--ccc);box-shadow:0 0 18px -4px var(--ccc);
+    transition:height .42s cubic-bezier(.22,.7,.3,1),opacity .42s}
+  .cc-col.empty .cc-bar{opacity:.22;box-shadow:none}
+  .cc-col.empty .cc-num{color:var(--txt-faint)}
+  .cc-name{
+    font-size:11px;font-weight:700;color:var(--txt-dim);text-align:center;line-height:1.3;
+    word-break:keep-all;min-height:2.6em;display:flex;align-items:flex-start;justify-content:center}
+
+  /* 우측 상단 버튼 2개 (디자인만 · 클릭 시 준비중 안내) */
+  .home-actions{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+  .home-actions button{
+    display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:800;
+    padding:9px 17px;border-radius:999px;cursor:pointer;border:1px solid var(--panel-line);
+    background:rgba(255,255,255,.05);color:var(--txt);
+    transition:transform .16s,background .16s,border-color .16s,box-shadow .16s}
+  .home-actions button:hover{transform:translateY(-2px);background:rgba(255,255,255,.1);border-color:rgba(77,216,232,.4)}
+  #agentRegBtn{background:var(--grad);color:#04121a;border-color:transparent;box-shadow:var(--glow)}
+  #agentRegBtn:hover{background:var(--grad);box-shadow:0 0 32px rgba(77,216,232,.4)}
+
+  /* 공지사항 — 기존 #infoHub 를 한 칸짜리로 눕힌다 (id 계약 유지) */
+  .home-right .infohub{display:block;padding:0;margin:0;max-width:none;flex:1;min-height:0}
+  .home-right .ih-right{display:block;height:100%}
+  .home-right .ih-pane{padding:16px 18px 12px;height:100%;display:flex;flex-direction:column}
+  .ih-pane-head{margin-bottom:10px}
+  .ih-pane-title{font-size:14.5px}
+  .ih-pane-btns{display:flex;gap:6px;align-items:center}
+  .ih-pane-btns .ih-more{
+    font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:999px;
+    border:1px solid var(--panel-line);background:rgba(255,255,255,.05);color:var(--txt-dim)}
+  .ih-pane-btns .ih-more:hover{border-color:rgba(77,216,232,.45);color:var(--accent)}
+  .ih-notice-head{
+    display:grid;grid-template-columns:30px 1fr 62px;gap:8px;align-items:center;
+    padding:0 2px 7px;font-size:11px;font-weight:700;color:var(--txt-faint);
+    border-bottom:1px solid var(--panel-line)}
+  .ih-notice-head span:first-child{text-align:center}
+  .ih-notice-head span:last-child{text-align:right}
+  .ih-notice-list{flex:1;min-height:0;overflow:auto}
+  .ih-notice{
+    display:grid;grid-template-columns:30px 1fr 62px;gap:8px;align-items:center;
+    padding:9px 2px;border-top:1px solid var(--panel-line)}
+  .ih-no{text-align:center;font-size:11.5px;font-weight:700;color:var(--txt-faint);font-variant-numeric:tabular-nums}
+  .ih-n-title{font-size:13px}
+  .ih-n-date{text-align:right;font-size:11px}
+
+  /* ---------- §2 TOP5 ---------- */
+  .top5-grid{
+    display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;align-items:stretch}
+  .t5{
+    position:relative;display:flex;flex-direction:column;overflow:hidden;
+    min-height:clamp(200px,32svh,290px);border-radius:var(--radius-lg);
+    border:1px solid var(--panel-line);padding:18px 18px 15px;text-decoration:none;color:inherit;
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.012));
+    transition:transform .22s,border-color .22s,box-shadow .22s}
+  .t5:hover{transform:translateY(-4px);border-color:rgba(77,216,232,.34);box-shadow:0 20px 44px rgba(0,0,0,.5)}
+  .t5::before{
+    content:"";position:absolute;left:0;right:0;top:0;height:2px;z-index:1;
+    background:linear-gradient(90deg,transparent,var(--catc),transparent)}
+  .t5-rank{
+    position:absolute;right:6px;bottom:-14px;z-index:0;pointer-events:none;
+    font-size:clamp(72px,9vw,124px);font-weight:900;line-height:.8;
+    color:var(--txt);opacity:.09;letter-spacing:-0.06em;font-variant-numeric:tabular-nums}
+  .t5.first{box-shadow:var(--glow)}
+  .t5 > *{position:relative;z-index:2}
+  .t5-name{font-size:16px;font-weight:800;line-height:1.3;color:#fff;word-break:keep-all;margin-top:12px;padding-right:20px}
+  .t5-desc{font-size:12.5px;color:var(--txt-dim);line-height:1.6;word-break:keep-all;margin-top:8px}
+  .t5-foot{margin-top:auto;padding-top:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  @media (max-width:1180px){.top5-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .sec.screen{min-height:0}}
+  @media (max-width:720px){.top5-grid{grid-template-columns:1fr}}
+
+  /* ---------- 카드 공통 (캡쳐 3) — 그리드 셀과 TOP5 가 같은 언어를 쓴다 ---------- */
+  .v10top{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding-right:22px}
+  .v10cat{
+    font-size:10.5px;font-weight:800;letter-spacing:.01em;padding:3px 9px;border-radius:5px;
+    color:var(--catc);background:color-mix(in srgb,var(--catc) 16%,transparent);
+    white-space:nowrap}
+  @supports not (color:color-mix(in srgb,red 10%,transparent)){
+    .v10cat{background:rgba(255,255,255,.08)}}
+  .v10badge{
+    display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:5px;
+    font-size:10px;font-weight:800;letter-spacing:.02em;white-space:nowrap}
+  .v10badge.live{background:rgba(4,8,16,.68);color:#7ff0ff;box-shadow:0 0 14px rgba(77,216,232,.24)}
+  .v10badge.soon{background:rgba(232,179,74,.14);color:var(--soon)}
+  .v10badge.fail{background:rgba(255,107,129,.14);color:var(--danger)}
+  .v10foot{margin-top:auto;padding-top:11px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .v10like{
+    display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+    font-size:11.5px;font-weight:700;line-height:1;padding:5px 11px;border-radius:999px;
+    background:rgba(255,255,255,.05);border:1px solid var(--panel-line);color:var(--txt-dim);
+    font-variant-numeric:tabular-nums;transition:background .15s,border-color .15s,color .15s}
+  .v10like:hover{border-color:var(--like);color:var(--txt)}
+  .v10like.on{border-color:var(--like);color:var(--like);background:rgba(255,91,127,.12)}
+  .v10org{font-size:11px;font-weight:700;color:var(--txt-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .favstar{top:9px;right:10px;font-size:16px;color:var(--txt-faint)}
+  .favstar.on{color:var(--star)}
+
+  /* 그리드 셀에 카드 언어 적용 */
+  .cell.v10cell{
+    display:flex;flex-direction:column;padding:12px 13px 11px;
+    background:rgba(255,255,255,.032);border:1px solid var(--panel-line)}
+  .cell.v10cell::before{
+    inset:auto;left:0;right:0;top:0;width:auto;height:2px;border-radius:0;opacity:1;
+    background:linear-gradient(90deg,transparent,var(--catc),transparent)}
+  .cell.v10cell:not(.dark){background:linear-gradient(180deg,rgba(77,216,232,.09),rgba(139,123,255,.04))}
+  .cell.v10cell .cell-name{margin-top:9px;padding-right:0;font-size:13.5px;font-weight:800;color:#fff}
+  .cell.v10cell .cell-desc{margin-top:5px}
+  .cell.v10cell.hasnew .cell-name{padding-right:0}
+  .newflag{top:32px;right:8px}
+
+  /* ---------- §3 카테고리별 AI Agent ---------- */
+  #secPlatform .grid{padding-bottom:0}
+  .col::before{background:linear-gradient(90deg,transparent,var(--catc,var(--accent)),transparent);opacity:.75}
+  .gt-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .gt-status .chip{
+    display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:6px;
+    font-size:11px;font-weight:800;letter-spacing:.01em}
+  .gt-status .chip.live{background:rgba(4,8,16,.68);color:#7ff0ff;box-shadow:0 0 14px rgba(77,216,232,.24)}
+  .gt-status .chip.soon{background:rgba(232,179,74,.14);color:var(--soon)}
+  .gt-status .chip.fail{background:rgba(255,107,129,.14);color:var(--danger)}
+
+  /* ---------- 준비중 안내 토스트 ---------- */
+  .v10toast{
+    position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(14px);
+    z-index:200;padding:12px 22px;border-radius:999px;pointer-events:none;
+    background:rgba(9,13,24,.94);border:1px solid rgba(77,216,232,.4);color:var(--txt);
+    font-size:13px;font-weight:700;box-shadow:0 14px 40px rgba(0,0,0,.6);
+    opacity:0;transition:opacity .22s,transform .22s}
+  .v10toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ---------- 낮은 화면(노트북·VDI) 압축 ---------- */
+  @media (max-height:760px){
+    .sec.screen{padding:18px 0}
+    .home-inner{gap:12px}
+    .hero .eyebrow{margin-bottom:5px}
+    .hero-tagline{margin-top:5px}
+    .hero-cta{margin-top:10px}
+    .cta-primary,.cta-ghost{padding:9px 20px;font-size:13px}
+    .cat-chart{min-height:104px;padding:10px 12px 8px}
+    .cc-name{min-height:2.6em;font-size:10.5px}
+    .home-right .ih-pane{padding:12px 14px 10px}
+    .t5{min-height:0;padding:14px 15px 12px}
+    .t5-name{font-size:15px;margin-top:9px}
+    .t5-desc{font-size:12px;margin-top:6px}
+  }
+  @media (max-height:620px){
+    .hero .sub{display:none}
+    .cat-chart{min-height:92px}
+    .stat-ico{width:30px;height:30px;font-size:15px}
+  }
+
+  /* ---------- 좁은 폭 ---------- */
+  @media (max-width:1100px){
+    .home-cols{grid-template-columns:1fr}
+    .hero-title{white-space:normal;font-size:clamp(26px,5.4vw,44px)}
+    .sec.screen,#secHome{min-height:0}
+  }
+  @media (max-width:900px){
+    .home-inner{padding-left:18px;padding-right:18px}
+    .stat-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .home-actions{justify-content:flex-start}
+  }
+
+  /* ==========================================================================
+     PTIC AI Platform V11 — 대시보드 3패널 재배치 + 화면 높이 자동 맞춤
+     V10 블록 뒤에서 덮어쓴다. HTML의 ID/클래스 계약은 그대로 유지.
+     ========================================================================== */
+
+  /* ---------- 액션 버튼: 3열 위로 올려 우측 정렬 ---------- */
+  .home-actions{justify-content:flex-end;margin-bottom:0}
+
+  /* ---------- 하단 3패널: 현황 | 차트 | 공지 ---------- */
+  .home-cols{grid-template-columns:.9fr 1fr 1.25fr;gap:16px;align-items:stretch}
+  .dash-panel{
+    position:relative;overflow:hidden;min-width:0;
+    display:flex;flex-direction:column;
+    padding:16px 18px 14px;border-radius:var(--radius-lg);
+    border:1px solid var(--panel-line);
+    background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.010))}
+  /* 가는 그라데이션 상단선 — .why-card::before · .col::before 와 같은 언어 */
+  .dash-panel::before{
+    content:"";position:absolute;left:0;right:0;top:0;height:1px;z-index:1;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.45}
+
+  /* ---------- 패널 1 · 현황 4종 ---------- */
+  .p-stats .stat-row{
+    flex:1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;
+    align-content:center;background:none;border:none;border-radius:0;overflow:visible}
+  .stat-card{justify-content:center;gap:5px}
+  /* aspect-ratio·flex:none 으로 어떤 레이아웃에서도 정원을 유지한다 (타원 방지) */
+  .stat-ico{
+    width:clamp(30px,4.2vh,42px);height:clamp(30px,4.2vh,42px);
+    aspect-ratio:1;flex:none;font-size:clamp(15px,2vh,19px)}
+  .stat-num{font-size:clamp(22px,3.4vh,32px);margin-top:1px}
+  .stat-label{font-size:12px;letter-spacing:0;line-height:1.3;word-break:keep-all}
+
+  /* ---------- 패널 2 · 조직 필터 + 막대 차트 ---------- */
+  .p-chart .org-filter{
+    gap:5px;margin-bottom:10px;padding-bottom:9px;flex-wrap:wrap;
+    border-bottom:1px solid var(--panel-line)}
+  .p-chart .org-chip{font-size:11px;padding:4px 10px}
+  /* 패널이 이미 상자를 그리므로 차트 자체의 테두리·배경은 없앤다 */
+  .p-chart .cat-chart{
+    flex:1;padding:0;border:none;background:none;border-radius:0;
+    min-height:clamp(86px,14vh,150px)}
+  .cc-num{font-size:13px}
+  .cc-name{font-size:10.5px;min-height:2.6em;word-break:keep-all}
+  .cc-bar{width:clamp(30px,4.6vw,54px)}
+
+  /* ---------- 패널 3 · 공지사항 ---------- */
+  .p-notice{padding:0}
+  .p-notice .infohub{display:block;padding:0;margin:0;max-width:none;height:100%}
+  .p-notice .ih-right{display:block;height:100%}
+  .p-notice .ih-pane{
+    padding:16px 18px 12px;height:100%;display:flex;flex-direction:column;
+    border:none;background:none;border-radius:var(--radius-lg)}
+  .p-notice .ih-n-title{font-size:13px}
+
+  /* ==========================================================================
+     화면 높이 자동 맞춤 — JS(fitScreens)가 실측 후 .tight / .tighter 를 붙인다.
+     창 높이가 기기마다 다르다(실측 573 · 776 · 785px). 고정 픽셀로는 보장할 수 없다.
+     .measuring 은 측정 순간에만 붙여 min-height 를 잠시 눕힌다.
+     ========================================================================== */
+  .sec.screen.measuring{min-height:0 !important}
+
+  /* --- 1단계: 여백을 줄인다 --- */
+  .sec.screen.tight{padding:16px 0}
+  #secHome.tight{padding-top:calc(var(--nav-h) + 4px);padding-bottom:14px}
+  .tight .home-inner{gap:10px}
+  .tight .hero .eyebrow{margin-bottom:4px}
+  .tight .hero-tagline{margin-top:4px}
+  .tight .hero .sub{margin-top:3px}
+  .tight .hero-cta{margin-top:9px}
+  .tight .cta-primary{padding:9px 20px;font-size:13px}
+  .tight .dash-panel{padding:11px 13px 10px}
+  .tight .p-notice{padding:0}
+  .tight .p-notice .ih-pane{padding:11px 13px 8px}
+  .tight .p-chart .org-filter{margin-bottom:7px;padding-bottom:6px}
+  .tight .sec-head{margin-bottom:10px}
+  .tight .sec-title{font-size:clamp(22px,3vw,34px)}
+  .tight .sec-desc{margin-top:6px}
+  .tight .grid-toolbar{padding-bottom:12px}
+  .tight .grid{padding-top:8px}
+  .tight .col{padding:14px 14px 15px}
+  .tight .col-head{min-height:0;margin-bottom:2px}
+  .tight .col-tag{min-height:0;margin-bottom:8px;line-height:1.35}
+  .tight .cells{gap:6px}
+  .tight .cell.v10cell{padding:9px 11px 8px}
+  .tight .cell.v10cell .cell-name{margin-top:6px}
+  .tight .cell.v10cell .cell-desc{margin-top:4px}
+  .tight .v10foot{padding-top:8px}
+  .tight .more-btn{padding:5px;font-size:12px;margin-top:6px}
+  .tight .t5{min-height:0;padding:13px 14px 11px}
+  .tight .t5-name{margin-top:8px;font-size:15px}
+  .tight .t5-desc{margin-top:6px}
+
+  /* --- 2단계: 글자까지 줄이고 영문 태그를 감춘다 --- */
+  .tighter .sec-eyebrow{margin-bottom:6px}
+  .tighter .sec-title{font-size:clamp(19px,2.5vw,27px)}
+  .tighter .sec-desc{font-size:12.5px;margin-top:4px}
+  .tighter .col-tag{display:none}
+  .tighter .col{padding:12px 12px 13px}
+  .tighter .cells{gap:5px}
+  .tighter .cell.v10cell{padding:7px 10px 7px}
+  .tighter .cell.v10cell .cell-name{margin-top:5px;font-size:12.5px}
+  .tighter .cell.v10cell .cell-desc{margin-top:3px;font-size:11px}
+  .tighter .v10badge{height:18px;padding:0 7px;font-size:9.5px}
+  .tighter .v10cat{font-size:10px;padding:2px 7px}
+  .tighter .v10like{padding:4px 9px;font-size:11px}
+  .tighter .v10foot{padding-top:7px}
+  .tighter .hero-title{font-size:min(3.2vw,42px)}
+  .tighter .hero .sub{display:none}
+  .tighter .stat-label{font-size:11px}
+  .tighter .cc-name{min-height:2.4em;font-size:10px}
+  .tighter .t5-desc{font-size:12px}
+
+  /* ---------- 좁은 폭 (V10 규칙 뒤에 와야 이긴다) ---------- */
+  @media (max-width:1180px){
+    .home-cols{grid-template-columns:1fr 1.25fr}
+    .p-stats{grid-column:1 / -1}
+  }
+  @media (max-width:860px){
+    .home-cols{grid-template-columns:1fr}
+    .home-actions{justify-content:flex-start}
+    .p-stats .stat-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  }
+
 </style>
 </head>
 <body>
@@ -1232,7 +1436,7 @@
   <div class="nav-inner">
     <h1 id="homeTitle" title="홈으로" role="link" tabindex="0"><span id="brandLogo"><svg id="introStage" viewBox="0 0 400 92" role="img" aria-label="AIMS"><g id="lnkG"></g><g id="ndG"></g><g id="plsG"></g><text class="wm" x="4" y="62">AIMS</text><circle class="wmdot" id="wmDot" cx="152" cy="55" r="7"/></svg></span></h1>
     <nav class="nav-links">
-      <a href="#secDashboard">대시보드</a>
+      <a href="#secHome">대시보드</a>
       <a href="#secTop5">TOP5</a>
       <a href="#secPlatform">카테고리별 AI Agent</a>
       <a href="#secCommunity">커뮤니티</a>
@@ -1273,11 +1477,11 @@
 <main class="landing" id="mainView">
 
   <!-- ===================== §1 대시보드 ===================== -->
-  <section class="sec sec-dash" id="secDashboard">
+  <section class="sec screen" id="secHome">
     <canvas id="pxNet" aria-hidden="true"></canvas>
-    <div class="sec-inner dash-inner">
+    <div class="home-inner">
 
-      <div class="dash-hero">
+      <div class="hero">
         <div class="eyebrow reveal">생산기술혁신센터 AI 플랫폼</div>
         <h2 class="hero-title reveal" data-d="1">생산기술의 미래를 이끄는 <span class="grad">통합 AI 플랫폼</span></h2>
         <div class="brand-tagline hero-tagline reveal" data-d="2"><span class="aria-ltr">A</span>I <span class="aria-ltr">I</span>nnovation <span class="aria-ltr">M</span>anufacturing <span class="aria-ltr">S</span>ystem</div>
@@ -1287,80 +1491,86 @@
         </div>
       </div>
 
-      <div class="stat-row reveal" data-d="1">
-        <div class="stat-card"><div class="stat-num" data-stat="agents">0</div><div class="stat-label">전체 Agent</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="teams">0</div><div class="stat-label">참여 팀</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="cats">0</div><div class="stat-label">카테고리</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="favs">0</div><div class="stat-label">내 즐겨찾기</div></div>
+      <div class="home-actions reveal" data-d="3">
+        <button type="button" id="aiMgrBtn">🧭 AI 매니저 추천</button>
+        <button type="button" id="agentRegBtn">＋ AI Agent 등록</button>
       </div>
 
-      <div class="dash-grid">
-        <div class="dash-card dash-chart-card reveal" data-d="2">
-          <div class="dash-card-head">
-            <div class="dash-card-title">카테고리별 Agent 현황</div>
-            <div class="group-filter" id="groupFilter"></div>
-          </div>
-          <div class="cat-chart" id="catChart"></div>
-          <div class="dash-actions">
-            <button class="dash-act dash-act-primary" id="btnAiRecommend" type="button">
-              <span class="da-ico">✦</span><span>AI 매니저 추천</span>
-            </button>
-            <button class="dash-act" id="btnAgentRegister" type="button">
-              <span class="da-ico">＋</span><span>AI Agent 등록</span>
-            </button>
+      <div class="home-cols reveal" data-d="3">
+
+        <!-- 패널 1 · 현황 (전체 Agent / 참여 팀 / 카테고리 / 내 즐겨찾기) -->
+        <div class="dash-panel p-stats">
+          <div class="stat-row">
+            <div class="stat-card"><div class="stat-ico">🤖</div><div class="stat-num" data-stat="agents">0</div><div class="stat-label">전체 Agent</div></div>
+            <div class="stat-card"><div class="stat-ico">👥</div><div class="stat-num" data-stat="teams">0</div><div class="stat-label">참여 팀</div></div>
+            <div class="stat-card"><div class="stat-ico">🗂️</div><div class="stat-num" data-stat="cats">0</div><div class="stat-label">카테고리</div></div>
+            <div class="stat-card"><div class="stat-ico">⭐</div><div class="stat-num" data-stat="favs">0</div><div class="stat-label">내 즐겨찾기</div></div>
           </div>
         </div>
 
-        <div class="dash-card dash-notice-card reveal" data-d="3">
-          <div class="dash-card-head">
-            <div class="dash-card-title"><span class="dc-ico">🔔</span>공지사항</div>
-            <div class="dash-card-actions">
-              <button class="ih-more" id="ihNoticeWrite" type="button">글쓰기</button>
-              <button class="ih-more" id="ihNoticeMore" type="button">더보기 +</button>
-            </div>
-          </div>
-          <div class="ih-notice-list" id="ihNoticeList"><div class="ih-empty">공지를 불러오는 중…</div></div>
+        <!-- 패널 2 · 조직 필터를 누르면 아래 막대 차트가 따라 움직인다 -->
+        <div class="dash-panel p-chart">
+          <div class="org-filter" id="orgFilter"></div>
+          <div class="cat-chart" id="catChart"></div>
         </div>
+
+        <!-- 패널 3 · 공지사항 -->
+        <div class="dash-panel p-notice">
+          <section class="wrap infohub" id="infoHub">
+            <div class="ih-right">
+              <div class="ih-card ih-pane">
+                <div class="ih-pane-head">
+                  <div class="ih-pane-title"><span class="ih-ico">🔔</span>공지사항</div>
+                  <div class="ih-pane-btns">
+                    <button class="ih-more" id="ihNoticeWrite" type="button">글쓰기</button>
+                    <button class="ih-more" id="ihNoticeMore" type="button">더보기 +</button>
+                  </div>
+                </div>
+                <div class="ih-notice-head"><span>번호</span><span>제목</span><span>작성일</span></div>
+                <div class="ih-notice-list" id="ihNoticeList"><div class="ih-empty">공지를 불러오는 중…</div></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
       </div>
 
     </div>
   </section>
 
   <!-- ===================== §2 TOP5 ===================== -->
-  <section class="sec sec-top5" id="secTop5">
+  <section class="sec screen" id="secTop5">
     <div class="sec-inner">
-      <div class="sec-head top5-head">
-        <div>
-          <div class="sec-eyebrow reveal">TOP 5</div>
-          <h2 class="sec-title reveal" data-d="1">가장 많이 <span class="grad">추천받은 AI Agent</span></h2>
-        </div>
-        <p class="sec-desc reveal" data-d="2">구성원이 누른 좋아요를 기준으로 실시간 집계됩니다. 순위는 언제든 바뀝니다.</p>
+      <div class="sec-head">
+        <div class="sec-eyebrow reveal">Top 5</div>
+        <h2 class="sec-title reveal" data-d="1">가장 많은 <span class="grad">좋아요</span>를 받은 AI Agent</h2>
+        <p class="sec-desc reveal" data-d="2">구성원이 누른 좋아요를 기준으로 1위부터 5위까지 보여줍니다. 좋아요를 누르면 순위가 바로 바뀝니다.</p>
       </div>
-      <div class="top5-grid" id="top5Grid"></div>
+      <div class="top5-grid reveal" data-d="2" id="top5Grid"><div class="ih-empty">불러오는 중…</div></div>
     </div>
   </section>
 
   <!-- ===================== §3 카테고리별 AI Agent ===================== -->
-  <section class="sec sec-platform" id="secPlatform">
+  <section class="sec screen" id="secPlatform">
     <div class="sec-inner sec-headonly">
       <div class="sec-head">
         <div class="sec-eyebrow reveal">카테고리별 AI Agent</div>
         <h2 class="sec-title reveal" data-d="1">센터 업무 <span class="grad">카테고리별 AI Agent</span></h2>
-        <p class="sec-desc reveal" data-d="2">카테고리를 눌러 펼치면 전체 Agent가 보입니다. 사용 가능한 Agent는 클릭하면 바로 이동합니다.</p>
+        <p class="sec-desc reveal" data-d="2">카테고리를 눌러 펼치면 전체 모듈이 보입니다. 운영중인 모듈은 클릭하면 바로 이동합니다.</p>
       </div>
     </div>
     <div class="reveal" data-d="2">
         <div class="grid-toolbar">
     <div class="gt-status">
       <span class="legend-label">상태</span>
-      <span class="chip live">사용 가능</span><span class="chip soon">준비중</span><span class="chip fail">접속 장애</span>
+      <span class="chip live">● 사용 가능</span><span class="chip soon">▪ 준비중</span><span class="chip fail">● 접속 장애</span>
     </div>
     <div class="search-wrap">
       <select id="searchField" title="검색 조건">
         <option value="all">전체</option><option value="name">타이틀</option><option value="desc">설명</option><option value="owner">담당자</option>
       </select>
       <div class="search-box">
-        <input id="searchInput" name="dash_q" placeholder="AI Agent 검색…" autocomplete="off" data-lpignore="true" data-1p-ignore readonly>
+        <input id="searchInput" name="dash_q" placeholder="대시보드 검색…" autocomplete="off" data-lpignore="true" data-1p-ignore readonly>
         <div class="ac-list" id="acList"></div>
       </div>
     </div>
@@ -1371,7 +1581,7 @@
         <button class="sys-btn" id="reqStatusBtn">신청현황</button>
       </div>
       <span class="gt-label">표시 개수</span>
-      <select id="showN"><option value="5">5개</option><option value="10">10개</option><option value="20">20개</option></select>
+      <select id="showN"><option value="3" selected>3개</option><option value="5">5개</option><option value="10">10개</option><option value="20">20개</option></select>
     </div>
   </div>
       <div class="grid" id="grid"></div>
@@ -1379,7 +1589,7 @@
   </section>
 
   <!-- ===================== §4 커뮤니티 ===================== -->
-  <section class="sec sec-community" id="secCommunity">
+  <section class="sec screen" id="secCommunity">
     <div class="sec-inner">
       <div class="sec-head">
         <div class="sec-eyebrow reveal">Community</div>
@@ -1403,9 +1613,23 @@
           <div class="comm-go">게시판 열기 <span>→</span></div>
         </div>
       </div>
+    </div>
+  </section>
 
-      <div class="reveal" data-d="3">
-        <section class="share-sec" id="shareSec">
+  <!-- =====================================================================
+       숨김 보관 — 화면에서는 빠졌지만 script #1 이 getElementById 로 잡는
+       요소들이라 지우면 앱 초기화가 중단된다. 마크업을 그대로 옮겨 둔다.
+       (CLAUDE.md "요소를 지우지 않는다 — 감싸고, 옮긴다")
+       ===================================================================== -->
+  <div id="archivedSections" hidden aria-hidden="true">
+    <div class="ih-card ih-pane">
+      <div class="ih-pane-head">
+        <div class="ih-pane-title"><span class="ih-ico">📈</span>실시간 인기 모듈</div>
+        <button class="ih-more" id="ihPopMore" type="button">더보기 +</button>
+      </div>
+      <div class="ih-pop-list" id="ihPopList"><div class="ih-empty">불러오는 중…</div></div>
+    </div>
+    <section class="share-sec" id="shareSec">
     <div class="share-head">
       <span class="share-bar"></span>
       <span class="share-title">공유 섹션</span>
@@ -1442,9 +1666,7 @@
     <button class="more-btn" id="shareMoreBtn" style="display:none"></button>
     <div class="share-meta" id="shareMeta"></div>
   </section>
-      </div>
-    </div>
-  </section>
+  </div>
 
 </main>
 
@@ -1453,11 +1675,11 @@
   <div class="foot-inner">
     <div class="foot-brand">
       <div class="foot-logo brandmark">AIMS</div>
-      <div class="foot-tag"><span class="ft-line1">AI Innovation Manufacturing System</span><span class="ft-line2">생산기술혁신센터 업무 카테고리별 AI Agent를 한 곳에서.</span></div>
+      <div class="foot-tag">AI Innovation Manufacturing System<br>생산기술혁신센터 업무 카테고리별 AI Agent를 한 곳에서.</div>
     </div>
     <div class="foot-col">
       <h4>Platform</h4>
-      <a href="#secDashboard">대시보드</a>
+      <a href="#secHome">대시보드</a>
       <a href="#secTop5">TOP5</a>
       <a href="#secPlatform">카테고리별 AI Agent</a>
     </div>
@@ -1519,7 +1741,7 @@
     <div style="padding:18px 24px">
       <div class="field"><label>대시보드명</label><input id="rqName" placeholder="대시보드 이름"></div>
       <div class="field"><label>요청자</label><input id="rqAuthor" maxlength="40" placeholder="이름 (비우면 '익명')"></div>
-      <div class="field"><label>조직</label><input id="rqOrg" placeholder="예: 이슈 원인분석"></div>
+      <div class="field"><label>조직</label><input id="rqOrg" placeholder="예: 해외법인 양산 지원"></div>
       <div class="field"><label>설명</label><textarea id="rqDesc" rows="3" placeholder="용도·요청 사유 등"></textarea></div>
       <div class="field"><label>기능추가</label>
         <div class="feat-checks">
@@ -1785,90 +2007,69 @@ function normAddr(a){a=(a||"").trim();if(!a)return"";return /^https?:\/\//i.test
 
 /* 카테고리 순서는 아래 ORG_ORDER 와 문자열이 정확히 일치해야 한다.
    addr 가 비어 있으면 "준비중", 주소가 있으면 "운영중(LIVE)"으로 표시된다.
-   V6에서 인프라그룹 ARIA 주소를 모두 제거했다 — PTIC 실주소가 확보되면 해당 항목의 addr 에 넣으면 된다. */
+   V6에서 인프라그룹 ARIA 주소를 모두 제거했다 — PTIC 실주소가 확보되면 해당 항목의 addr 에 넣으면 된다.
+
+   V10 신규 필드
+     org   : 담당 조직. ORG_LIST(script #3) 5개 중 하나여야 조직 필터가 맞아떨어진다.
+             TODO: 실제 담당 조직이 확정되면 이 값만 교체하면 된다.
+     likes : 좋아요 기본 개수. TOP5 순위의 기준이다.
+             난수를 쓰면 새로고침마다 순위가 흔들리므로 고정값으로 둔다.
+             서버가 붙으면 api/dash-like 값으로 대체한다. */
 const FALLBACK={columns:[
  {team:"新 공정/공법 개발",tag:"New Process & Method Development",items:[
-  {name:"공정 조건 최적화 Agent",desc:"신규 공법 파라미터 조합을 시뮬레이션으로 좁힘",owner:"김도현",group:"전극기술그룹",addr:"",order:1},
-  {name:"신공법 검증 리포트 생성",desc:"파일럿 결과를 표준 양식으로 자동 정리",owner:"한지우",group:"전극기술그룹",addr:"",order:2},
-  {name:"설비 사양 비교 Agent",desc:"도입 후보 설비의 성능·비용 정량 대조",owner:"박서연",group:"조립기술그룹",addr:"",order:3},
-  {name:"선행기술 조사 Agent",desc:"특허·논문에서 유사 공법 자동 수집",owner:"한지우",group:"인프라그룹",addr:"",order:4},
-  {name:"스케일업 리스크 예측",desc:"파일럿 대비 양산 전환 시 위험 구간 도출",owner:"이준호",group:"활성화기술그룹",addr:"",order:5},
-  {name:"신규 소재 적용성 검토",desc:"소재 물성과 공정 적합도 매칭",owner:"정민아",group:"전극기술그룹",addr:"",order:6}]},
- {team:"해외법인 양산 지원",tag:"Overseas Plant Mass-Production Support",items:[
-  {name:"공정 이상 원인분석 Agent",desc:"불량 발생 구간 역추적 · 원인 후보 제시",owner:"김도현",group:"조립기술그룹",addr:"",order:1},
-  {name:"설비 알람 원인 진단 Agent",desc:"알람 이력 패턴 기반 원인 분류",owner:"최우식",group:"조립기술그룹",addr:"",order:2},
-  {name:"온습도 이상감지 Agent",desc:"전극·조립·활성화 공정 4단계 알람",owner:"이준호",group:"인프라그룹",addr:"",order:3},
-  {name:"법인별 수율 비교 Agent",desc:"동일 공정의 법인 간 수율 격차 분석",owner:"박서연",group:"활성화기술그룹",addr:"",order:4},
-  {name:"현지 이슈 번역·요약",desc:"해외법인 보고서를 국문으로 요약",owner:"정민아",group:"인프라그룹",addr:"",order:5},
-  {name:"반복 이슈 클러스터링",desc:"유사 이슈 자동 그룹화 · 재발 감지",owner:"김도현",group:"조립기술그룹",addr:"",order:6}]},
+  {name:"공정 조건 최적화 Agent",desc:"실험 데이터 기반 최적 조건 탐색",owner:"",addr:"",order:1,org:"전극기술그룹",likes:34},
+  {name:"신공법 사례 조사 Agent",desc:"특허·논문에서 유사 공법 자동 수집",owner:"",addr:"",order:2,org:"전극기술그룹",likes:21},
+  {name:"설비 사양 검토 Agent",desc:"신규 설비 요구사양 초안 작성",owner:"",addr:"",order:3,org:"파우치형기술그룹",likes:18},
+  {name:"공법 변경 영향 예측",desc:"변경 시 품질·수율 파급 범위 추정",owner:"",addr:"",order:4,org:"원통형기술그룹",likes:27},
+  {name:"파일럿 결과 요약 Agent",desc:"시험 로트 결과 자동 정리·비교",owner:"",addr:"",order:5,org:"파우치형기술그룹",likes:15},
+  {name:"공정 표준서 초안 생성",desc:"검증 완료 조건을 표준 문서로 변환",owner:"",addr:"",order:6,org:"전극기술그룹",likes:9}]},
+ {team:"해외법인 양산 지원",tag:"Overseas Plant Production Support",items:[
+  {name:"해외법인 수율 모니터링",desc:"법인별 수율 추이·이상 구간 알림",owner:"",addr:"",order:1,org:"Pack기술그룹",likes:41},
+  {name:"현지 이슈 원인분석 Agent",desc:"불량 발생 구간 역추적 · 원인 후보 제시",owner:"",addr:"",order:2,org:"원통형기술그룹",likes:38},
+  {name:"설비 알람 대응 가이드",desc:"알람 이력 기반 조치 절차 자동 안내",owner:"",addr:"",order:3,org:"파우치형기술그룹",likes:24},
+  {name:"양산 조건 이관 점검",desc:"국내 조건과 현지 조건 차이 자동 대조",owner:"",addr:"",order:4,org:"전극기술그룹",likes:17},
+  {name:"현지 교육자료 생성 Agent",desc:"공정 문서를 현지어 교육안으로 변환",owner:"",addr:"",order:5,org:"인프라그룹",likes:12},
+  {name:"법인 간 실적 비교",desc:"동일 공정 지표를 법인별로 정렬 비교",owner:"",addr:"",order:6,org:"Pack기술그룹",likes:8}]},
  {team:"제품 개발 대응",tag:"Product Development Response",items:[
-  {name:"개발 과제 진척 모니터링",desc:"과제별 마일스톤 지연 위험 알림",owner:"최우식",group:"활성화기술그룹",addr:"",order:1},
-  {name:"과제 리스크 조기경보",desc:"일정·비용·품질 리스크 사전 탐지",owner:"최우식",group:"활성화기술그룹",addr:"",order:2},
-  {name:"설계 변경 영향 분석",desc:"변경 파급 범위 자동 추적",owner:"정민아",group:"전극기술그룹",addr:"",order:3},
-  {name:"고객 요구사항 정합성 점검",desc:"스펙 대비 설계 반영 여부 확인",owner:"박서연",group:"조립기술그룹",addr:"",order:4},
-  {name:"검증 항목 자동 도출",desc:"요구사항 기반 시험 항목 생성",owner:"이준호",group:"활성화기술그룹",addr:"",order:5}]},
+  {name:"개발 요구사양 정리 Agent",desc:"고객 요구를 검증 항목으로 분해",owner:"",addr:"",order:1,org:"Pack기술그룹",likes:33},
+  {name:"설계 변경 영향 분석",desc:"변경 파급 범위와 재검증 항목 자동 추적",owner:"",addr:"",order:2,org:"원통형기술그룹",likes:29},
+  {name:"개발 일정 리스크 경보",desc:"마일스톤 지연 위험 사전 탐지",owner:"",addr:"",order:3,org:"Pack기술그룹",likes:22},
+  {name:"시험 결과 판정 지원",desc:"규격 대비 합부 자동 판정 · 근거 제시",owner:"",addr:"",order:4,org:"파우치형기술그룹",likes:19},
+  {name:"과거 개발 이력 검색",desc:"유사 과제의 판단 근거를 찾아 제시",owner:"",addr:"",order:5,org:"인프라그룹",likes:14}]},
  {team:"공통 및 루틴 업무",tag:"Common & Routine Operations",items:[
-  {name:"주간 보고서 자동 작성",desc:"산재된 실적 데이터를 보고 양식으로 취합",owner:"정민아",group:"인프라그룹",addr:"",order:1},
-  {name:"사내 기술자산 검색",desc:"과거 과제·보고서 통합 검색",owner:"한지우",group:"인프라그룹",addr:"",order:2},
-  {name:"회의록 요약 Agent",desc:"녹취를 요약하고 액션 아이템 추출",owner:"박서연",group:"인프라그룹",addr:"",order:3},
-  {name:"표준 문서 양식 점검",desc:"제출 문서의 필수 항목 누락 확인",owner:"최우식",group:"조립기술그룹",addr:"",order:4},
-  {name:"데이터 전처리 자동화",desc:"설비 로그 정제·결측 보정 파이프라인",owner:"김도현",group:"전극기술그룹",addr:"",order:5}]}
+  {name:"회의록 자동 정리 Agent",desc:"녹취·메모를 결정사항과 액션으로 분리",owner:"",addr:"",order:1,org:"인프라그룹",likes:45},
+  {name:"보고서 초안 생성 Agent",desc:"데이터에서 주간·월간 보고 초안 작성",owner:"",addr:"",order:2,org:"인프라그룹",likes:36},
+  {name:"사내 문서 통합 검색",desc:"흩어진 규정·표준·보고서를 한 번에 검색",owner:"",addr:"",order:3,org:"인프라그룹",likes:31},
+  {name:"데이터 취합 자동화",desc:"반복 집계 작업을 정해진 양식으로 출력",owner:"",addr:"",order:4,org:"Pack기술그룹",likes:26},
+  {name:"번역·요약 지원 Agent",desc:"기술 문서 번역과 핵심 요약",owner:"",addr:"",order:5,org:"인프라그룹",likes:20}]}
 ]};
 
-let STATE={columns:[]}, DRAFT=null, ME={auth:false}, FAVORITES=[], LIKES={};
-
-/* ---------- 즐겨찾기 · 좋아요 (localStorage) ----------
-   백엔드가 없는 동안 로그인 없이 동작한다. 서버 연결 시 이 4개 함수의
-   내부만 fetch 로 바꾸면 나머지 코드는 그대로 쓸 수 있다. */
-const LS_FAV="aims_fav", LS_LIKE="aims_likes";
-function agentKey(team,name){return team+"::"+name;}
-function lsGet(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v==null?def:v;}catch(e){return def;}}
-function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
-
-function isFav(team,name){return FAVORITES.includes(agentKey(team,name));}
-function loadFavorites(){
-  FAVORITES=lsGet(LS_FAV,[]);
-  LIKES=lsGet(LS_LIKE,{});
-  renderAll();
-}
-function toggleFav(team,name){
-  const key=agentKey(team,name), i=FAVORITES.indexOf(key);
-  if(i>=0)FAVORITES.splice(i,1); else FAVORITES.push(key);
-  lsSet(LS_FAV,FAVORITES);
-  renderAll();
-}
-function likeCount(team,name){return +(LIKES[agentKey(team,name)]||0);}
-function isLiked(team,name){return likeCount(team,name)>0;}
-function toggleLikeAgent(team,name){
-  const key=agentKey(team,name);
-  if(LIKES[key])delete LIKES[key]; else LIKES[key]=1;
-  lsSet(LS_LIKE,LIKES);
-  renderAll();
-}
-/* 그리드·TOP5·통계·차트를 한 번에 갱신 */
-function renderAll(){
+let STATE={columns:[]}, DRAFT=null, ME={auth:false}, FAVORITES=[];
+function isFav(team,name){return FAVORITES.includes(team+"::"+name);}
+async function loadFavorites(){
+  if(!ME.auth){FAVORITES=[];renderGrid();return;}
+  try{const r=await fetch("api/favorites",{cache:"no-store"});const j=await r.json();FAVORITES=j.favorites||[];}catch(e){FAVORITES=[];}
   renderGrid();
-  if(typeof renderTop5==="function")renderTop5();
-  if(typeof renderDashboard==="function")renderDashboard();
+}
+async function toggleFav(team,name){
+  const key=team+"::"+name, on=!isFav(team,name);
+  try{const r=await fetch("api/favorites",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key,on})});const j=await r.json();if(j.ok){FAVORITES=j.favorites;renderGrid();}}catch(e){}
 }
 
 /* ---------- 데이터 로드/렌더 ---------- */
 async function loadData(){
   try{const r=await fetch("data/dashboards.json",{cache:"no-store"});if(!r.ok)throw 0;STATE=await r.json();}
   catch(e){STATE=JSON.parse(JSON.stringify(FALLBACK));}
-  renderAll();
+  renderGrid();
   if(typeof refreshPopularHub==="function")refreshPopularHub();
   if(typeof loadRank==="function")loadRank();
 }
 let RANK7={};
 async function loadRank(){
   try{const r=await fetch("api/dash-rank",{cache:"no-store"});if(r.ok){const j=await r.json();if(j.ok&&j.items)RANK7=j.items;}}catch(e){}
-  renderAll();
+  renderGrid();
 }
 const ORG_ORDER=["新 공정/공법 개발","해외법인 양산 지원","제품 개발 대응","공통 및 루틴 업무"];
-/* 카테고리별 강조색 — 카드 상단선·라벨·막대차트가 공유한다 */
-const CAT_COLORS={"新 공정/공법 개발":"#6fb4ff","해외법인 양산 지원":"#3ddba0","제품 개발 대응":"#8b7bff","공통 및 루틴 업무":"#e05a8f"};
-function catColor(team){return CAT_COLORS[team]||"#6fb4ff";}
 function orgRank(team){for(let i=0;i<ORG_ORDER.length;i++){if((team||"").startsWith(ORG_ORDER[i]))return i;}return 999;}
 function orderedColumns(cols){return (cols||[]).slice().sort((a,b)=>orgRank(a.team)-orgRank(b.team));}
 function displayTeam(t){return t;}
@@ -1882,72 +2083,37 @@ function matchItem(it,field,q){
   if(field==="owner")return o.includes(q);
   return n.includes(q)||d.includes(q)||o.includes(q);
 }
-function agentStatus(col,it){
-  /* 3종 상태: ok(사용 가능) / prep(준비중) / fail(접속 장애) */
-  if(it.prep||!hasAddr(it))return "prep";
-  const h=HEALTH[agentKey(col.team,it.name)];
-  const st=h&&h.state;
-  return (st==="fail"||st==="warn")?"fail":"ok";
-}
-const STATUS_LABEL={ok:"사용 가능",prep:"준비중",fail:"접속 장애"};
-const STATUS_ICON={ok:"●",prep:"◌",fail:"▲"};
-
 function buildCell(col,it){
-  const a=document.createElement("a");
-  const isAdmin=(ME.role==="admin");
-  const prep=!!it.prep, hasA=hasAddr(it);
-  const stt=agentStatus(col,it);
-  const live=(stt!=="prep");
-  const adminEnter=prep&&hasA&&isAdmin;
-  const clickable=(live&&hasA)||adminEnter;
-  const key=agentKey(col.team,it.name);
-  const color=catColor(col.team);
-
-  a.className="acard st-"+stt+(adminEnter?" prep-admin":"");
-  a.style.setProperty("--cat",color);
-
-  if(clickable){
-    a.href=normAddr(it.addr);a.target="_blank";a.rel="noopener";
+  const a=document.createElement("a");const prep=!!it.prep,hasA=hasAddr(it),isAdmin=(ME.role==="admin");
+  const live=hasA&&!prep,adminEnter=prep&&hasA&&isAdmin,clickable=live||adminEnter;
+  const key=col.team+"::"+it.name;
+  const st=live?((HEALTH[key]&&HEALTH[key].state)||"ok"):null;
+  const cc=live?(st==="fail"?"var(--cell-fail)":st==="warn"?"var(--cell-warn)":LIVE_COLOR):(prep?"var(--cell-warn)":SOON_COLOR);
+  a.className="cell"+(live?"":" dark")+(adminEnter?" prep-admin":"");a.style.setProperty("--cellcolor",cc);
+  if(clickable){a.href=normAddr(it.addr);a.target="_blank";a.rel="noopener";
     a.addEventListener("click",()=>{try{navigator.sendBeacon("api/dash-access",new Blob([JSON.stringify({key:key,name:it.name,team:col.team})],{type:"application/json"}));}catch(e){}});
-  }else{
-    a.href="#";a.setAttribute("aria-disabled","true");
-    a.addEventListener("click",e=>e.preventDefault());
+  }else{a.href="#";a.setAttribute("aria-disabled","true");a.addEventListener("click",e=>e.preventDefault());}
+  let badge;
+  if(prep){badge='<span class="badge-prep">준비중'+(adminEnter?' · 관리자':'')+'</span>';}
+  else if(!live){badge='<span class="badge-soon">준비중</span>';}
+  else{badge=(st==="fail"?'<span class="badge-live">■ 접속장애</span>':st==="warn"?'<span class="badge-live">▴ 임시중단</span>':'<span class="badge-live">● LIVE</span>');}
+  const lock=prep?'<span class="lockmark" title="준비중 — 관리자만 접속할 수 있습니다">🔒</span>':((live&&it.locked)?'<span class="lockmark" title="접속 시 별도 로그인이 필요한 대시보드입니다">🔒</span>':'');
+  const meta=live?(it.version?`<span class="cell-meta cell-meta-ver">${esc(it.version)}</span>`:""):(it.openDate?`<span class="cell-meta cell-meta-soon">${esc(it.openDate)}</span>`:"");
+  a.innerHTML=`<div class="cell-name">${esc(it.name)}</div><div class="cell-desc">${esc(it.desc)}</div><div class="cell-foot"><span class="cf-left">${it.pin?'<span class="badge-pin" title="관리자 상단 고정">📌</span>':''}${badge}${lock}${meta}</span><span class="owner">${it.owner?esc(it.owner):""}</span></div>`;
+  if(ME.auth){
+    const fav=isFav(col.team,it.name);
+    const star=document.createElement("button");
+    star.className="favstar"+(fav?" on":"");star.innerHTML=fav?"★":"☆";
+    star.title=fav?"즐겨찾기 해제":"즐겨찾기";
+    star.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();toggleFav(col.team,it.name);});
+    a.appendChild(star);
   }
-
-  const lock=(prep||it.locked)?'<span class="lockmark" title="'+(prep?"준비중 — 관리자만 접속할 수 있습니다":"접속 시 별도 로그인이 필요합니다")+'">🔒</span>':"";
-  const meta=live?(it.version?'<span class="cell-meta">'+esc(it.version)+'</span>':"")
-                 :(it.openDate?'<span class="cell-meta cell-meta-soon">'+esc(it.openDate)+'</span>':"");
-  const liked=isLiked(col.team,it.name), lc=likeCount(col.team,it.name);
-  const fav=isFav(col.team,it.name);
-
-  a.innerHTML=
-    '<div class="ac-top">'
-    +   '<span class="ac-cat">'+esc(col.team)+'</span>'
-    +   '<span class="ac-status st-'+stt+'"><i>'+STATUS_ICON[stt]+'</i>'+STATUS_LABEL[stt]+(adminEnter?" · 관리자":"")+'</span>'
-    + '</div>'
-    + '<div class="ac-name">'+esc(it.name)+lock+'</div>'
-    + '<div class="ac-desc">'+esc(it.desc||"")+'</div>'
-    + '<div class="ac-foot">'
-    +   '<button class="ac-like'+(liked?" on":"")+'" type="button" title="좋아요">'
-    +     '<span class="ac-heart">'+(liked?"♥":"♡")+'</span><span class="ac-likenum">'+lc+'</span>'
-    +   '</button>'
-    +   '<span class="ac-right">'+meta+'<span class="ac-group">'+esc(it.group||it.owner||"")+'</span></span>'
-    + '</div>'
-    + '<button class="ac-fav'+(fav?" on":"")+'" type="button" title="'+(fav?"즐겨찾기 해제":"즐겨찾기")+'">'+(fav?"★":"☆")+'</button>';
-
-  a.querySelector(".ac-like").addEventListener("click",e=>{
-    e.preventDefault();e.stopPropagation();toggleLikeAgent(col.team,it.name);
-  });
-  a.querySelector(".ac-fav").addEventListener("click",e=>{
-    e.preventDefault();e.stopPropagation();toggleFav(col.team,it.name);
-  });
-
   if(live && isFreshDays(it.linkedAt,3)){
     a.classList.add("hasnew");
     const nf=document.createElement("span");nf.className="newflag";nf.textContent="NEW";
     a.appendChild(nf);
   }
-  /* 관리자: 장애표시 유예/해제 */
+  /* 관리자: 장애표시 유예/해제 (유예 중이면 모두에게 정상으로 표시됨) */
   if(isAdmin&&live){
     const hi=HEALTH[key]||{};
     if(hi.waived){
@@ -1956,7 +2122,7 @@ function buildCell(col,it){
       wb.title="장애표시 유예 중"+(hi.waiveUntil?(" (~"+hi.waiveUntil+")"):" (무기한)")+" — 클릭하여 해제";
       wb.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();waiveHealth(key,false);});
       a.appendChild(wb);
-    }else if(stt==="fail"){
+    }else if(st==="fail"||st==="warn"){
       const wb=document.createElement("button");
       wb.className="waivebtn";wb.textContent="유예";
       wb.title="장애 표시를 유예하고 정상으로 표시";
@@ -1966,7 +2132,6 @@ function buildCell(col,it){
   }
   return a;
 }
-
 async function waiveHealth(key,flag){
   let until="";
   if(flag){
@@ -2029,7 +2194,7 @@ async function checkMe(){
   updateHeader();
   if(typeof refreshBoardDot==="function")refreshBoardDot();
   if(typeof refreshNotice==="function")refreshNotice();
-  loadFavorites();
+  if(ME.auth)loadFavorites(); else {FAVORITES=[];renderGrid();}
 }
 function updateHeader(){
   document.body.classList.toggle("role-admin", !!(ME.auth&&ME.role==="admin"));
@@ -2065,7 +2230,7 @@ document.getElementById("gear").addEventListener("click",async()=>{
 });
 document.getElementById("logoutBtn").addEventListener("click",async()=>{
   await fetch("api/logout",{method:"POST"});ME={auth:false};updateHeader();loadData();
-  showHome();refreshBoardDot();refreshNotice();renderAll();
+  showHome();refreshBoardDot();refreshNotice();FAVORITES=[];renderGrid();
 });
 /* 타이틀 클릭 → 홈 화면으로 */
 (function(){
@@ -3225,124 +3390,9 @@ function renderAC(){
 
 /* 자동 헬스체크 상태 반영(주기적 폴링) */
 async function loadHealth(){
-  try{const r=await fetch("api/health",{cache:"no-store"});const j=await r.json();if(j.ok){HEALTH=j.items||{};renderAll();}}catch(e){}
+  try{const r=await fetch("api/health",{cache:"no-store"});const j=await r.json();if(j.ok){HEALTH=j.items||{};renderGrid();}}catch(e){}
 }
 setInterval(loadHealth,60000);
-
-/* ====================== 대시보드 · TOP5 ====================== */
-let ACTIVE_GROUP="전체";
-
-/* 전체 Agent 를 평탄화해서 반환 */
-function allAgents(){
-  const out=[];
-  (STATE.columns||[]).forEach(col=>(col.items||[]).forEach(it=>out.push({col,it})));
-  return out;
-}
-/* 데이터에서 그룹 목록을 자동 수집 — 그룹명이 바뀌어도 코드 수정 불필요 */
-function allGroups(){
-  const seen=[];
-  allAgents().forEach(({it})=>{
-    const g=(it.group||"").trim();
-    if(g&&seen.indexOf(g)<0)seen.push(g);
-  });
-  return seen;
-}
-function agentsOfGroup(g){
-  const list=allAgents();
-  return (!g||g==="전체")?list:list.filter(x=>(x.it.group||"")===g);
-}
-
-/* ---------- 통계 4개 ---------- */
-function renderStats(){
-  const row=document.querySelector(".stat-row");if(!row)return;
-  const list=agentsOfGroup(ACTIVE_GROUP);
-  const v={
-    agents:list.length,
-    teams:(ACTIVE_GROUP==="전체")?allGroups().length:1,
-    cats:(STATE.columns||[]).length,
-    favs:FAVORITES.length
-  };
-  Object.keys(v).forEach(k=>{
-    const el=row.querySelector('[data-stat="'+k+'"]');
-    if(el)el.textContent=String(v[k]);
-  });
-}
-
-/* ---------- 그룹 필터 버튼 ---------- */
-function renderGroupFilter(){
-  const box=document.getElementById("groupFilter");if(!box)return;
-  const groups=["전체"].concat(allGroups());
-  if(groups.indexOf(ACTIVE_GROUP)<0)ACTIVE_GROUP="전체";
-  box.innerHTML=groups.map(g=>
-    '<button type="button" class="gf-btn'+(g===ACTIVE_GROUP?" on":"")+'" data-g="'+esc(g)+'">'+esc(g)+'</button>'
-  ).join("");
-  box.querySelectorAll("[data-g]").forEach(b=>b.addEventListener("click",()=>{
-    ACTIVE_GROUP=b.dataset.g;renderDashboard();
-  }));
-}
-
-/* ---------- 카테고리별 막대차트 ---------- */
-function renderCatChart(){
-  const box=document.getElementById("catChart");if(!box)return;
-  const list=agentsOfGroup(ACTIVE_GROUP);
-  const rows=orderedColumns(STATE.columns).map(col=>({
-    team:col.team,
-    n:list.filter(x=>x.col.team===col.team).length,
-    color:catColor(col.team)
-  }));
-  const max=Math.max(1,...rows.map(r=>r.n));
-  if(!rows.length){box.innerHTML='<div class="ih-empty">표시할 카테고리가 없습니다.</div>';return;}
-  box.innerHTML=rows.map(r=>
-    '<div class="cc-row">'
-    + '<span class="cc-label" title="'+esc(r.team)+'">'+esc(r.team)+'</span>'
-    + '<span class="cc-track"><span class="cc-bar" style="--cat:'+r.color+';width:'+Math.round(r.n/max*100)+'%"></span></span>'
-    + '<span class="cc-val">'+r.n+'</span>'
-    + '</div>'
-  ).join("");
-}
-
-function renderDashboard(){
-  renderGroupFilter();
-  renderStats();
-  renderCatChart();
-}
-
-/* ---------- TOP5 (좋아요 내림차순) ---------- */
-function renderTop5(){
-  const box=document.getElementById("top5Grid");if(!box)return;
-  const ranked=allAgents().slice().sort((a,b)=>{
-    const la=likeCount(a.col.team,a.it.name), lb=likeCount(b.col.team,b.it.name);
-    if(lb!==la)return lb-la;
-    return (+a.it.order||0)-(+b.it.order||0);
-  }).slice(0,5);
-  if(!ranked.length){box.innerHTML='<div class="ih-empty">등록된 AI Agent가 없습니다.</div>';return;}
-  box.innerHTML="";
-  ranked.forEach((x,i)=>{
-    const wrap=document.createElement("div");
-    wrap.className="t5-item";
-    const rank=document.createElement("span");
-    rank.className="t5-rank";rank.textContent=String(i+1);
-    wrap.appendChild(rank);
-    wrap.appendChild(buildCell(x.col,x.it));
-    box.appendChild(wrap);
-  });
-}
-
-/* ---------- 대시보드 액션 버튼 (디자인 우선 · 기능은 추후) ---------- */
-(function dashActions(){
-  const rec=document.getElementById("btnAiRecommend");
-  const reg=document.getElementById("btnAgentRegister");
-  if(rec)rec.addEventListener("click",()=>alert("AI 매니저 추천 기능은 준비 중입니다."));
-  if(reg)reg.addEventListener("click",()=>{
-    const b=document.getElementById("dashReqBtn");
-    if(b)b.click(); else alert("AI Agent 등록 기능은 준비 중입니다.");
-  });
-  const w=document.getElementById("ihNoticeWrite");
-  if(w)w.addEventListener("click",()=>{
-    showBoard();
-    setTimeout(()=>{const n=document.getElementById("newPostBtn");if(n)n.click();},80);
-  });
-})();
 
 /* ---------- 기존 시스템 링크(동적) ---------- */
 let SYSTEMS=[];
@@ -3799,7 +3849,9 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     }
     hub.setAttribute("r",(6+Math.sin(k/CYCLE*Math.PI*2)*0.8).toFixed(2));
   }
-  if(reduce){render(880);return;}
+  /* reduce 라고 멈추지 않는다 — 회사 PC·VDI 는 이 설정이 기본이라 로고가 통째로 죽는다.
+     대신 주기를 늘려 은은하게 재생한다. */
+  if(reduce){CYCLE=5000;STAGGER=320;}
   var raf=null,base=null,onScreen=true;
   function frame(now){if(base===null)base=now;render(now-base);raf=requestAnimationFrame(frame);}
   function play(){if(raf===null&&onScreen&&!document.hidden){raf=requestAnimationFrame(frame);}}
@@ -3830,18 +3882,31 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
      --------------------------------------------------------------- */
   (function particleNet(){
     var cv = document.getElementById("pxNet");
-    var hero = document.getElementById("secHero");
+    var hero = document.getElementById("secHome");
     if(!cv || !hero || !cv.getContext) return;
     var ctx = cv.getContext("2d");
     var pts = [], w = 0, h = 0, dpr = 1, raf = null, visible = true;
-    var LINK = 132;                       /* 연결 임계 거리(px) */
     var mouse = { x:-9999, y:-9999 };
+
+    /* 저부하 프로파일 — prefers-reduced-motion 을 "정지"가 아니라 "가볍게" 로 해석한다.
+       회사 PC·VDI 는 이 설정이 기본으로 켜져 있어, 정지시키면 배경이 통째로 죽는다.
+       (원본 ARIA script #2 도 같은 이유로 VDI 에서 인트로를 강제 재생했다) */
+    var TIER = 0;                          /* 0 기본 · 1 저부하 · 2 최소 */
+    var LINK = 132, SPEED = 0.30, CAP = 96, FRAME_MS = 0;
+    function applyTier(){
+      if(TIER >= 2){      LINK = 0;   SPEED = 0.10; CAP = 22; FRAME_MS = 50; }
+      else if(TIER >= 1){ LINK = 104; SPEED = 0.12; CAP = 34; FRAME_MS = 42; }
+      else {              LINK = 132; SPEED = 0.30; CAP = 96; FRAME_MS = 0;  }
+    }
+    var LITE = REDUCED;
+    if(LITE) TIER = 1;
+    applyTier();
 
     function resize(){
       var r = hero.getBoundingClientRect();
       w = Math.max(1, Math.round(r.width));
       h = Math.max(1, Math.round(r.height));
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = (TIER >= 1) ? 1 : Math.min(window.devicePixelRatio || 1, 2);
       cv.width = Math.round(w * dpr);
       cv.height = Math.round(h * dpr);
       cv.style.width = w + "px";
@@ -3850,14 +3915,14 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
       seed();
     }
     function seed(){
-      var target = Math.round(Math.min(96, Math.max(30, (w * h) / 17000)));
+      var target = Math.round(Math.min(CAP, Math.max(16, (w * h) / ((TIER >= 1) ? 38000 : 17000))));
       pts = [];
       for(var i=0;i<target;i++){
         pts.push({
           x: Math.random()*w,
           y: Math.random()*h,
-          vx:(Math.random()-0.5)*0.30,
-          vy:(Math.random()-0.5)*0.30,
+          vx:(Math.random()-0.5)*SPEED,
+          vy:(Math.random()-0.5)*SPEED,
           r: 0.7 + Math.random()*1.5
         });
       }
@@ -3867,7 +3932,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
       var i,j,a,b,dx,dy,d2,al;
       for(i=0;i<pts.length;i++){
         a = pts[i];
-        if(!REDUCED){ a.x += a.vx; a.y += a.vy; }
+        a.x += a.vx; a.y += a.vy;
         if(a.x < -20) a.x = w+20; else if(a.x > w+20) a.x = -20;
         if(a.y < -20) a.y = h+20; else if(a.y > h+20) a.y = -20;
       }
@@ -3900,20 +3965,37 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
         ctx.beginPath(); ctx.arc(a.x,a.y,a.r,0,Math.PI*2); ctx.fill();
       }
     }
-    function loop(){
-      step();
-      raf = (visible && !document.hidden && !REDUCED) ? requestAnimationFrame(loop) : null;
+    /* 적응형 강등 — Citrix/VDI 는 JS 로 감지할 수 없으므로 실측 프레임 시간으로 판단한다.
+       한 번 내려간 등급은 다시 올리지 않는다(진동 방지). */
+    var acc = 0, cnt = 0, last = 0, nextAt = 0;
+    function degrade(now){
+      if(last){ acc += (now - last); cnt++; }
+      last = now;
+      if(cnt >= 60){
+        var avg = acc / cnt; acc = 0; cnt = 0;
+        if(avg > 45 && TIER < 2){ TIER = 2; applyTier(); resize(); document.body.classList.add("lite"); }
+        else if(avg > 28 && TIER < 1){ TIER = 1; applyTier(); resize(); document.body.classList.add("lite"); }
+      }
     }
-    function start(){ if(raf === null){ raf = requestAnimationFrame(loop); } }
+    function loop(now){
+      if(!FRAME_MS || now >= nextAt){
+        if(FRAME_MS) nextAt = now + FRAME_MS;
+        step();
+      }
+      degrade(now);
+      raf = (visible && !document.hidden) ? requestAnimationFrame(loop) : null;
+    }
+    function start(){ if(raf === null){ last = 0; nextAt = 0; raf = requestAnimationFrame(loop); } }
     function stop(){ if(raf !== null){ cancelAnimationFrame(raf); raf = null; } }
 
+    if(LITE) document.body.classList.add("lite");
     resize();
-    if(REDUCED){ step(); }else{ start(); }
+    start();
 
     var rt = null;
     window.addEventListener("resize", function(){
       if(rt) clearTimeout(rt);
-      rt = setTimeout(function(){ resize(); if(REDUCED) step(); }, 160);
+      rt = setTimeout(function(){ resize(); }, 160);
     });
     hero.addEventListener("mousemove", function(e){
       var r = hero.getBoundingClientRect();
@@ -3921,7 +4003,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     });
     hero.addEventListener("mouseleave", function(){ mouse.x = -9999; mouse.y = -9999; });
     document.addEventListener("visibilitychange", function(){
-      if(document.hidden) stop(); else if(!REDUCED) start();
+      if(document.hidden) stop(); else start();
     });
     /* 히어로가 화면 밖이면 정지해 스크롤 성능을 지킨다 */
     if("IntersectionObserver" in window){
@@ -3952,6 +4034,52 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
     for(var i=0;i<els.length;i++) io.observe(els[i]);
   })();
+
+  /* ---------------------------------------------------------------
+     3) STATS 카운트업 — V10 에서 4개 지표를 재정의
+        전체 Agent · 참여 팀 · 카테고리 · 내 즐겨찾기
+     --------------------------------------------------------------- */
+  var statsDone = false;
+  function updateStats(){
+    var row = document.querySelector(".stat-row");
+    if(!row) return;
+    var c = [];
+    try{ c = (typeof STATE !== "undefined" && STATE.columns) ? STATE.columns : []; }catch(e){ c = []; }
+    if(!c.length) return;
+
+    var agents = 0, teams = {};
+    c.forEach(function(col){
+      (col.items || []).forEach(function(it){
+        agents++;
+        if(it.org) teams[it.org] = 1;
+      });
+    });
+    var favs = 0;
+    try{ var f = JSON.parse(localStorage.getItem("aims_fav") || "[]"); favs = Array.isArray(f) ? f.length : 0; }catch(e){}
+
+    var v = { agents: agents, teams: Object.keys(teams).length, cats: c.length, favs: favs };
+    Object.keys(v).forEach(function(key){
+      var el = row.querySelector('[data-stat="' + key + '"]');
+      if(!el) return;
+      /* 첫 진입에만 카운트업, 이후(즐겨찾기 클릭 등)에는 즉시 반영 */
+      if(statsDone || v[key] === 0){ el.textContent = String(v[key]); return; }
+      animate(el, v[key]);
+    });
+    statsDone = true;
+  }
+
+  function animate(el, to){
+    var from = 0, dur = 1000, t0 = null;
+    if(to === 0){ el.textContent = "0"; return; }
+    function frame(ts){
+      if(t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / dur);
+      var e = 1 - Math.pow(1 - p, 3);
+      el.textContent = String(Math.round(from + (to - from) * e));
+      if(p < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
 
   /* ---------------------------------------------------------------
      4) 헤더 스크롤 상태
@@ -3989,6 +4117,383 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
         });
       })(cards[i]);
     }
+  })();
+
+  /* ---------------------------------------------------------------
+     V10) 대시보드 · TOP5 · 카드 재설계
+
+     script #1 은 한 글자도 고치지 않는다. 대신 최상위 function 선언이
+     전역 객체 프로퍼티라는 점을 이용해 window.buildCell / isFav / toggleFav 를
+     여기서 교체한다. renderGrid() 는 buildCell 을 한정 없이 호출하므로
+     호출 시점에 이 새 함수가 선택된다.
+     --------------------------------------------------------------- */
+  var CAT_COLORS = ["#5aa9ff","#3ddba0","#8b7bff","#e0537d"];
+
+  /* 담당 조직 — FALLBACK 각 item 의 org 와 문자열이 일치해야 필터가 맞는다.
+     TODO: 실제 담당 조직이 확정되면 이 배열과 FALLBACK 의 org 를 함께 교체한다. */
+  var ORG_LIST = ["전극기술그룹","파우치형기술그룹","원통형기술그룹","Pack기술그룹","인프라그룹"];
+
+  /* 카테고리 화면이 한 화면에 들어오도록 컬럼당 3개만 먼저 보여준다.
+     SHOW_N 은 script #1 의 최상위 let 이라 전역 렉시컬 스코프를 공유한다 — 원문 수정이 아니다.
+     loadData() 가 비동기라 첫 renderGrid() 보다 이 대입이 먼저 실행된다.
+     나머지는 script #1 이 만드는 "⋯ 더보기 (+3)" 버튼으로 펼친다. */
+  try{ SHOW_N = 3; }catch(e){}
+
+  var LS_FAV = "aims_fav", LS_LIKE = "aims_like";
+  var ORG_SEL = "";                      /* "" = 전체 */
+
+  function lsGet(k){
+    try{ var v = JSON.parse(localStorage.getItem(k) || "[]"); return Array.isArray(v) ? v : []; }
+    catch(e){ return []; }
+  }
+  function lsSet(k, arr){ try{ localStorage.setItem(k, JSON.stringify(arr)); }catch(e){} }
+  function lsToggle(k, key){
+    var a = lsGet(k), i = a.indexOf(key);
+    if(i >= 0) a.splice(i,1); else a.push(key);
+    lsSet(k, a); return a;
+  }
+  function keyOf(team, name){ return team + "::" + name; }
+
+  function cols(){
+    var st = null;
+    try{ st = (typeof STATE !== "undefined") ? STATE : null; }catch(e){ st = null; }
+    return (st && st.columns && st.columns.length) ? st.columns : [];
+  }
+  function catIndex(team){
+    var o = [];
+    try{ o = (typeof ORG_ORDER !== "undefined") ? ORG_ORDER : []; }catch(e){ o = []; }
+    var i = o.indexOf(team);
+    if(i >= 0) return i;
+    var c = cols();
+    for(var k=0;k<c.length;k++){ if(c[k].team === team) return k; }
+    return 0;
+  }
+  function catColor(team){ return CAT_COLORS[catIndex(team) % CAT_COLORS.length]; }
+  function likeCount(team, it){
+    var base = (+it.likes || 0);
+    return base + (lsGet(LS_LIKE).indexOf(keyOf(team, it.name)) >= 0 ? 1 : 0);
+  }
+  function likedByMe(team, name){ return lsGet(LS_LIKE).indexOf(keyOf(team, name)) >= 0; }
+  function favedByMe(team, name){ return lsGet(LS_FAV).indexOf(keyOf(team, name)) >= 0; }
+
+  /* ---- 즐겨찾기: 서버(api/favorites) → localStorage 로 교체 ----
+     서버가 붙으면 이 세 함수만 원래 구현으로 되돌리면 된다. */
+  window.isFav = function(team, name){ return favedByMe(team, name); };
+  window.toggleFav = function(team, name){
+    lsToggle(LS_FAV, keyOf(team, name));
+    refreshAll();
+  };
+  window.loadFavorites = function(){ refreshAll(); };
+
+  function toggleLike(team, it){
+    lsToggle(LS_LIKE, keyOf(team, it.name));
+    refreshAll();
+  }
+
+  /* ---- 카드 한 장 (그리드 셀) — 캡쳐 3 ----
+     원래 buildCell 의 동작 중 링크·비콘·관리자 유예·NEW 표시는 그대로 보존한다. */
+  window.buildCell = function(col, it){
+    var prep = !!it.prep;
+    var hasA = (typeof hasAddr === "function") ? hasAddr(it) : !!(it.addr && String(it.addr).trim());
+    var isAdmin = false;
+    try{ isAdmin = (typeof ME !== "undefined" && ME && ME.role === "admin"); }catch(e){}
+    var live = hasA && !prep;
+    var adminEnter = prep && hasA && isAdmin;
+    var clickable = live || adminEnter;
+    var key = keyOf(col.team, it.name);
+    var hi = {};
+    try{ if(typeof HEALTH !== "undefined" && HEALTH[key]) hi = HEALTH[key]; }catch(e){}
+    var st = live ? (hi.state || "ok") : null;
+
+    var a = document.createElement("a");
+    a.className = "cell v10cell" + (live ? "" : " dark") + (adminEnter ? " prep-admin" : "");
+    a.style.setProperty("--catc", catColor(col.team));
+    if(clickable){
+      a.href = normAddr(it.addr); a.target = "_blank"; a.rel = "noopener";
+      a.addEventListener("click", function(){
+        try{ navigator.sendBeacon("api/dash-access", new Blob([JSON.stringify({key:key,name:it.name,team:col.team})],{type:"application/json"})); }catch(e){}
+      });
+    }else{
+      a.href = "#"; a.setAttribute("aria-disabled","true");
+      a.addEventListener("click", function(e){ e.preventDefault(); });
+    }
+
+    var lock = prep
+      ? '<span class="lockmark" title="준비중 — 관리자만 접속할 수 있습니다">🔒</span>'
+      : ((live && it.locked) ? '<span class="lockmark" title="접속 시 별도 로그인이 필요한 대시보드입니다">🔒</span>' : "");
+
+    a.innerHTML =
+      '<div class="v10top"><span class="v10cat">' + esc(displayTeam(col.team)) + '</span>' + statusBadge(live, st) + lock + '</div>' +
+      '<div class="cell-name">' + esc(it.name) + '</div>' +
+      '<div class="cell-desc">' + esc(it.desc || "") + '</div>' +
+      '<div class="v10foot">' + likeHTML(col.team, it) + '<span class="v10org">' + esc(it.org || it.owner || "") + '</span></div>';
+
+    wireCard(a, col, it);
+
+    if(live && typeof isFreshDays === "function" && isFreshDays(it.linkedAt, 3)){
+      a.classList.add("hasnew");
+      var nf = document.createElement("span"); nf.className = "newflag"; nf.textContent = "NEW";
+      a.appendChild(nf);
+    }
+    /* 관리자 장애표시 유예 — 원래 동작 보존 */
+    if(isAdmin && live && typeof waiveHealth === "function"){
+      var wb = null;
+      if(hi.waived){
+        wb = document.createElement("button");
+        wb.className = "waivebtn on"; wb.textContent = "유예중";
+        wb.title = "장애표시 유예 중" + (hi.waiveUntil ? (" (~" + hi.waiveUntil + ")") : " (무기한)") + " — 클릭하여 해제";
+        wb.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); waiveHealth(key, false); });
+      }else if(st === "fail" || st === "warn"){
+        wb = document.createElement("button");
+        wb.className = "waivebtn"; wb.textContent = "유예";
+        wb.title = "장애 표시를 유예하고 정상으로 표시";
+        wb.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); waiveHealth(key, true); });
+      }
+      if(wb) a.appendChild(wb);
+    }
+    return a;
+  };
+
+  /* 상태 배지 3종 — 사용 가능 / 준비중 / 접속 장애 */
+  function statusBadge(live, st){
+    if(live && st === "fail") return '<span class="v10badge fail">● 접속 장애</span>';
+    if(live)                  return '<span class="v10badge live">● 사용 가능</span>';
+    return '<span class="v10badge soon">▪ 준비중</span>';
+  }
+  function likeHTML(team, it){
+    var on = likedByMe(team, it.name);
+    return '<button type="button" class="v10like' + (on ? " on" : "") + '" title="좋아요">' +
+           '<span class="v10heart">' + (on ? "♥" : "♡") + '</span><span>' + likeCount(team, it) + '</span></button>';
+  }
+  /* 카드 안의 좋아요·즐겨찾기 버튼 배선 (그리드 셀·TOP5 공통) */
+  function wireCard(el, col, it){
+    var lb = el.querySelector(".v10like");
+    if(lb) lb.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); toggleLike(col.team, it); });
+    var on = favedByMe(col.team, it.name);
+    var star = document.createElement("button");
+    star.type = "button";
+    star.className = "favstar" + (on ? " on" : "");
+    star.innerHTML = on ? "★" : "☆";
+    star.title = on ? "즐겨찾기 해제" : "즐겨찾기";
+    star.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); window.toggleFav(col.team, it.name); });
+    el.appendChild(star);
+  }
+
+  /* ---------------- TOP5 — 좋아요 상위 5개 ---------------- */
+  function renderTop5(){
+    var box = document.getElementById("top5Grid");
+    if(!box) return;
+    var all = [];
+    cols().forEach(function(col){
+      (col.items || []).forEach(function(it){ all.push({col:col, it:it, n:likeCount(col.team, it)}); });
+    });
+    if(!all.length){ box.innerHTML = '<div class="ih-empty">불러오는 중…</div>'; return; }
+    all.sort(function(a,b){
+      if(b.n !== a.n) return b.n - a.n;
+      return String(a.it.name).localeCompare(String(b.it.name), "ko");
+    });
+    box.innerHTML = "";
+    all.slice(0,5).forEach(function(r, i){
+      var col = r.col, it = r.it;
+      var hasA = (typeof hasAddr === "function") ? hasAddr(it) : !!(it.addr && String(it.addr).trim());
+      var live = hasA && !it.prep;
+      var a = document.createElement("a");
+      a.className = "t5" + (i === 0 ? " first" : "");
+      a.style.setProperty("--catc", catColor(col.team));
+      if(live){ a.href = normAddr(it.addr); a.target = "_blank"; a.rel = "noopener"; }
+      else{ a.href = "#"; a.setAttribute("aria-disabled","true"); a.addEventListener("click", function(e){ e.preventDefault(); }); }
+      a.innerHTML =
+        '<span class="t5-rank" aria-hidden="true">' + (i+1) + '</span>' +
+        '<div class="v10top"><span class="v10cat">' + esc(displayTeam(col.team)) + '</span>' + statusBadge(live, live ? "ok" : null) + '</div>' +
+        '<div class="t5-name">' + esc(it.name) + '</div>' +
+        '<div class="t5-desc">' + esc(it.desc || "") + '</div>' +
+        '<div class="t5-foot v10foot">' + likeHTML(col.team, it) + '<span class="v10org">' + esc(it.org || "") + '</span></div>';
+      wireCard(a, col, it);
+      box.appendChild(a);
+    });
+  }
+
+  /* ---------------- 조직 필터 + 카테고리 막대 차트 ---------------- */
+  function renderOrgFilter(){
+    var box = document.getElementById("orgFilter");
+    if(!box || box.children.length) return;      /* 한 번만 만든다 */
+    var list = [{k:"", label:"전체"}];
+    ORG_LIST.forEach(function(o){ list.push({k:o, label:o}); });
+    list.forEach(function(o){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "org-chip" + (o.k === ORG_SEL ? " active" : "");
+      b.textContent = o.label;
+      b.addEventListener("click", function(){
+        ORG_SEL = o.k;
+        var kids = box.querySelectorAll(".org-chip");
+        for(var i=0;i<kids.length;i++) kids[i].classList.remove("active");
+        b.classList.add("active");
+        renderChart();
+      });
+      box.appendChild(b);
+    });
+  }
+  function renderChart(){
+    var box = document.getElementById("catChart");
+    if(!box) return;
+    var c = cols();
+    if(!c.length) return;
+    var counts = c.map(function(col){
+      return (col.items || []).filter(function(it){ return !ORG_SEL || it.org === ORG_SEL; }).length;
+    });
+    var max = Math.max.apply(null, counts.concat([1]));
+    if(box.children.length !== c.length){
+      box.innerHTML = "";
+      c.forEach(function(col, i){
+        var d = document.createElement("div");
+        d.className = "cc-col";
+        d.style.setProperty("--ccc", CAT_COLORS[i % CAT_COLORS.length]);
+        d.innerHTML = '<span class="cc-num">0</span><span class="cc-bar" style="height:5px"></span>' +
+                      '<span class="cc-name">' + esc(displayTeam(col.team)) + '</span>';
+        box.appendChild(d);
+      });
+    }
+    for(var i=0;i<c.length;i++){
+      var d = box.children[i];
+      if(!d) continue;
+      var n = counts[i];
+      d.classList.toggle("empty", n === 0);
+      d.querySelector(".cc-num").textContent = String(n);
+      d.querySelector(".cc-bar").style.height = (n ? Math.max(10, Math.round(n / max * 100)) : 4) + "%";
+    }
+  }
+
+  /* ---------------- 공지사항 — 백엔드가 없으면 샘플로 폴백 ----------------
+     script #1 의 refreshNoticeHub 를 교체한다. 원문은 건드리지 않는다. */
+  var NOTICE_SAMPLE = [
+    {id:0, title:"AIMS 오픈 안내 — 센터 업무 카테고리별 AI Agent를 한 곳에서", ts:"2026-08-04", category:"공지"},
+    {id:0, title:"AI Agent 등록 신청 절차 안내", ts:"2026-08-01", category:"안내"},
+    {id:0, title:"8월 사내 AI 활용 교육 일정 안내", ts:"2026-07-30", category:"교육"}
+  ];
+  window.refreshNoticeHub = function(){
+    var box = document.getElementById("ihNoticeList");
+    if(!box) return;
+    var list = [];
+    try{ if(typeof NOTICELIST !== "undefined" && NOTICELIST && NOTICELIST.length) list = NOTICELIST.slice(); }catch(e){}
+    try{ if(!list.length && typeof NOTICE !== "undefined" && NOTICE) list = [{id:NOTICE.id, title:NOTICE.title, ts:"", category:"공지"}]; }catch(e){}
+    var sample = !list.length;
+    if(sample) list = NOTICE_SAMPLE.slice();
+    list.sort(function(a,b){ return String(b.ts||"").localeCompare(String(a.ts||"")); });
+    list = list.slice(0,5);
+    box.innerHTML = "";
+    list.forEach(function(p, i){
+      var row = document.createElement(sample ? "div" : "a");
+      row.className = "ih-notice";
+      var date = String(p.ts || "").slice(2,10).replace(/-/g, ".");
+      row.innerHTML = '<span class="ih-no">' + (list.length - i) + '</span>' +
+                      '<span class="ih-n-title">' + esc(p.title || "") + '</span>' +
+                      '<span class="ih-n-date">' + esc(date) + '</span>';
+      if(!sample){
+        row.href = "#";
+        row.addEventListener("click", function(e){ e.preventDefault(); if(typeof openNoticePost === "function") openNoticePost(p.id); });
+      }
+      box.appendChild(row);
+    });
+  };
+
+  /* ---------------- 준비중 안내 토스트 ---------------- */
+  var toastEl = null, toastT = null;
+  function toast(msg){
+    if(!toastEl){
+      toastEl = document.createElement("div");
+      toastEl.className = "v10toast";
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    void toastEl.offsetWidth;
+    toastEl.classList.add("on");
+    if(toastT) clearTimeout(toastT);
+    toastT = setTimeout(function(){ toastEl.classList.remove("on"); }, 2200);
+  }
+
+  /* ---------------- 버튼 배선 ---------------- */
+  (function wireButtons(){
+    var w = document.getElementById("ihNoticeWrite");
+    if(w) w.addEventListener("click", function(){
+      var b = document.getElementById("boardBtn");   /* 기존 게시판 버튼에 위임 */
+      if(b) b.click();
+    });
+    var m = document.getElementById("aiMgrBtn");
+    if(m) m.addEventListener("click", function(){ toast("AI 매니저 추천은 준비중입니다."); });
+    var r = document.getElementById("agentRegBtn");
+    if(r) r.addEventListener("click", function(){ toast("AI Agent 등록은 준비중입니다."); });
+  })();
+
+
+  /* ---------------------------------------------------------------
+     V11) 화면 높이 자동 맞춤
+
+     창 높이가 기기마다 다르다(실측 573 · 776 · 785px). 브라우저 UI 높이도 제각각이라
+     CSS max-height 미디어쿼리만으로는 "한 화면에 딱"을 보장할 수 없다.
+     실측해서 넘치면 압축 등급을 한 단계씩 올린다. 표시 개수는 건드리지 않는다.
+     --------------------------------------------------------------- */
+  var FIT_IDS = ["secHome", "secTop5", "secPlatform"];
+  function fitScreens(){
+    var navH = 68;
+    try{
+      var v = getComputedStyle(document.documentElement).getPropertyValue("--nav-h");
+      if(v) navH = parseFloat(v) || 68;
+    }catch(e){}
+    FIT_IDS.forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el) return;
+      /* #secHome 은 스크롤 0 에서 시작하고 padding-top 에 네비 높이를 이미 품고 있다 */
+      var avail = window.innerHeight - (id === "secHome" ? 0 : navH) - 6;
+      el.classList.remove("tight", "tighter");
+      el.classList.add("measuring");            /* min-height 를 잠시 눕혀 실제 내용 높이를 잰다 */
+      if(el.scrollHeight > avail){
+        el.classList.add("tight");
+        if(el.scrollHeight > avail) el.classList.add("tighter");
+      }
+      el.classList.remove("measuring");
+    });
+  }
+  (function wireFit(){
+    var rt = null;
+    window.addEventListener("resize", function(){
+      if(rt) clearTimeout(rt);
+      rt = setTimeout(fitScreens, 160);
+    });
+    window.addEventListener("load", fitScreens);
+    /* 표시 개수를 바꾸면 그리드 높이가 달라진다 — script #1 리스너 뒤에 이어 붙는다 */
+    var sn = document.getElementById("showN");
+    if(sn) sn.addEventListener("change", function(){ setTimeout(fitScreens, 0); });
+    /* 그리드·공지는 fetch 후에 그려진다(백엔드가 없으면 폴백까지 시간이 걸린다).
+       내용이 다 들어온 뒤 한 번 더 재본다 — 빈 화면을 재고 끝내면 압축이 안 걸린다. */
+    setTimeout(fitScreens, 400);
+    setTimeout(fitScreens, 1400);
+  })();
+
+  /* ---------------- 전체 갱신 ---------------- */
+  function refreshAll(){
+    try{ if(typeof renderGrid === "function") renderGrid(); }catch(e){}
+    renderTop5();
+    renderOrgFilter();
+    renderChart();
+    updateStats();
+    fitScreens();
+  }
+
+  /* STATE 는 loadData() 로 비동기 로드되므로 진입 시점에 없을 수 있다 → 짧게 재시도 */
+  (function boot(){
+    var tries = 0;
+    function tick(){
+      renderOrgFilter();
+      if(cols().length){ renderTop5(); renderChart(); updateStats(); fitScreens(); return true; }
+      return false;
+    }
+    if(tick()) { window.refreshNoticeHub(); return; }
+    var iv = setInterval(function(){
+      tries++;
+      if(tick() || tries > 40) clearInterval(iv);   /* 최대 약 12초 */
+    }, 300);
+    window.refreshNoticeHub();
   })();
 
 })();
