@@ -1441,7 +1441,7 @@
   :root{--gut:26px}
   .wrap,.nav-inner,.sec-inner,.home-inner,.grid,.grid-toolbar,
   .infohub,.share-sec,.foot-inner,.foot-legal{max-width:none}
-  .sec-inner,.home-inner,.grid-toolbar{width:100%}
+  .sec-inner,.home-inner,.grid-toolbar,.grid{width:100%}
   .nav-inner{padding:0 var(--gut)}
   .sec-inner{padding:0 var(--gut)}
   .home-inner{padding:0 var(--gut)}
@@ -1550,6 +1550,36 @@
   @media (max-width:900px){
     #secCommunity{min-height:0}
   }
+
+
+  /* ==========================================================================
+     PTIC AI Platform V13 — 좌우 여백 복원 + 히어로 강화
+     V12 블록 뒤에서 덮어쓴다. HTML의 ID/클래스 계약은 그대로 유지.
+     ========================================================================== */
+
+  /* ---------- 좌우 여백 ----------
+     챗봇 FAB 가 오른쪽 끝 76px(아이콘 58 + 여백 18)을 차지한다.
+     여백이 그보다 좁으면 아이콘이 카드 위에 겹치므로 항상 76px 이상을 유지한다. */
+  :root{--gut:clamp(20px,6vw,120px)}
+  @media (max-width:900px){:root{--gut:16px}}
+
+  /* ---------- 히어로 — 영역을 넓히고 배경을 진하게 ---------- */
+  #secHome .home-inner{justify-content:center;gap:clamp(20px,4.6vh,58px)}
+  #secHome .hero{padding-block:clamp(8px,3.4vh,46px)}
+  #secHome .hero .sub{max-width:min(880px,64vw)}
+  /* 발광을 제목이 놓인 좌상단으로 옮기고 진하게 */
+  #secHome::after{
+    background:
+      radial-gradient(900px 640px at 26% 26%, rgba(77,216,232,.20), transparent 62%),
+      radial-gradient(820px 600px at 84% 12%, rgba(139,123,255,.17), transparent 62%),
+      radial-gradient(760px 560px at 12% 92%, rgba(139,123,255,.12), transparent 60%),
+      linear-gradient(180deg, transparent 66%, var(--ink) 100%)}
+  /* 파티클 위 글씨가 묻히지 않도록 제목 뒤에만 아주 옅은 어둠막 */
+  #secHome .hero{position:relative;z-index:2}
+  #secHome .hero::before{
+    content:"";position:absolute;z-index:-1;pointer-events:none;
+    left:calc(var(--gut) * -0.5);right:auto;top:-4%;width:min(1180px,86%);height:108%;
+    background:radial-gradient(60% 70% at 26% 46%, rgba(5,7,14,.62), transparent 72%)}
 
 </style>
 </head>
@@ -1677,8 +1707,8 @@
   <section class="sec screen" id="secPlatform">
     <div class="sec-inner sec-headonly">
       <div class="sec-head">
-        <div class="sec-eyebrow reveal">카테고리별 AI Agent</div>
-        <h2 class="sec-title reveal" data-d="1">센터 업무 <span class="grad">카테고리별 AI Agent</span></h2>
+        <div class="sec-eyebrow reveal">Category</div>
+        <h2 class="sec-title reveal" data-d="1"><span class="grad">카테고리별 AI Agent</span></h2>
         <p class="sec-desc reveal" data-d="2">카테고리를 눌러 펼치면 전체 모듈이 보입니다. 운영중인 모듈은 클릭하면 바로 이동합니다.</p>
       </div>
     </div>
@@ -4015,11 +4045,11 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
        회사 PC·VDI 는 이 설정이 기본으로 켜져 있어, 정지시키면 배경이 통째로 죽는다.
        (원본 ARIA script #2 도 같은 이유로 VDI 에서 인트로를 강제 재생했다) */
     var TIER = 0;                          /* 0 기본 · 1 저부하 · 2 최소 */
-    var LINK = 132, SPEED = 0.30, CAP = 96, FRAME_MS = 0;
+    var LINK = 150, SPEED = 0.30, CAP = 120, FRAME_MS = 0;
     function applyTier(){
       if(TIER >= 2){      LINK = 0;   SPEED = 0.10; CAP = 22; FRAME_MS = 50; }
       else if(TIER >= 1){ LINK = 104; SPEED = 0.12; CAP = 34; FRAME_MS = 42; }
-      else {              LINK = 132; SPEED = 0.30; CAP = 96; FRAME_MS = 0;  }
+      else {              LINK = 150; SPEED = 0.30; CAP = 120; FRAME_MS = 0;  }
     }
     var LITE = REDUCED;
     if(LITE) TIER = 1;
@@ -4066,7 +4096,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
           b = pts[j];
           dx = a.x-b.x; dy = a.y-b.y; d2 = dx*dx + dy*dy;
           if(d2 < LINK*LINK){
-            al = (1 - Math.sqrt(d2)/LINK) * 0.30;
+            al = (1 - Math.sqrt(d2)/LINK) * 0.42;
             ctx.strokeStyle = "rgba(120,190,255," + al.toFixed(3) + ")";
             ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
@@ -4084,7 +4114,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
       /* 점 */
       for(i=0;i<pts.length;i++){
         a = pts[i];
-        ctx.fillStyle = "rgba(190,225,255,.62)";
+        ctx.fillStyle = "rgba(190,225,255,.78)";
         ctx.beginPath(); ctx.arc(a.x,a.y,a.r,0,Math.PI*2); ctx.fill();
       }
     }

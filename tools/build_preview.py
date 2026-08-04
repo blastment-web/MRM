@@ -123,7 +123,29 @@ shim = """
     cursor:pointer;font-size:15px;line-height:1;padding:2px 0 2px 4px}
   #pvBadge .pv-x:hover{color:var(--txt)}
   @media(max-width:560px){#pvBadge{left:10px;right:10px;bottom:84px;max-width:none;font-size:11px}}
+  /* 좌우 여백 비교용 스위처 — 미리보기 전용, index.html 에는 없다 */
+  #pvGut{position:fixed;left:16px;bottom:62px;z-index:56;
+    display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;
+    background:rgba(13,19,34,.92);border:1px solid var(--panel-line);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    box-shadow:0 8px 28px rgba(0,0,0,.45)}
+  #pvGut .pv-lbl{font-size:11px;font-weight:700;color:var(--txt-faint);margin-right:2px}
+  #pvGut button{background:rgba(255,255,255,.05);border:1px solid var(--panel-line);
+    color:var(--txt-dim);font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:999px;
+    cursor:pointer;font-family:inherit;white-space:nowrap}
+  #pvGut button:hover{border-color:rgba(77,216,232,.45);color:var(--accent)}
+  #pvGut button.on{background:rgba(77,216,232,.14);border-color:rgba(77,216,232,.5);color:var(--accent)}
+  #pvGut .pv-now{font-size:11px;color:var(--txt-faint);font-variant-numeric:tabular-nums;margin-left:2px}
+  @media(max-width:900px){#pvGut{display:none}}
 </style>
+<div id="pvGut">
+  <span class="pv-lbl">좌우 여백</span>
+  <button type="button" data-gut="clamp(20px,6vw,120px)" class="on">넉넉</button>
+  <button type="button" data-gut="clamp(20px,4vw,80px)">보통</button>
+  <button type="button" data-gut="clamp(16px,2.6vw,48px)">좁게</button>
+  <button type="button" data-gut="26px">없음(직전)</button>
+  <span class="pv-now" id="pvGutNow"></span>
+</div>
 <div id="pvBadge">
   <span class="pv-dot"></span>
   <span><b>디자인 미리보기</b> · 백엔드 미연결, 화면 확인용 샘플 데이터</span>
@@ -136,6 +158,27 @@ shim = """
   var DEMO_SHARE   = __SHARE__;
   var DEMO_LOUNGE  = __LOUNGE__;
   var DEMO_BOARD   = __BOARD__;
+
+  /* 좌우 여백 스위처 — --gut 만 바꾸고 fitScreens 를 다시 돌린다 */
+  (function gutSwitch(){
+    var box = document.getElementById("pvGut");
+    if(!box) return;
+    var now = document.getElementById("pvGutNow");
+    function show(){
+      var el = document.querySelector("#grid .col") || document.querySelector(".sec-inner");
+      if(el && now) now.textContent = Math.round(el.getBoundingClientRect().left) + "px";
+    }
+    box.addEventListener("click", function(e){
+      var b = e.target.closest("button[data-gut]");
+      if(!b) return;
+      document.documentElement.style.setProperty("--gut", b.dataset.gut);
+      box.querySelectorAll("button").forEach(function(x){ x.classList.toggle("on", x === b); });
+      window.dispatchEvent(new Event("resize"));
+      setTimeout(show, 220);
+    });
+    window.addEventListener("resize", function(){ setTimeout(show, 220); });
+    setTimeout(show, 600);
+  })();
 
   document.querySelector("#pvBadge .pv-x").addEventListener("click", function(){
     document.getElementById("pvBadge").remove();
