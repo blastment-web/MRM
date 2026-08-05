@@ -14,10 +14,19 @@
       원본 주석("정지가 아니라 가볍게")대로 재시작은 항상 하고, 부하는
       이미 계산돼 있는 LITE/TIER 프로파일이 알아서 낮춘다.
 
-  P2  감속모션에서 스크롤 리빌이 통째로 사라진다
-      `.reveal{opacity:1;transform:none;transition:none}` 이라 등장 자체가 없다.
-      Windows "애니메이션 효과 표시" 끄기는 회사 PC 기본값이라 여기 걸리는
-      환경이 많다. 멀미의 원인인 이동(translate)은 계속 막고, 페이드만 되살린다.
+  P7  감속모션 설정 하나에 효과 절반이 꺼진다
+      원본은 OS 의 `prefers-reduced-motion` 을 CSS 4곳 · JS 2곳에서 읽어
+      리빌 · 로고 펄스 · 스크롤 힌트 · 타일 트랜지션을 끄고, 파티클을 LITE 등급으로
+      내린다. Windows "애니메이션 효과 표시" 끄기는 회사 PC 기본값이라, 로컬에서
+      보던 화면과 딴판이 된다. standalone 은 **로컬과 동일한 화면**이 목적이므로
+      이 게이트를 전부 무력화한다. 저사양 보호는 실측 프레임 시간을 보는
+      degrade() 가 계속 맡는다 — OS 설정이 아니라 실제 성능으로 판단한다.
+      (원본 index.html 은 접근성 설정을 그대로 존중한다. 이 무력화는 사본 전용이다.)
+
+  P8  백엔드가 없어 공지 · 게시판 · Q&A · 자료공유가 텅 빈다
+      로컬 미리보기(tools/build_preview.py)가 넣어 주던 샘플을 그대로 주입해
+      목록 · 상세 · 댓글 · 좋아요 · 정렬 · 검색까지 실제로 눌러 볼 수 있게 한다.
+      데이터는 tools/demo_data.py 하나를 두 빌더가 공유한다.
 
   P3  백엔드 없는 곳에서 화면이 비어 있다
       api/* · data/dashboards.json 요청이 프록시·캡티브포털을 만나면 즉시
@@ -50,8 +59,11 @@
     python3 tools/build_standalone.py <입력> <출력>
 """
 
+import json
 import sys
 from pathlib import Path
+
+from demo_data import BOARD, LOUNGE, SHARE
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SRC = ROOT / "releases" / "MAPS-V3" / "index.html"
@@ -64,16 +76,53 @@ P1_TO = (
     "          start();   /* standalone: 감속모션이어도 재시작한다 — 부하는 LITE/TIER 가 낮춘다 */"
 )
 
-# ---------------------------------------------------------------- P2
-P2_FROM = """  @media (prefers-reduced-motion:reduce){
-    .reveal{opacity:1;transform:none;transition:none}
-  }"""
-P2_TO = """  @media (prefers-reduced-motion:reduce){
-    /* standalone: 멀미의 원인은 이동이지 등장이 아니다 — translate 만 막고 페이드는 남긴다.
-       (원본은 transition 까지 꺼서 감속모션 PC 에서 리빌이 통째로 사라졌다) */
-    .reveal{opacity:0;transform:none;transition:opacity .5s ease}
-    .reveal.in{opacity:1}
-  }"""
+# ---------------------------------------------------------------- P7
+# CSS 4곳: 조건을 절대 참이 되지 않게 바꿔 블록 전체를 죽인다.
+# `not all` 은 어떤 매체에도 매치되지 않는 표준 표현이라, 블록을 지우지 않고도
+# 원문이 무엇이었는지 그대로 남길 수 있다.
+P7_CSS = [
+    (
+        "P7a 로고 펄스",
+        "  @media (prefers-reduced-motion:reduce){#introStage .pls{display:none}}",
+        "  @media not all{ /* standalone: 감속모션 게이트 해제 (원본: prefers-reduced-motion:reduce) */\n"
+        "    #introStage .pls{display:none}}",
+    ),
+    (
+        "P7b 타일·톱니 트랜지션",
+        "  @media (prefers-reduced-motion:reduce){.cell,.gear{transition:none}}",
+        "  @media not all{ /* standalone: 감속모션 게이트 해제 */\n"
+        "    .cell,.gear{transition:none}}",
+    ),
+    (
+        "P7c 스크롤 리빌",
+        "  @media (prefers-reduced-motion:reduce){\n    .reveal{opacity:1;transform:none;transition:none}\n  }",
+        "  @media not all{ /* standalone: 감속모션 게이트 해제 — 리빌을 로컬과 똑같이 살린다 */\n"
+        "    .reveal{opacity:1;transform:none;transition:none}\n  }",
+    ),
+    (
+        "P7d 스크롤 힌트",
+        "  @media (prefers-reduced-motion:reduce){.scroll-hint::after{animation:none;opacity:.6}}",
+        "  @media not all{ /* standalone: 감속모션 게이트 해제 */\n"
+        "    .scroll-hint::after{animation:none;opacity:.6}}",
+    ),
+]
+
+# JS 2곳: 판정 결과만 false 로 고정한다. matchMedia 호출 자체는 남겨 두어
+# 원본이 무엇을 보고 있었는지 읽는 사람이 알 수 있게 한다.
+P7_JS = [
+    (
+        "P7e 로고 애니메이션 판정",
+        '  try{reduce=window.matchMedia("(prefers-reduced-motion:reduce)").matches;}catch(e){}',
+        '  try{reduce=window.matchMedia("(prefers-reduced-motion:reduce)").matches;}catch(e){}\n'
+        "  reduce=false;   /* standalone: 로컬과 동일한 화면이 목적이라 OS 설정을 따르지 않는다 */",
+    ),
+    (
+        "P7f 파티클 등급 판정",
+        '  try{ REDUCED = window.matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){}',
+        '  try{ REDUCED = window.matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){}\n'
+        "  REDUCED = false;   /* standalone: 저사양 보호는 degrade() 의 실측이 맡는다 */",
+    ),
+]
 
 # ---------------------------------------------------------------- P6
 # 저부하 등급에서도 별자리가 읽히도록 밀도·연결거리를 되살린다.
@@ -136,6 +185,36 @@ GUARD = """<body>
   };
 })();
 </script>"""
+
+# ---------------------------------------------------------------- P8
+# 원본 로직은 건드리지 않는다. 전역 로더 함수만 데모 주입 버전으로 교체한다.
+# SHARE_ITEMS / LG_POSTS / BOARD_POSTS / NOTICELIST 는 let 전역이라 별도
+# classic script 에서도 같은 렉시컬 바인딩에 대입할 수 있다.
+DEMO = """<script>
+/* ============================================================================
+   MAPS standalone — 데모 데이터 주입
+   백엔드가 없어도 공지 · 자료공유 · Q&A · 게시판이 채워지도록 로더만 교체한다.
+   내용은 tools/demo_data.py 에 있고 미리보기 빌드와 같은 것을 쓴다.
+   ============================================================================ */
+(function demoData(){
+  "use strict";
+  var DEMO_SHARE  = __SHARE__;
+  var DEMO_LOUNGE = __LOUNGE__;
+  var DEMO_BOARD  = __BOARD__;
+
+  /* 공지는 건드리지 않는다 — script #3 의 NOTICE_SAMPLE 이 이미 8건을 갖고 있고
+     `더보기 +` 토글까지 그 총계를 기준으로 돈다. 여기서 덮으면 오히려 줄어든다. */
+  window.loadShare       = async function(){ SHARE_ITEMS = DEMO_SHARE;  renderShare(); };
+  window.loadLounge      = async function(){ LG_POSTS    = DEMO_LOUNGE; lgRenderFeed(); };
+  window.loadPosts       = async function(){ BOARD_POSTS = DEMO_BOARD;  PAGE_SHOWN = PAGE_SIZE; renderBoardRows(); };
+  window.refreshBoardDot = async function(){};
+
+  try{ loadShare(); }catch(e){}
+  try{ lgRenderComposer(); loadLounge(); }catch(e){}
+  try{ loadPosts(); }catch(e){}
+})();
+</script>
+"""
 
 # ---------------------------------------------------------------- P4 · P5
 RESILIENCE = """<script>
@@ -234,16 +313,26 @@ RESILIENCE = """<script>
 </body>"""
 
 
+def demo_block() -> str:
+    """데모 데이터를 JSON 으로 박아 넣는다. `</script>` 가 문자열 안에 생기면
+    브라우저가 스크립트를 거기서 끊으므로 이스케이프한다."""
+    out = DEMO
+    for token, data in (("__SHARE__", SHARE), ("__LOUNGE__", LOUNGE), ("__BOARD__", BOARD)):
+        out = out.replace(token, json.dumps(data, ensure_ascii=False).replace("</", "<\\/"))
+    return out
+
+
 def patch(src_text: str) -> str:
     """치환을 하나라도 놓치면 조용히 넘어가지 않고 실패시킨다."""
     steps = [
         ("P1 파티클 재시작", P1_FROM, P1_TO),
-        ("P2 감속모션 리빌 페이드", P2_FROM, P2_TO),
+        *P7_CSS,
+        *P7_JS,
         ("P6a 등급별 밀도·연결거리 재조정", P6A_FROM, P6A_TO),
         ("P6b 점 개수 산식", P6B_FROM, P6B_TO),
         ("P6c 연결선 불투명도", P6C_FROM, P6C_TO),
         ("P3 오프라인 가드 주입", "<body>", GUARD),
-        ("P4·P5 복원 레이어 주입", "</body>", RESILIENCE),
+        ("P8·P4·P5 데모 데이터 + 복원 레이어 주입", "</body>", demo_block() + RESILIENCE),
     ]
     out = src_text
     for label, needle, repl in steps:
