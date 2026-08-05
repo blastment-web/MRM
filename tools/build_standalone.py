@@ -19,8 +19,7 @@
       리빌 · 로고 펄스 · 스크롤 힌트 · 타일 트랜지션을 끄고, 파티클을 LITE 등급으로
       내린다. Windows "애니메이션 효과 표시" 끄기는 회사 PC 기본값이라, 로컬에서
       보던 화면과 딴판이 된다. standalone 은 **로컬과 동일한 화면**이 목적이므로
-      이 게이트를 전부 무력화한다. 저사양 보호는 실측 프레임 시간을 보는
-      degrade() 가 계속 맡는다 — OS 설정이 아니라 실제 성능으로 판단한다.
+      이 게이트를 전부 무력화한다.
       (원본 index.html 은 접근성 설정을 그대로 존중한다. 이 무력화는 사본 전용이다.)
 
   P8  백엔드가 없어 공지 · 게시판 · Q&A · 자료공유가 텅 빈다
@@ -38,17 +37,32 @@
   P4  구형 Safari 에서 부드러운 스크롤이 없다
       scroll-behavior 는 Safari 15.4 부터다. 미지원이면 rAF 로 대신 굴린다.
 
-  P6  저사양 판정이 내려지면 배경 별자리가 사라진다
+  P6  저부하 등급으로 떨어지면 배경 별자리가 사라진다 → 등급을 TIER 0 으로 고정
       applyTier() 가 점 개수(CAP·밀도)와 연결 거리(LINK)를 동시에 깎는다.
       연결선 수는 점²×거리² 에 비례하므로 두 축을 같이 줄이면 곱으로 무너진다.
       실측(1440x915): TIER0 캔버스의 1.634% → TIER1 0.111% = 15배 감소.
       TIER2 는 LINK=0 이라 연결선이 아예 0개고 점 22개만 남는다.
-      감속모션(Windows "애니메이션 효과 표시" 끄기 = 회사 PC 기본값)이면 무조건
-      TIER1 이라, 그런 PC 에서는 "뒤에 별자리가 안 나오는" 상태로 보인다.
+      standalone 은 로컬과 같은 화면이 목적이므로 등급을 TIER 0(60fps · 풀 밀도)
+      으로 고정한다. 늘어나는 그리기 비용은 P9 드로우 콜 일괄화가 상쇄한다.
 
-      부하를 줄이는 실제 지렛대는 프레임 간격(FRAME_MS)과 dpr=1 이지 기하 밀도가
-      아니다. 프레임 스로틀은 그대로 두고 밀도·연결거리만 되살린다.
-      TIER0 은 한 값도 건드리지 않는다 — 일반 PC 의 모양은 지금 그대로다.
+  P9  별자리가 깜빡이며 자리를 옮기고, 배경이 뚝뚝 끊긴다
+      두 증상 모두 적응형 강등이 원인이다. 진입 직후에는 데이터 로드 · 리빌 ·
+      카운트업이 겹쳐 어느 PC 든 프레임이 늦는 순간이 있는데, degrade() 가 그
+      일시 부하를 영구 강등으로 오판한다(등급은 다시 오르지 않는다). 강등마다
+      resize()→seed() 가 점 전체를 새 난수 위치에 다시 뿌려 "자리 바뀌고 또
+      바뀌고", 강등이 끝나면 18~24fps 스로틀에 갇혀 "버벅"인다.
+
+      a·b) 드로우 콜 일괄화 — 원본은 연결선 하나마다 상태 변경 + stroke 를
+           반복한다(프레임당 수백 콜). 투명도를 8단계로 양자화해 단계마다 한
+           번씩만 stroke 하면 8콜로 준다. 좌표·색·굵기는 그대로다.
+           점도 색이 전부 같으므로 한 경로에 모아 한 번만 fill 한다.
+      c)   강등 중지 — 판정 코드는 남기고 등급 변경만 하지 않는다.
+      d)   크기가 실제로 바뀌지 않은 resize() 는 재배치하지 않는다 — P5 의
+           fitScreens 용 resize 이벤트나 스크롤바 등장에도 seed() 가 돌아
+           별자리가 통째로 자리를 바꿨다.
+
+      결과(Chromium · CPU 10배 감속 스크롤): 재배치 점프 원본 1회 → 0회,
+      평균 프레임 47.5ms ≈ 로컬 조건 원본 48.3ms. 로컬과 동등하다.
 
   P5  리빌 안전망 · 높이 재측정
       옵저버가 어떤 이유로든 놓친 .reveal 은 보이는 순간 강제로 켠다.
@@ -73,7 +87,7 @@ DEFAULT_OUT = ROOT / "releases" / "MAPS-V3" / "index.standalone.html"
 # ---------------------------------------------------------------- P1
 P1_FROM = "          if(!REDUCED) start();"
 P1_TO = (
-    "          start();   /* standalone: 감속모션이어도 재시작한다 — 부하는 LITE/TIER 가 낮춘다 */"
+    "          start();   /* standalone: 감속모션이어도 재시작한다 — 배경이 정지한 채 남지 않게 */"
 )
 
 # ---------------------------------------------------------------- P7
@@ -120,39 +134,155 @@ P7_JS = [
         "P7f 파티클 등급 판정",
         '  try{ REDUCED = window.matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){}',
         '  try{ REDUCED = window.matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){}\n'
-        "  REDUCED = false;   /* standalone: 저사양 보호는 degrade() 의 실측이 맡는다 */",
+        "  REDUCED = false;   /* standalone: 로컬과 동일한 화면이 목적이라 OS 설정을 따르지 않는다 */",
     ),
 ]
 
 # ---------------------------------------------------------------- P6
-# 저부하 등급에서도 별자리가 읽히도록 밀도·연결거리를 되살린다.
-# 비용은 프레임 스로틀(FRAME_MS)과 dpr=1 로 계속 억제한다.
-#
-#   1440x915(=1,317,600px) 기준 점 개수 · 상대 연결선량 · 상대 CPU
-#     TIER0  78점 LINK150 60fps  → 선 1.00 · 부하 1.00   (변경 없음)
-#     TIER1  60점 LINK150 24fps  → 선 0.59 · 부하 0.24   (기존 29점 LINK104 = 선 0.07)
-#     TIER2  44점 LINK132 18fps  → 선 0.25 · 부하 0.10   (기존 22점 LINK0   = 선 0)
+# 등급을 TIER 0 으로 고정한다 — 어떤 경로로든 저부하 등급에 들어가면 별자리가
+# 사라지거나(LINK 축소) 재배치되므로(seed), 로컬과 같은 값 하나만 쓴다.
 P6A_FROM = """    function applyTier(){
       if(TIER >= 2){      LINK = 0;   SPEED = 0.10; CAP = 22; FRAME_MS = 50; }
       else if(TIER >= 1){ LINK = 104; SPEED = 0.12; CAP = 34; FRAME_MS = 42; }
       else {              LINK = 150; SPEED = 0.30; CAP = 120; FRAME_MS = 0;  }
     }"""
-P6A_TO = """    /* standalone: DENS(1점당 면적) · LALPHA(연결선 불투명도) 를 등급별로 함께 잡는다.
-       저부하 등급에서 별자리가 사라지던 원인이 밀도와 연결거리의 동시 감축이었다. */
+P6A_TO = """    /* standalone: 등급을 항상 TIER 0(로컬 기본)으로 고정한다. 어느 등급이든
+       원본은 강등 시 seed() 로 점을 새 난수 위치에 다시 뿌려 별자리가 깜빡이며
+       자리를 옮겼고, 강등 후에는 18~24fps 스로틀에 갇혀 배경이 뚝뚝 끊겼다.
+       그리기 비용은 아래 P9 일괄화가 줄이므로 60fps · 풀 밀도를 유지한다. */
     var DENS = 17000, LALPHA = 0.42;
+    /* 연결선을 투명도 단계별로 모아 두는 버퍼. 매 프레임 length=0 으로 비우고
+       재사용한다 — 프레임마다 배열을 새로 만들면 GC 가 스크롤 중에 튄다. */
+    var BK = 8, LBUF = [[],[],[],[],[],[],[],[]];
     function applyTier(){
-      if(TIER >= 2){      LINK = 132; SPEED = 0.09; CAP = 44;  FRAME_MS = 55; DENS = 30000; LALPHA = 0.54; }
-      else if(TIER >= 1){ LINK = 150; SPEED = 0.12; CAP = 64;  FRAME_MS = 42; DENS = 22000; LALPHA = 0.50; }
-      else {              LINK = 150; SPEED = 0.30; CAP = 120; FRAME_MS = 0;  DENS = 17000; LALPHA = 0.42; }
+      LINK = 150; SPEED = 0.30; CAP = 120; FRAME_MS = 0;
     }"""
 
 P6B_FROM = "      var target = Math.round(Math.min(CAP, Math.max(16, (w * h) / ((TIER >= 1) ? 38000 : 17000))));"
-P6B_TO = "      var target = Math.round(Math.min(CAP, Math.max(16, (w * h) / DENS)));   /* standalone: 등급별 DENS */"
+P6B_TO = "      var target = Math.round(Math.min(CAP, Math.max(16, (w * h) / DENS)));   /* standalone: TIER0 고정 밀도 */"
 
-P6C_FROM = """          if(d2 < LINK*LINK){
-            al = (1 - Math.sqrt(d2)/LINK) * 0.42;"""
-P6C_TO = """          if(d2 < LINK*LINK){
-            al = (1 - Math.sqrt(d2)/LINK) * LALPHA;   /* standalone: 선이 적은 등급일수록 진하게 */"""
+# ---------------------------------------------------------------- P9
+# 그리기 비용 절감. 좌표·색·굵기는 그대로 두고 드로우 콜 수만 줄인다.
+#
+# 원본은 연결선 하나마다 strokeStyle 대입 + beginPath + stroke 를 반복한다.
+# 78점이면 최대 3,003쌍이라 프레임당 수백~수천 번의 드로우 콜이 나간다.
+# 캔버스는 상태 변경과 stroke 호출이 비싸므로, 투명도를 8단계로 양자화해
+# 같은 단계끼리 한 경로에 모으면 드로우 콜이 8번으로 떨어진다.
+# 양자화 폭은 0.42/8 ≈ 0.05 — 어두운 배경의 1px 선에서는 눈에 띄지 않는다.
+P9A_FROM = """      /* 연결선 */
+      for(i=0;i<pts.length;i++){
+        a = pts[i];
+        for(j=i+1;j<pts.length;j++){
+          b = pts[j];
+          dx = a.x-b.x; dy = a.y-b.y; d2 = dx*dx + dy*dy;
+          if(d2 < LINK*LINK){
+            al = (1 - Math.sqrt(d2)/LINK) * 0.42;
+            ctx.strokeStyle = "rgba(120,190,255," + al.toFixed(3) + ")";
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+          }
+        }
+        /* 마우스 근처 강조 */
+        dx = a.x-mouse.x; dy = a.y-mouse.y; d2 = dx*dx + dy*dy;
+        if(d2 < 170*170){
+          al = (1 - Math.sqrt(d2)/170) * 0.42;
+          ctx.strokeStyle = "rgba(77,216,232," + al.toFixed(3) + ")";
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(mouse.x,mouse.y); ctx.stroke();
+        }
+      }"""
+P9A_TO = """      /* 연결선 — standalone: 투명도를 BK 단계로 양자화해 단계마다 한 번씩만 stroke 한다.
+         원본은 선 하나마다 상태 변경 + stroke 를 반복해 프레임당 드로우 콜이
+         선 개수만큼 나갔다. 좌표·색·굵기는 그대로다. */
+      var bi, bx, seg;
+      for(bi=0;bi<BK;bi++) LBUF[bi].length = 0;
+      for(i=0;i<pts.length;i++){
+        a = pts[i];
+        for(j=i+1;j<pts.length;j++){
+          b = pts[j];
+          dx = a.x-b.x; dy = a.y-b.y; d2 = dx*dx + dy*dy;
+          if(d2 < LINK*LINK){
+            al = 1 - Math.sqrt(d2)/LINK;
+            bx = (al * BK) | 0; if(bx >= BK) bx = BK - 1; else if(bx < 0) bx = 0;
+            LBUF[bx].push(a.x,a.y,b.x,b.y);
+          }
+        }
+      }
+      ctx.lineWidth = 1;
+      for(bi=0;bi<BK;bi++){
+        seg = LBUF[bi];
+        if(!seg.length) continue;
+        ctx.strokeStyle = "rgba(120,190,255," + (((bi + 0.5) / BK) * LALPHA).toFixed(3) + ")";
+        ctx.beginPath();
+        for(j=0;j<seg.length;j+=4){ ctx.moveTo(seg[j],seg[j+1]); ctx.lineTo(seg[j+2],seg[j+3]); }
+        ctx.stroke();
+      }
+      /* 마우스 근처 강조 — 커서가 히어로 밖이면(-9999) 계산 자체를 건너뛴다 */
+      if(mouse.x > -9000){
+        for(bi=0;bi<BK;bi++) LBUF[bi].length = 0;
+        for(i=0;i<pts.length;i++){
+          a = pts[i];
+          dx = a.x-mouse.x; dy = a.y-mouse.y; d2 = dx*dx + dy*dy;
+          if(d2 < 28900){
+            al = 1 - Math.sqrt(d2)/170;
+            bx = (al * BK) | 0; if(bx >= BK) bx = BK - 1; else if(bx < 0) bx = 0;
+            LBUF[bx].push(a.x,a.y);
+          }
+        }
+        for(bi=0;bi<BK;bi++){
+          seg = LBUF[bi];
+          if(!seg.length) continue;
+          ctx.strokeStyle = "rgba(77,216,232," + (((bi + 0.5) / BK) * 0.42).toFixed(3) + ")";
+          ctx.beginPath();
+          for(j=0;j<seg.length;j+=2){ ctx.moveTo(seg[j],seg[j+1]); ctx.lineTo(mouse.x,mouse.y); }
+          ctx.stroke();
+        }
+      }"""
+
+# 점도 같은 이유로 한 경로에 모은다. fillStyle 은 매 점마다 같은 값을 다시 넣고 있었다.
+P9B_FROM = """      /* 점 */
+      for(i=0;i<pts.length;i++){
+        a = pts[i];
+        ctx.fillStyle = "rgba(190,225,255,.78)";
+        ctx.beginPath(); ctx.arc(a.x,a.y,a.r,0,Math.PI*2); ctx.fill();
+      }"""
+P9B_TO = """      /* 점 — standalone: 색이 전부 같으므로 한 경로에 모아 한 번만 fill 한다 */
+      ctx.fillStyle = "rgba(190,225,255,.78)";
+      ctx.beginPath();
+      for(i=0;i<pts.length;i++){
+        a = pts[i];
+        ctx.moveTo(a.x + a.r, a.y);
+        ctx.arc(a.x,a.y,a.r,0,Math.PI*2);
+      }
+      ctx.fill();"""
+
+# 강등 자체를 끈다. 강등이 일어날 때마다 resize()→seed() 가 점 전체를 새 난수
+# 위치에 다시 뿌려 "별자리가 깜빡이며 자리를 옮기는" 현상의 원인이 됐다.
+# 페이지 진입 직후는 데이터 로드·리빌·카운트업이 겹쳐 어느 PC 든 프레임이 늦는
+# 순간이 있는데, 그 일시 부하를 영구 강등으로 오판한다(등급은 다시 오르지 않는다).
+# 판정 코드는 남겨 두되 등급 변경만 하지 않는다.
+P9C_FROM = """        if(avg > 45 && TIER < 2){ TIER = 2; applyTier(); resize(); document.body.classList.add("lite"); }
+        else if(avg > 28 && TIER < 1){ TIER = 1; applyTier(); resize(); document.body.classList.add("lite"); }"""
+P9C_TO = """        /* standalone: 강등하지 않는다 — 강등의 resize()→seed() 가 별자리를
+           깜빡이며 재배치시키고, 이후 프레임 스로틀로 배경이 뚝뚝 끊긴다.
+           로컬과 같은 60fps · 풀 밀도를 유지한다. (원본 코드:
+           avg>45 → TIER2, avg>28 → TIER1 + body.lite) */"""
+
+# 크기가 실제로 바뀌지 않았으면 재배치하지 않는다. 원본 resize() 는 호출될 때마다
+# 무조건 seed() 로 점을 새 난수 위치에 뿌린다. fitScreens 를 깨우려고 쏘는 resize
+# 이벤트(P5)나 스크롤바 등장 같은 1~2px 흔들림에도 별자리가 통째로 자리를 바꿨다.
+P9D_FROM = """    function resize(){
+      var r = hero.getBoundingClientRect();
+      w = Math.max(1, Math.round(r.width));
+      h = Math.max(1, Math.round(r.height));"""
+P9D_TO = """    var pw = -1, ph = -1;   /* standalone: 마지막으로 seed 한 크기 */
+    function resize(){
+      var r = hero.getBoundingClientRect();
+      w = Math.max(1, Math.round(r.width));
+      h = Math.max(1, Math.round(r.height));
+      /* standalone: 크기가 그대로면 재배치하지 않는다 — 별자리 자리 이동 방지 */
+      if(cv.width > 0 && Math.abs(w - pw) < 3 && Math.abs(h - ph) < 3) return;
+      pw = w; ph = h;"""
 
 # ---------------------------------------------------------------- P3
 GUARD = """<body>
@@ -269,28 +399,23 @@ RESILIENCE = """<script>
     if(top) top.addEventListener("click", function(e){ e.preventDefault(); glide(0); }, true);
   }
 
-  /* -------- P5) 리빌 안전망 — 옵저버가 놓친 요소를 보이는 순간 켠다 -------- */
+  /* -------- P5) 리빌 안전망 — 옵저버가 놓친 요소를 보이는 순간 켠다 --------
+     스크롤마다 getBoundingClientRect 를 돌리면 매 프레임 레이아웃이 강제돼
+     정작 스크롤이 버벅인다. 원본 옵저버가 이미 대부분을 처리하므로 여기서는
+     남은 것만 저빈도 타이머로 훑고, 다 켜지면 스스로 멈춘다. */
   (function revealNet(){
-    function sweep(){
+    var left = document.querySelectorAll(".reveal").length;
+    if(!left) return;
+    var iv = setInterval(function(){
       var els = document.querySelectorAll(".reveal:not(.in)");
-      if(!els.length) return true;
+      if(!els.length){ clearInterval(iv); return; }      /* 할 일이 없으면 타이머를 끈다 */
       var vh = window.innerHeight || 0;
       for(var i=0;i<els.length;i++){
         var r = els[i].getBoundingClientRect();
         if(r.top < vh * 0.94 && r.bottom > 0) els[i].classList.add("in");
       }
-      return false;
-    }
-    var ticking = false;
-    function onScroll(){
-      if(ticking) return;
-      ticking = true;
-      requestAnimationFrame(function(){ ticking = false; sweep(); });
-    }
-    window.addEventListener("scroll", onScroll, { passive:true });
-    window.addEventListener("resize", onScroll, { passive:true });
-    setTimeout(sweep, 600);
-    setTimeout(sweep, 1600);
+    }, 500);
+    setTimeout(function(){ clearInterval(iv); }, 60000);  /* 최후 보루 — 무한히 돌지 않는다 */
   })();
 
   /* -------- P5) 높이 재측정 — fitScreens 는 script #3 안의 지역 함수라
@@ -330,7 +455,10 @@ def patch(src_text: str) -> str:
         *P7_JS,
         ("P6a 등급별 밀도·연결거리 재조정", P6A_FROM, P6A_TO),
         ("P6b 점 개수 산식", P6B_FROM, P6B_TO),
-        ("P6c 연결선 불투명도", P6C_FROM, P6C_TO),
+        ("P9a 연결선 드로우 콜 일괄화", P9A_FROM, P9A_TO),
+        ("P9b 점 드로우 콜 일괄화", P9B_FROM, P9B_TO),
+        ("P9c 적응형 강등 중지 — 재배치 깜빡임 제거", P9C_FROM, P9C_TO),
+        ("P9d 동일 크기 resize 의 재배치 차단", P9D_FROM, P9D_TO),
         ("P3 오프라인 가드 주입", "<body>", GUARD),
         ("P8·P4·P5 데모 데이터 + 복원 레이어 주입", "</body>", demo_block() + RESILIENCE),
     ]
