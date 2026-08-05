@@ -1,6 +1,6 @@
-# AIMS · 생산기술혁신센터 AI 플랫폼
+# MAPS · 생산기술혁신센터 AI 플랫폼
 
-**A**I **I**nnovation **M**anufacturing **S**ystem — 센터 업무 카테고리별 AI Agent를 한 곳에 모은 사내 포털.
+**M**anufacturing **A**gent **P**latform & **S**hared-dashboard — 센터 업무 카테고리별 AI Agent를 한 곳에 모은 사내 포털.
 
 ## 버전
 
@@ -10,7 +10,8 @@
 | **V2** | 4메뉴 구조 개편 · TOP5 신설 · Agent 카드 재설계 |
 | **V3** | 로컬 V11 작업본으로 동기화 (대시보드 3패널 · 화면 높이 자동 맞춤) |
 | **V12~V15** | 전폭 레이아웃 · 4화면 여백 정리 · 히어로 강화 · 카드 확대 · 디자인 조정 변수 |
-| **MAPS V1** | 위 결과를 확정한 스냅샷. `releases/MAPS-V1/` 폴더와 git 태그 `MAPS-V1`. |
+| **MAPS V1** | 위 결과를 확정한 스냅샷. `releases/MAPS-V1/` 폴더. |
+| **MAPS V2** | 브랜드 AIMS → MAPS · 막대차트 높이 연동 버그 수정 · TOP5 즐겨찾기 위치 · AI Agent 등록 버튼 연결. `releases/MAPS-V2/`. |
 
 > 로컬 환경에서는 V8까지 진행되었으나, 이 저장소에는 그 최신 결과물을 **V1**(기준선)으로 등록했습니다.
 > 이후 이 저장소에서의 변경은 V2, V3… 으로 이어갑니다.
@@ -20,7 +21,9 @@
 ```
 index.html                포털 화면 전체 (HTML + CSS + JS 단일 파일)
 tools/build_preview.py    디자인 미리보기 생성 스크립트
-releases/MAPS-V1/         확정 버전 스냅샷 (git 태그 MAPS-V1 과 같은 내용)
+releases/MAPS-V1/         확정 버전 스냅샷
+releases/MAPS-V2/         확정 버전 스냅샷 (최신)
+docs/기능-사양-작성법.md   AI 매니저 추천·Agent 등록·챗봇 기능 지시 방법
 preview/                  빌드 산출물 (git 제외 — 언제든 재생성 가능)
 ```
 

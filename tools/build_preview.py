@@ -34,7 +34,7 @@ title = re.search(r"<title>(.*?)</title>", src, re.S).group(1)
 
 # 2) 데모 데이터 --------------------------------------------------------------
 NOTICES = [
-    {"id": "n1", "title": "AIMS 포털 정식 오픈 안내", "ts": "2026-07-28 09:12", "category": "공지"},
+    {"id": "n1", "title": "MAPS 포털 정식 오픈 안내", "ts": "2026-07-28 09:12", "category": "공지"},
     {"id": "n2", "title": "8월 AI Agent 활용 사내 교육 일정", "ts": "2026-07-24 14:03", "category": "교육"},
     {"id": "n3", "title": "온습도 이상감지 Agent 알람 기준 변경", "ts": "2026-07-21 17:40", "category": "공유"},
 ]
@@ -86,7 +86,7 @@ LOUNGE = [
 ]
 
 BOARD = [
-    {"id": "b1", "title": "AIMS 포털 정식 오픈 안내", "author": "운영자", "ts": "2026-07-28 09:12",
+    {"id": "b1", "title": "MAPS 포털 정식 오픈 안내", "author": "운영자", "ts": "2026-07-28 09:12",
      "views": 342, "comments": 5, "pinned": True, "category": "공지", "attachments": True, "likes": 18, "read": True},
     {"id": "b2", "title": "[필독] 대시보드 추가요청 절차 변경", "author": "운영자", "ts": "2026-07-20 11:00",
      "views": 288, "comments": 2, "pinned": True, "category": "공지", "attachments": False, "likes": 9, "read": True},
