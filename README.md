@@ -22,12 +22,25 @@
 ```
 index.html                포털 화면 전체 (HTML + CSS + JS 단일 파일)
 tools/build_preview.py    디자인 미리보기 생성 스크립트
+tools/build_standalone.py 단독 실행용 사본 생성 스크립트
 releases/MAPS-V1/         확정 버전 스냅샷
 releases/MAPS-V2/         확정 버전 스냅샷
-releases/MAPS-V3/         확정 버전 스냅샷 (최신)
+releases/MAPS-V3/         확정 버전 스냅샷 (최신) + index.standalone.html
 docs/기능-사양-작성법.md   AI 매니저 추천·Agent 등록·챗봇 기능 지시 방법
 preview/                  빌드 산출물 (git 제외 — 언제든 재생성 가능)
 ```
+
+## 파일 하나만 남에게 건넬 때
+
+사내가 아닌 PC · 다른 네트워크에서 `index.html` 을 그냥 열면 히어로 파티클 · 스크롤 리빌 ·
+대시보드 카운트업이 죽는다. 감속모션 설정에 걸리는 재시작 버그와, 응답하지 않는 `api/*`
+요청에 화면이 묶이는 문제 때문이다. 이때는 아래로 만든 사본을 건넨다.
+
+```bash
+python3 tools/build_standalone.py       # → releases/MAPS-V3/index.standalone.html
+```
+
+원본은 읽기만 하고 수정하지 않는다. 고치는 항목과 실측 비교는 `releases/MAPS-V3/README.md` 참고.
 
 ## 화면을 보면서 직접 조정하기
 
