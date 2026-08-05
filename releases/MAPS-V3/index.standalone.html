@@ -4364,10 +4364,13 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
        (원본 ARIA script #2 도 같은 이유로 VDI 에서 인트로를 강제 재생했다) */
     var TIER = 0;                          /* 0 기본 · 1 저부하 · 2 최소 */
     var LINK = 150, SPEED = 0.30, CAP = 120, FRAME_MS = 0;
+    /* standalone: DENS(1점당 면적) · LALPHA(연결선 불투명도) 를 등급별로 함께 잡는다.
+       저부하 등급에서 별자리가 사라지던 원인이 밀도와 연결거리의 동시 감축이었다. */
+    var DENS = 17000, LALPHA = 0.42;
     function applyTier(){
-      if(TIER >= 2){      LINK = 0;   SPEED = 0.10; CAP = 22; FRAME_MS = 50; }
-      else if(TIER >= 1){ LINK = 104; SPEED = 0.12; CAP = 34; FRAME_MS = 42; }
-      else {              LINK = 150; SPEED = 0.30; CAP = 120; FRAME_MS = 0;  }
+      if(TIER >= 2){      LINK = 132; SPEED = 0.09; CAP = 44;  FRAME_MS = 55; DENS = 30000; LALPHA = 0.54; }
+      else if(TIER >= 1){ LINK = 150; SPEED = 0.12; CAP = 64;  FRAME_MS = 42; DENS = 22000; LALPHA = 0.50; }
+      else {              LINK = 150; SPEED = 0.30; CAP = 120; FRAME_MS = 0;  DENS = 17000; LALPHA = 0.42; }
     }
     var LITE = REDUCED;
     if(LITE) TIER = 1;
@@ -4386,7 +4389,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
       seed();
     }
     function seed(){
-      var target = Math.round(Math.min(CAP, Math.max(16, (w * h) / ((TIER >= 1) ? 38000 : 17000))));
+      var target = Math.round(Math.min(CAP, Math.max(16, (w * h) / DENS)));   /* standalone: 등급별 DENS */
       pts = [];
       for(var i=0;i<target;i++){
         pts.push({
@@ -4414,7 +4417,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
           b = pts[j];
           dx = a.x-b.x; dy = a.y-b.y; d2 = dx*dx + dy*dy;
           if(d2 < LINK*LINK){
-            al = (1 - Math.sqrt(d2)/LINK) * 0.42;
+            al = (1 - Math.sqrt(d2)/LINK) * LALPHA;   /* standalone: 선이 적은 등급일수록 진하게 */
             ctx.strokeStyle = "rgba(120,190,255," + al.toFixed(3) + ")";
             ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();

@@ -29,6 +29,18 @@
   P4  구형 Safari 에서 부드러운 스크롤이 없다
       scroll-behavior 는 Safari 15.4 부터다. 미지원이면 rAF 로 대신 굴린다.
 
+  P6  저사양 판정이 내려지면 배경 별자리가 사라진다
+      applyTier() 가 점 개수(CAP·밀도)와 연결 거리(LINK)를 동시에 깎는다.
+      연결선 수는 점²×거리² 에 비례하므로 두 축을 같이 줄이면 곱으로 무너진다.
+      실측(1440x915): TIER0 캔버스의 1.634% → TIER1 0.111% = 15배 감소.
+      TIER2 는 LINK=0 이라 연결선이 아예 0개고 점 22개만 남는다.
+      감속모션(Windows "애니메이션 효과 표시" 끄기 = 회사 PC 기본값)이면 무조건
+      TIER1 이라, 그런 PC 에서는 "뒤에 별자리가 안 나오는" 상태로 보인다.
+
+      부하를 줄이는 실제 지렛대는 프레임 간격(FRAME_MS)과 dpr=1 이지 기하 밀도가
+      아니다. 프레임 스로틀은 그대로 두고 밀도·연결거리만 되살린다.
+      TIER0 은 한 값도 건드리지 않는다 — 일반 PC 의 모양은 지금 그대로다.
+
   P5  리빌 안전망 · 높이 재측정
       옵저버가 어떤 이유로든 놓친 .reveal 은 보이는 순간 강제로 켠다.
       내용이 다 들어온 뒤 resize 이벤트를 한 번 쏴 fitScreens 를 다시 재게 한다.
@@ -62,6 +74,36 @@ P2_TO = """  @media (prefers-reduced-motion:reduce){
     .reveal{opacity:0;transform:none;transition:opacity .5s ease}
     .reveal.in{opacity:1}
   }"""
+
+# ---------------------------------------------------------------- P6
+# 저부하 등급에서도 별자리가 읽히도록 밀도·연결거리를 되살린다.
+# 비용은 프레임 스로틀(FRAME_MS)과 dpr=1 로 계속 억제한다.
+#
+#   1440x915(=1,317,600px) 기준 점 개수 · 상대 연결선량 · 상대 CPU
+#     TIER0  78점 LINK150 60fps  → 선 1.00 · 부하 1.00   (변경 없음)
+#     TIER1  60점 LINK150 24fps  → 선 0.59 · 부하 0.24   (기존 29점 LINK104 = 선 0.07)
+#     TIER2  44점 LINK132 18fps  → 선 0.25 · 부하 0.10   (기존 22점 LINK0   = 선 0)
+P6A_FROM = """    function applyTier(){
+      if(TIER >= 2){      LINK = 0;   SPEED = 0.10; CAP = 22; FRAME_MS = 50; }
+      else if(TIER >= 1){ LINK = 104; SPEED = 0.12; CAP = 34; FRAME_MS = 42; }
+      else {              LINK = 150; SPEED = 0.30; CAP = 120; FRAME_MS = 0;  }
+    }"""
+P6A_TO = """    /* standalone: DENS(1점당 면적) · LALPHA(연결선 불투명도) 를 등급별로 함께 잡는다.
+       저부하 등급에서 별자리가 사라지던 원인이 밀도와 연결거리의 동시 감축이었다. */
+    var DENS = 17000, LALPHA = 0.42;
+    function applyTier(){
+      if(TIER >= 2){      LINK = 132; SPEED = 0.09; CAP = 44;  FRAME_MS = 55; DENS = 30000; LALPHA = 0.54; }
+      else if(TIER >= 1){ LINK = 150; SPEED = 0.12; CAP = 64;  FRAME_MS = 42; DENS = 22000; LALPHA = 0.50; }
+      else {              LINK = 150; SPEED = 0.30; CAP = 120; FRAME_MS = 0;  DENS = 17000; LALPHA = 0.42; }
+    }"""
+
+P6B_FROM = "      var target = Math.round(Math.min(CAP, Math.max(16, (w * h) / ((TIER >= 1) ? 38000 : 17000))));"
+P6B_TO = "      var target = Math.round(Math.min(CAP, Math.max(16, (w * h) / DENS)));   /* standalone: 등급별 DENS */"
+
+P6C_FROM = """          if(d2 < LINK*LINK){
+            al = (1 - Math.sqrt(d2)/LINK) * 0.42;"""
+P6C_TO = """          if(d2 < LINK*LINK){
+            al = (1 - Math.sqrt(d2)/LINK) * LALPHA;   /* standalone: 선이 적은 등급일수록 진하게 */"""
 
 # ---------------------------------------------------------------- P3
 GUARD = """<body>
@@ -197,6 +239,9 @@ def patch(src_text: str) -> str:
     steps = [
         ("P1 파티클 재시작", P1_FROM, P1_TO),
         ("P2 감속모션 리빌 페이드", P2_FROM, P2_TO),
+        ("P6a 등급별 밀도·연결거리 재조정", P6A_FROM, P6A_TO),
+        ("P6b 점 개수 산식", P6B_FROM, P6B_TO),
+        ("P6c 연결선 불투명도", P6C_FROM, P6C_TO),
         ("P3 오프라인 가드 주입", "<body>", GUARD),
         ("P4·P5 복원 레이어 주입", "</body>", RESILIENCE),
     ]
