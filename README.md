@@ -12,6 +12,7 @@
 | **V12~V15** | 전폭 레이아웃 · 4화면 여백 정리 · 히어로 강화 · 카드 확대 · 디자인 조정 변수 |
 | **MAPS V1** | 위 결과를 확정한 스냅샷. `releases/MAPS-V1/` 폴더. |
 | **MAPS V2** | 브랜드 AIMS → MAPS · 막대차트 높이 연동 버그 수정 · TOP5 즐겨찾기 위치 · AI Agent 등록 버튼 연결. `releases/MAPS-V2/`. |
+| **MAPS V3** | AI 매니저 추천을 챗봇 3단계 위저드로 이전 · 공지 더보기/글쓰기 정상화 · 푸터 커뮤니티 링크 연결 · 톱니바퀴를 설정 패널로 · 맨 위로 버튼 · 하단 고정 검색/채팅 바. `releases/MAPS-V3/`. |
 
 > 로컬 환경에서는 V8까지 진행되었으나, 이 저장소에는 그 최신 결과물을 **V1**(기준선)으로 등록했습니다.
 > 이후 이 저장소에서의 변경은 V2, V3… 으로 이어갑니다.
@@ -22,7 +23,8 @@
 index.html                포털 화면 전체 (HTML + CSS + JS 단일 파일)
 tools/build_preview.py    디자인 미리보기 생성 스크립트
 releases/MAPS-V1/         확정 버전 스냅샷
-releases/MAPS-V2/         확정 버전 스냅샷 (최신)
+releases/MAPS-V2/         확정 버전 스냅샷
+releases/MAPS-V3/         확정 버전 스냅샷 (최신)
 docs/기능-사양-작성법.md   AI 매니저 추천·Agent 등록·챗봇 기능 지시 방법
 preview/                  빌드 산출물 (git 제외 — 언제든 재생성 가능)
 ```
