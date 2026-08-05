@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>히어로 비디오 템플릿 (3~8초 구간 반복)</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+        }
+
+        .hero-section {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .hero-video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            z-index: -2;
+            transform: translate(-50%, -50%);
+            object-fit: cover;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: -1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            color: #ffffff;
+            max-width: 800px;
+            padding: 20px;
+            animation: fadeIn 1.5s ease-out;
+        }
+
+        .hero-content h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .hero-content p {
+            font-size: 1.5rem;
+            font-weight: 300;
+            margin-bottom: 40px;
+        }
+
+        .hero-btn {
+            display: inline-block;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #fff;
+            background-color: transparent;
+            border: 2px solid #fff;
+            border-radius: 30px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .hero-btn:hover {
+            background-color: #fff;
+            color: #000;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <section class="hero-section">
+        <!-- HTML의 loop 속성을 빼고 JavaScript로 루프를 제어합니다. URL 뒤에 #t=3,8 을 붙여 미디어 프래그먼트 적용 -->
+        <video id="bg-video" class="hero-video" autoplay muted playsinline>
+            <source src="https://www.lgensol.com/inc/video/video_main01.mp4#t=3,8" type="video/mp4">
+            여러분의 브라우저가 동영상을 지원하지 않습니다.
+        </video>
+
+        <div class="hero-overlay"></div>
+
+        <div class="hero-content">
+            <h1>EMPOWER<br>EVERY POSSIBILITY</h1>
+            <p>미래를 움직이는 에너지, 어디에나 있습니다.</p>
+            <a href="#" class="hero-btn">더 알아보기</a>
+        </div>
+
+    </section>
+
+    <!-- 3~8초 구간만 반복되도록 제어하는 자바스크립트 -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const video = document.getElementById("bg-video");
+
+            const startTime = 3.0; // 시작 초
+            const endTime = 8.0;   // 종료 초
+
+            // 메타데이터가 로드되면 시작 시간으로 이동
+            video.addEventListener("loadedmetadata", function() {
+                video.currentTime = startTime;
+            });
+
+            // 시간이 업데이트 될 때마다 체크하여 8초가 넘어가면 3초로 되돌림
+            video.addEventListener("timeupdate", function() {
+                if (video.currentTime >= endTime) {
+                    video.currentTime = startTime;
+                    video.play(); // 루프될 때 일시정지되는 현상 방지
+                }
+            });
+        });
+    </script>
+</body>
+</html>
