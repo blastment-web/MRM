@@ -80,8 +80,24 @@ from pathlib import Path
 from demo_data import BOARD, LOUNGE, SHARE
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_SRC = ROOT / "releases" / "MAPS-V3" / "index.html"
-DEFAULT_OUT = ROOT / "releases" / "MAPS-V3" / "index.standalone.html"
+
+
+def latest_release() -> Path:
+    """releases/MAPS-V<n>/ 중 번호가 가장 큰 것. 버전이 늘어도 손댈 필요가 없게."""
+    dirs = []
+    for d in (ROOT / "releases").glob("MAPS-V*"):
+        if d.is_dir() and (d / "index.html").is_file():
+            tail = d.name[len("MAPS-V"):]
+            if tail.isdigit():
+                dirs.append((int(tail), d))
+    if not dirs:
+        raise SystemExit("[중단] releases/MAPS-V<n>/index.html 을 찾지 못했습니다.")
+    return max(dirs)[1]
+
+
+DEFAULT_DIR = latest_release()
+DEFAULT_SRC = DEFAULT_DIR / "index.html"
+DEFAULT_OUT = DEFAULT_DIR / "index.standalone.html"
 
 
 # ---------------------------------------------------------------- P1
@@ -447,24 +463,37 @@ def demo_block() -> str:
     return out
 
 
+# 별자리 파티클을 손보는 패치들. V4 부터 히어로가 배경 영상으로 바뀌어 이 코드가
+# 아예 없으므로, 앵커가 0개면 "해당 없음"으로 건너뛴다. 다만 2개 이상이면 여전히
+# 중단한다 — 그건 구조가 예상과 다르다는 뜻이지 부재가 아니다.
+PARTICLE_STEPS = [
+    ("P1 파티클 재시작", lambda: (P1_FROM, P1_TO)),
+    ("P6a 등급 고정", lambda: (P6A_FROM, P6A_TO)),
+    ("P6b 점 개수 산식", lambda: (P6B_FROM, P6B_TO)),
+    ("P9a 연결선 드로우 콜 일괄화", lambda: (P9A_FROM, P9A_TO)),
+    ("P9b 점 드로우 콜 일괄화", lambda: (P9B_FROM, P9B_TO)),
+    ("P9c 적응형 강등 중지", lambda: (P9C_FROM, P9C_TO)),
+    ("P9d 동일 크기 resize 의 재배치 차단", lambda: (P9D_FROM, P9D_TO)),
+]
+
+
 def patch(src_text: str) -> str:
-    """치환을 하나라도 놓치면 조용히 넘어가지 않고 실패시킨다."""
+    """치환을 하나라도 놓치면 조용히 넘어가지 않고 실패시킨다.
+    단, 파티클 관련 패치는 대상 코드가 없는 버전(V4~)에서 건너뛴다."""
+    optional = {label for label, _ in PARTICLE_STEPS}
     steps = [
-        ("P1 파티클 재시작", P1_FROM, P1_TO),
+        *[(label, *mk()) for label, mk in PARTICLE_STEPS],
         *P7_CSS,
         *P7_JS,
-        ("P6a 등급별 밀도·연결거리 재조정", P6A_FROM, P6A_TO),
-        ("P6b 점 개수 산식", P6B_FROM, P6B_TO),
-        ("P9a 연결선 드로우 콜 일괄화", P9A_FROM, P9A_TO),
-        ("P9b 점 드로우 콜 일괄화", P9B_FROM, P9B_TO),
-        ("P9c 적응형 강등 중지 — 재배치 깜빡임 제거", P9C_FROM, P9C_TO),
-        ("P9d 동일 크기 resize 의 재배치 차단", P9D_FROM, P9D_TO),
         ("P3 오프라인 가드 주입", "<body>", GUARD),
         ("P8·P4·P5 데모 데이터 + 복원 레이어 주입", "</body>", demo_block() + RESILIENCE),
     ]
     out = src_text
     for label, needle, repl in steps:
         n = out.count(needle)
+        if n == 0 and label in optional:
+            print(f"  – {label}: 해당 코드 없음 — 건너뜀")
+            continue
         if n != 1:
             raise SystemExit(f"[중단] {label}: 앵커를 {n}번 찾았습니다(1이어야 함) — 원본 구조가 바뀌었습니다.\n  앵커: {needle[:70]!r}")
         out = out.replace(needle, repl, 1)
@@ -473,17 +502,24 @@ def patch(src_text: str) -> str:
 
 
 def main() -> None:
-    src = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_SRC
-    out = Path(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_OUT
+    src = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else DEFAULT_SRC
+    out = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else DEFAULT_OUT
     if not src.is_file():
         raise SystemExit(f"[중단] 입력 파일이 없습니다: {src}")
 
+    def show(p: Path) -> str:
+        """저장소 안이면 짧게, 밖이면 절대경로 그대로."""
+        try:
+            return str(p.relative_to(ROOT))
+        except ValueError:
+            return str(p)
+
     text = src.read_text(encoding="utf-8")
-    print(f"입력: {src.relative_to(ROOT)}  ({len(text):,} bytes)")
+    print(f"입력: {show(src)}  ({len(text):,} bytes)")
     result = patch(text)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(result, encoding="utf-8")
-    print(f"출력: {out.relative_to(ROOT)}  ({len(result):,} bytes)")
+    print(f"출력: {show(out)}  ({len(result):,} bytes)")
 
 
 if __name__ == "__main__":
