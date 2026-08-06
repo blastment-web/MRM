@@ -1137,7 +1137,8 @@
       linear-gradient(180deg, transparent 68%, var(--ink) 100%)}
   /* 카탈로그 화면은 내용이 한 화면보다 길 수 있다 — 위에서부터 정렬해 제목이 네비 바로 아래에 붙게 한다 */
   #secTop5,#secPlatform,#secCommunity{justify-content:flex-start}
-  #secTop5 .sec-head,#secPlatform .sec-head,#secCommunity .sec-head{margin-bottom:clamp(14px,2.4vh,28px)}
+  #secTop5 .sec-head,#secPlatform .sec-head,#secCommunity .sec-head,
+  #secDash .sec-head{margin-bottom:clamp(14px,2.4vh,28px)}
   .home-inner{
     max-width:1320px;margin:0 auto;padding:0 28px;position:relative;z-index:2;width:100%;
     display:flex;flex-direction:column;gap:clamp(14px,2.4vh,30px)}
@@ -1364,6 +1365,8 @@
 
   /* ---------- 액션 버튼: 3열 위로 올려 우측 정렬 ---------- */
   .home-actions{justify-content:flex-end;margin-bottom:0}
+  /* V4-2) 대시보드 화면의 등록 버튼을 헤드 쪽으로 조금 올린다 */
+  #secDash .home-actions{margin-top:clamp(-14px,-1.2vh,-4px);margin-bottom:clamp(4px,1vh,10px)}
 
   /* ---------- 하단 3패널: 현황 | 차트 | 공지 ---------- */
   .home-cols{grid-template-columns:.9fr 1fr 1.25fr;gap:16px;align-items:stretch}
@@ -1988,7 +1991,7 @@
     <div class="sec-inner">
       <div class="sec-head">
         <div class="sec-eyebrow reveal">대시보드</div>
-        <h2 class="sec-title reveal" data-d="1">센터 <span class="grad">AI Agent</span> 현황을 한눈에</h2>
+        <h2 class="sec-title reveal" data-d="1">생산기술혁신센터 <span class="grad">AI Agent</span> 현황</h2>
         <p class="sec-desc reveal" data-d="2">전체 Agent와 참여 팀, 카테고리별 분포, 그리고 공지사항을 한 화면에서 확인합니다.</p>
       </div>
       <div class="home-actions reveal" data-d="3">
@@ -2195,7 +2198,7 @@
     </div>
   </div>
   <div class="foot-legal">
-    <span>생산기술혁신센터 AI 플랫폼 v0.1 · 사내 전용</span>
+    <span>생산기술혁신센터 AI 플랫폼 v1.0 · 사내 전용</span>
     <span class="footer-credit">Made by 생산기술혁신센터</span>
     <span id="updated"></span>
   </div>
@@ -2271,7 +2274,7 @@
       <div class="field"><label>기술그룹</label><input id="rqOrg" placeholder="예 : 전극기술그룹"></div>
       <div class="field"><label>팀</label><input id="rqTeam" maxlength="60" placeholder="예 : 믹싱공정기술팀"></div>
       <div class="field"><label>설명</label><textarea id="rqDesc" rows="3" placeholder="AI Agent에 대한 부연설명 기입"></textarea></div>
-      <div class="field"><label>기능추가</label>
+      <div class="field"><label>카테고리</label>
         <div class="feat-checks">
           <label class="feat-item"><input type="checkbox" class="rqFeat" value="新공정/공법 개발"> 新공정/공법 개발</label>
           <label class="feat-item"><input type="checkbox" class="rqFeat" value="해외법인 양산 지원"> 해외법인 양산 지원</label>
@@ -4859,6 +4862,9 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
   var NOTICE_SAMPLE = [
     {id:0, title:"MAPS 오픈 안내 — 센터 업무 카테고리별 AI Agent를 한 곳에서", ts:"2026-08-04", category:"공지"},
     {id:0, title:"AI Agent 등록 신청 절차 안내", ts:"2026-08-01", category:"안내"},   /* 공지 아님 — 필터에서 빠진다 */
+    {id:0, title:"AI Agent 담당자 지정 및 운영 책임 안내", ts:"2026-07-26", category:"공지"},
+    {id:0, title:"2분기 AI Agent 활용 실적 집계 결과", ts:"2026-07-19", category:"공지"},
+    {id:0, title:"사내 AI 활용 가이드라인 개정 시행", ts:"2026-07-12", category:"공지"},
     {id:0, title:"8월 사내 AI 활용 교육 일정 안내", ts:"2026-07-30", category:"교육"},
     {id:0, title:"조직별 담당 AI Agent 배정 현황 공유", ts:"2026-07-28", category:"공지"},
     {id:0, title:"TOP5 좋아요 집계 기준 안내", ts:"2026-07-24", category:"안내"},
@@ -4867,8 +4873,10 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     {id:0, title:"신규 AI Agent 아이디어 제안 상시 접수", ts:"2026-07-15", category:"안내"}
   ];
   /* V3) 더보기 = 게시판 이동이 아니라 목록 펼치기. NOTICE_TOTAL 은 자르기 전 총계다. */
-  /* V4) 6) 한 화면에서 잘리지 않도록 4건까지만 · 7) [공지] 글만 노출 */
-  var NOTICE_N = 4, NOTICE_TOTAL = 0;
+  /* V4) 6) 한 화면에서 잘리지 않도록 기본 3건 — 나머지는 더보기로 펼친다
+         7) [공지] 글만 노출 */
+  var NOTICE_BASE = 3;
+  var NOTICE_N = NOTICE_BASE, NOTICE_TOTAL = 0;
   function isNoticeOnly(p){
     var c = String((p && p.category) || "").trim();
     var t = String((p && p.title) || "");
@@ -4910,7 +4918,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     });
     var _more = document.getElementById("ihNoticeMore");
     if(_more){
-      _more.style.display = (NOTICE_TOTAL > 4) ? "" : "none";
+      _more.style.display = (NOTICE_TOTAL > NOTICE_BASE) ? "" : "none";
       _more.textContent   = (NOTICE_N >= NOTICE_TOTAL) ? "접기" : "더보기 +";
     }
   };
@@ -5239,7 +5247,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     var c = mb.cloneNode(true);
     mb.parentNode.replaceChild(c, mb);
     c.addEventListener("click", function(){
-      NOTICE_N = (NOTICE_N > 4) ? 4 : Math.max(4, NOTICE_TOTAL);
+      NOTICE_N = (NOTICE_N > NOTICE_BASE) ? NOTICE_BASE : Math.max(NOTICE_BASE, NOTICE_TOTAL);
       window.refreshNoticeHub();
       fitScreens();
     });

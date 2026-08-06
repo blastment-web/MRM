@@ -59,6 +59,12 @@ def common(s: str) -> str:
         '<textarea id="rqDesc" rows="3" placeholder="AI Agent에 대한 부연설명 기입"></textarea>',
         "1-c 설명 플레이스홀더",
     )
+    s = sub1(
+        s,
+        "<div class=\"field\"><label>기능추가</label>",
+        "<div class=\"field\"><label>카테고리</label>",
+        "1-h 기능추가 → 카테고리",
+    )
     # 기능추가 → 카테고리 4종. ORG_ORDER 와 같은 문자열을 쓴다.
     s = sub1(
         s,
@@ -126,6 +132,14 @@ def common(s: str) -> str:
         "3-c 푸터 강조 규칙",
     )
 
+    # ---- 3-d) 푸터 버전 표기 --------------------------------------------
+    s = sub1(
+        s,
+        "<span>생산기술혁신센터 AI 플랫폼 v0.1 · 사내 전용</span>",
+        "<span>생산기술혁신센터 AI 플랫폼 v1.0 · 사내 전용</span>",
+        "3-d 푸터 버전 v0.1 → v1.0",
+    )
+
     # ---- 4) "준비중" 앞 기호를 다른 칩과 같은 ● 로 -----------------------
     # 두 곳이다: 범례 칩(정적 마크업)과 카드 배지(statusBadge). 카드 배지 쪽이
     # 화면에서 훨씬 많이 보이므로 빠뜨리면 고친 티가 안 난다.
@@ -172,8 +186,10 @@ def common(s: str) -> str:
     s = sub1(
         s,
         "  var NOTICE_N = 5, NOTICE_TOTAL = 0;",
-        "  /* V4) 6) 한 화면에서 잘리지 않도록 4건까지만 · 7) [공지] 글만 노출 */\n"
-        "  var NOTICE_N = 4, NOTICE_TOTAL = 0;\n"
+        "  /* V4) 6) 한 화면에서 잘리지 않도록 기본 3건 — 나머지는 더보기로 펼친다\n"
+        "         7) [공지] 글만 노출 */\n"
+        "  var NOTICE_BASE = 3;\n"
+        "  var NOTICE_N = NOTICE_BASE, NOTICE_TOTAL = 0;\n"
         "  function isNoticeOnly(p){\n"
         "    var c = String((p && p.category) || \"\").trim();\n"
         "    var t = String((p && p.title) || \"\");\n"
@@ -193,21 +209,25 @@ def common(s: str) -> str:
     s = sub1(
         s,
         '      _more.style.display = (NOTICE_TOTAL > 5) ? "" : "none";',
-        '      _more.style.display = (NOTICE_TOTAL > 4) ? "" : "none";',
+        '      _more.style.display = (NOTICE_TOTAL > NOTICE_BASE) ? "" : "none";',
         "6-c 더보기 노출 기준",
     )
     s = sub1(
         s,
         "      NOTICE_N = (NOTICE_N > 5) ? 5 : Math.max(5, NOTICE_TOTAL);",
-        "      NOTICE_N = (NOTICE_N > 4) ? 4 : Math.max(4, NOTICE_TOTAL);",
+        "      NOTICE_N = (NOTICE_N > NOTICE_BASE) ? NOTICE_BASE : Math.max(NOTICE_BASE, NOTICE_TOTAL);",
         "6-d 더보기 토글 기준",
     )
-    # 샘플 공지도 [공지] 표기를 갖도록 제목을 손본다 — 필터를 통과하는 3건이 남는다
+    # 폴백 샘플의 [공지] 글은 3건뿐이라 그대로 두면 더보기가 펼칠 게 없다.
+    # 백엔드가 없는 환경에서도 더보기 동작을 눈으로 확인할 수 있게 3건을 더 넣는다.
     s = sub1(
         s,
         '{id:0, title:"AI Agent 등록 신청 절차 안내", ts:"2026-08-01", category:"안내"},',
-        '{id:0, title:"AI Agent 등록 신청 절차 안내", ts:"2026-08-01", category:"안내"},   /* 공지 아님 — 필터에서 빠진다 */',
-        "7-e 샘플 주석",
+        '{id:0, title:"AI Agent 등록 신청 절차 안내", ts:"2026-08-01", category:"안내"},   /* 공지 아님 — 필터에서 빠진다 */\n'
+        '    {id:0, title:"AI Agent 담당자 지정 및 운영 책임 안내", ts:"2026-07-26", category:"공지"},\n'
+        '    {id:0, title:"2분기 AI Agent 활용 실적 집계 결과", ts:"2026-07-19", category:"공지"},\n'
+        '    {id:0, title:"사내 AI 활용 가이드라인 개정 시행", ts:"2026-07-12", category:"공지"},',
+        "7-e 폴백 샘플 [공지] 3건 추가 (더보기 확인용)",
     )
     return s
 
@@ -370,7 +390,7 @@ def v4_2(s: str) -> str:
         + '    <div class="sec-inner">\n'
         + '      <div class="sec-head">\n'
         + '        <div class="sec-eyebrow reveal">대시보드</div>\n'
-        + '        <h2 class="sec-title reveal" data-d="1">센터 <span class="grad">AI Agent</span> 현황을 한눈에</h2>\n'
+        + '        <h2 class="sec-title reveal" data-d="1">생산기술혁신센터 <span class="grad">AI Agent</span> 현황</h2>\n'
         + '        <p class="sec-desc reveal" data-d="2">전체 Agent와 참여 팀, 카테고리별 분포, 그리고 공지사항을 한 화면에서 확인합니다.</p>\n'
         + '      </div>\n'
         + rest_html
@@ -420,6 +440,26 @@ def v4_2(s: str) -> str:
     s = sub1(s, '<a class="cta-primary" href="#secTop5">AI Agent 둘러보기 <span>→</span></a>',
              '<a class="cta-primary" href="#secDash">AI Agent 둘러보기 <span>→</span></a>',
              "V4-2-g CTA 목적지")
+
+    # ---- #secDash 섹션 헤드 여백을 다른 섹션과 맞춘다 --------------------
+    # 이 목록에 #secDash 가 빠져 있어 .sec-head 가 기본 margin-bottom:52px 를 쓴다.
+    # 그래서 헤드와 3패널 사이가 넓게 벌어지고 등록 버튼이 아래로 밀려 있었다.
+    s = sub1(
+        s,
+        "  #secTop5 .sec-head,#secPlatform .sec-head,#secCommunity .sec-head{margin-bottom:clamp(14px,2.4vh,28px)}",
+        "  #secTop5 .sec-head,#secPlatform .sec-head,#secCommunity .sec-head,\n"
+        "  #secDash .sec-head{margin-bottom:clamp(14px,2.4vh,28px)}",
+        "V4-2-i #secDash 섹션 헤드 여백",
+    )
+    # 등록 버튼 줄도 3패널 쪽으로 조금 더 붙인다
+    s = sub1(
+        s,
+        "  .home-actions{justify-content:flex-end;margin-bottom:0}",
+        "  .home-actions{justify-content:flex-end;margin-bottom:0}\n"
+        "  /* V4-2) 대시보드 화면의 등록 버튼을 헤드 쪽으로 조금 올린다 */\n"
+        "  #secDash .home-actions{margin-top:clamp(-14px,-1.2vh,-4px);margin-bottom:clamp(4px,1vh,10px)}",
+        "V4-2-j 등록 버튼 위치",
+    )
 
     # ---- 화면 높이 자동 맞춤 대상에 #secDash 추가 ------------------------
     s = sub1(s, 'var FIT_IDS = ["secHome", "secTop5", "secPlatform"];',
