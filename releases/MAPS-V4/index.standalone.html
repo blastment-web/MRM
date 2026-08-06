@@ -710,15 +710,37 @@
     display:flex;align-items:center;overflow:hidden}
   /* V4) 히어로 배경 영상 — 별자리 캔버스(#pxNet)를 대체한다.
      콘텐츠(.home-inner)는 z-index 2, 섹션 그라디언트(#secHome::after)는 1 이므로
-     영상과 딤은 0 에 두고 DOM 순서로 딤이 영상 위에 오게 한다. */
-  #heroVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+     영상과 딤은 0 에 두고 DOM 순서로 딤이 영상 위에 오게 한다.
+
+     · top 은 0 이 아니라 --nav-h 다. 헤더가 position:fixed 라 최상단에서는 배경이
+       transparent 인데, 영상이 0 부터 깔리면 메뉴 글자가 영상 위에 얹힌다.
+       --nav-h 는 980px 이하에서 60px 으로 재정의되므로 변수로 두면 반응형이 따라온다.
+     · 마스크로 아래쪽을 지운다 — 영상을 히어로 밴드로 한정해, 그 아래 3패널은
+       원래 페이지 배경 위에 놓이게 한다(패널에 불투명 판을 깔지 않아도 되는 이유).
+       페이드 구간은 CTA 버튼이 끝난 뒤 ~ 패널이 시작하기 전의 빈 곳이어야 하는데,
+       그 위치가 레이아웃 전환에 따라 세 구간으로 갈린다(영상 높이 대비 실측):
+         폭 >1200px   CTA 끝 30~36% · 패널 상단 45~53%  → 36% ~ 44%
+         폭 901~1200  CTA 끝 28~31% · 패널 상단 42~49%  → 32% ~ 41%
+         폭 ≤900      CTA 끝 20~25% · 패널 상단 33~40%  → 26% ~ 32%
+       (900px 이하에서 --nav-h 가 60 으로 줄며 비율이 한 번 더 바뀐다)
+     · height 는 calc 로 못 박는다. <video> 는 대체 요소라 height:auto 면 top/bottom
+       constraint 가 아니라 영상의 고유 종횡비로 높이를 잡아 섹션 아래가 빈다. */
+  #heroVideo,#heroVeil{
+    --mask-a:36%; --mask-b:44%;
+    -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 var(--mask-a),transparent var(--mask-b));
+            mask-image:linear-gradient(180deg,#000 0%,#000 var(--mask-a),transparent var(--mask-b))}
+  @media(max-width:1200px){#heroVideo,#heroVeil{--mask-a:32%;--mask-b:41%}}
+  @media(max-width:900px){#heroVideo,#heroVeil{--mask-a:26%;--mask-b:32%}}
+  #heroVideo{position:absolute;top:var(--nav-h);left:0;right:0;
+    width:100%;height:calc(100% - var(--nav-h));object-fit:cover;
     display:block;z-index:0;pointer-events:none;border:0;background:var(--ink)}
   #heroVideo[hidden]{display:none}
-  /* 딤 — 영상 위 글자 대비 확보. 아래쪽은 패널이 얹히므로 더 어둡게 깔아
-     현황·차트·공지 카드가 영상 위에서도 읽히게 한다. */
-  #heroVeil{position:absolute;inset:0;z-index:0;pointer-events:none;
+  /* 딤 — 영상 위 글자 대비 확보. 아래를 보호할 이유가 없어졌으므로(마스크로 영상이
+     패널 전에 사라진다) 완만한 세로 그라디언트만 남긴다. */
+  #heroVeil{position:absolute;top:var(--nav-h);left:0;right:0;height:calc(100% - var(--nav-h));z-index:0;pointer-events:none;
     background:
-      linear-gradient(180deg, rgba(5,7,14,.34) 0%, rgba(5,7,14,.46) 42%, rgba(5,7,14,.72) 78%, rgba(5,7,14,.88) 100%)}
+      linear-gradient(180deg, rgba(5,7,14,.30) 0%, rgba(5,7,14,.42) 46%, rgba(5,7,14,.55) 100%)}
+  #heroVeil[hidden]{display:none}
   .hero::after{
     content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
     background:
@@ -1494,13 +1516,8 @@
   #secHome.tighter .hero .sub{display:block}
 
   #secHome .dash-panel{padding:20px 22px 18px}
-  /* V4) 배경이 영상으로 바뀌면서 패널 너머로 영상이 비쳐 글자 대비가 떨어졌다.
-     기존 반투명 그라디언트는 그대로 두고 그 아래에 불투명 판을 한 겹 깐다.
-     backdrop-filter 는 쓰지 않는다 — 스크롤 중 합성 비용이 크다. */
-  #secHome .dash-panel{
-    background:
-      linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.010)),
-      rgba(9,13,24,.88)}
+  /* V4) 패널 배경은 V3 그대로 둔다(불투명 판 없음).
+     영상이 마스크로 패널 위에서 끝나므로 뒤에 비칠 것이 없다 — #heroVideo 주석 참고. */
   #secHome .p-stats .stat-row{gap:10px}
   #secHome .stat-ico{width:clamp(40px,5.8vh,68px);height:clamp(40px,5.8vh,68px);
     font-size:clamp(19px,2.8vh,31px)}
@@ -1595,12 +1612,17 @@
       radial-gradient(820px 600px at 84% 12%, rgba(139,123,255,.17), transparent 62%),
       radial-gradient(760px 560px at 12% 92%, rgba(139,123,255,.12), transparent 60%),
       linear-gradient(180deg, transparent 66%, var(--ink) 100%)}
-  /* 파티클 위 글씨가 묻히지 않도록 제목 뒤에만 아주 옅은 어둠막 */
   #secHome .hero{position:relative;z-index:2}
-  #secHome .hero::before{
-    content:"";position:absolute;z-index:-1;pointer-events:none;
-    left:calc(var(--gut) * -0.5);right:auto;top:-4%;width:min(1180px,86%);height:108%;
-    background:radial-gradient(60% 70% at 26% 46%, rgba(5,7,14,.62), transparent 72%)}
+  /* V4) 배경이 영상으로 바뀌면서 제목 뒤 어둠막(.hero::before radial-gradient)이
+     큰 어두운 타원으로 드러났다 — 거의 검정이던 별자리 배경에서는 안 보이던 것이다.
+     박스형 스크림을 걷고 글자 자체에 그림자를 준다. 윤곽만 따라가므로 판이 안 보인다.
+     제목은 text-shadow 가 아니라 filter:drop-shadow 다 — 안의 <span class="grad"> 가
+     background-clip:text + text-fill-color:transparent 라, text-shadow 를 주면 투명한
+     글자 속으로 그림자가 비쳐 지저분해진다. drop-shadow 는 렌더 결과의 알파를 따른다. */
+  #secHome .hero-title{filter:drop-shadow(0 2px 12px rgba(5,7,14,.85))}
+  #secHome .hero .eyebrow,
+  #secHome .hero-tagline,
+  #secHome .hero .sub{text-shadow:0 1px 10px rgba(5,7,14,.8)}
 
 
   /* ==========================================================================
@@ -4412,6 +4434,9 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
       if(dead) return;
       dead = true;
       v.hidden = true;
+      /* 딤도 같이 걷는다 — 영상이 없는데 옅은 띠만 남으면 그게 더 어색하다 */
+      var veil = document.getElementById("heroVeil");
+      if(veil) veil.hidden = true;
       pause();
     }
     v.addEventListener("error", fail, true);
