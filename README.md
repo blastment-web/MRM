@@ -1,6 +1,6 @@
 # MAPS · 생산기술혁신센터 AI 플랫폼
 
-**M**anufacturing **A**gent **P**latform & **S**hared-dashboard — 센터 업무 카테고리별 AI Agent를 한 곳에 모은 사내 포털.
+**M**anufacturing **A**I agent **P**latform & **S**hared-dashboard — 센터 업무 카테고리별 AI Agent를 한 곳에 모은 사내 포털.
 
 ## 버전
 
@@ -13,7 +13,8 @@
 | **MAPS V1** | 위 결과를 확정한 스냅샷. `releases/MAPS-V1/` 폴더. |
 | **MAPS V2** | 브랜드 AIMS → MAPS · 막대차트 높이 연동 버그 수정 · TOP5 즐겨찾기 위치 · AI Agent 등록 버튼 연결. `releases/MAPS-V2/`. |
 | **MAPS V3** | AI 매니저 추천을 챗봇 3단계 위저드로 이전 · 공지 더보기/글쓰기 정상화 · 푸터 커뮤니티 링크 연결 · 톱니바퀴를 설정 패널로 · 맨 위로 버튼 · 하단 고정 검색/채팅 바. `releases/MAPS-V3/`. |
-| **MAPS V4** | 대시보드 히어로 배경을 별자리 파티클에서 **배경 영상**으로 교체(3~8초 구간 반복). 파티클 코드 제거 · 패널 대비 보정 · 영상 차단 시 폴백. `releases/MAPS-V4/`. |
+| **MAPS V4-1** | V3 + 공통 수정 7건(등록 모달 개편 · 파우치/각형기술그룹 · MAPS 태그라인 · 준비중 아이콘 · 카탈로그 등록 버튼 · 공지 4건/[공지]만). **히어로는 V3 별자리 유지.** `releases/MAPS-V4-1/`. |
+| **MAPS V4-2** | V4-1 + 히어로를 **배경 영상**으로 교체하고 첫 화면(히어로만) / 대시보드(3패널) 두 화면으로 분리. `releases/MAPS-V4-2/`. |
 
 > 로컬 환경에서는 V8까지 진행되었으나, 이 저장소에는 그 최신 결과물을 **V1**(기준선)으로 등록했습니다.
 > 이후 이 저장소에서의 변경은 V2, V3… 으로 이어갑니다.
@@ -23,12 +24,14 @@
 ```
 index.html                포털 화면 전체 (HTML + CSS + JS 단일 파일)
 tools/build_preview.py    디자인 미리보기 생성 스크립트
+tools/build_v4.py         V3 → V4-1 / V4-2 생성 스크립트
 tools/build_standalone.py 단독 실행용 사본 생성 스크립트
 tools/demo_data.py        위 두 빌더가 공유하는 데모 데이터 (공지·공유·Q&A·게시판)
 releases/MAPS-V1/         확정 버전 스냅샷
 releases/MAPS-V2/         확정 버전 스냅샷
 releases/MAPS-V3/         확정 버전 스냅샷 + index.standalone.html
-releases/MAPS-V4/         확정 버전 스냅샷 (최신) + index.standalone.html
+releases/MAPS-V4-1/       확정 버전 스냅샷 (최신 · 별자리 히어로) + index.standalone.html
+releases/MAPS-V4-2/       확정 버전 스냅샷 (최신 · 영상 히어로) + index.standalone.html
 docs/기능-사양-작성법.md   AI 매니저 추천·Agent 등록·챗봇 기능 지시 방법
 preview/                  빌드 산출물 (git 제외 — 언제든 재생성 가능)
 ```
@@ -41,11 +44,11 @@ OS 의 감속모션 설정(회사 PC 기본값)에 걸리는 게이트와, 응�
 화면이 묶이는 문제 때문이다. 이때는 아래로 만든 사본을 건넨다.
 
 ```bash
-python3 tools/build_standalone.py       # → 최신 릴리스의 index.standalone.html
+python3 tools/build_v4.py                                  # V3 → V4-1 / V4-2
+python3 tools/build_standalone.py <입력> <출력>            # 단독 실행용 사본
 ```
 
-**로컬에서 켠 것과 화면·기능이 같아지는 것이 목표**다. 원본은 읽기만 하고 수정하지 않는다.
-인자를 주면 다른 버전도 빌드한다: `python3 tools/build_standalone.py <입력> <출력>`.
+**로컬에서 켠 것과 화면·기능이 같아지는 것이 목표**다. 두 빌더 모두 입력 원본은 읽기만 한다.
 고치는 항목과 Chromium 실측 비교는 각 릴리스의 `README.md` 참고.
 
 ## 화면을 보면서 직접 조정하기
@@ -76,13 +79,14 @@ python3 tools/build_preview.py          # → preview/aims-preview.html
 
 1. **메인 애플리케이션** — 대시보드 그리드, 세션/로그인, 관리자 콘솔, 게시판, Q&A, 공유 섹션, 챗봇, 팝업, 매뉴얼
 2. **브랜드 로고 애니메이션** — SVG 오케스트레이션 노드 (허브 ↔ 위성 노드 펄스, 무한 루프)
-3. **랜딩 인터랙션 레이어** — 히어로 배경 영상(V4 — V3 까지는 파티클 네트워크 canvas), 스크롤 리빌, STATS 카운트업, 고정 헤더 상태, 커뮤니티 카드 위임
+3. **랜딩 인터랙션 레이어** — 히어로 배경(V4-1 파티클 canvas / V4-2 영상), 스크롤 리빌, STATS 카운트업, 고정 헤더 상태, 커뮤니티 카드 위임
 
 ## 화면 구성 (세로 스크롤 랜딩)
 
 | 섹션 | ID | 내용 |
 |------|-----|------|
-| 대시보드(Hero) | `#secHome` | 배경 영상 + 메인 카피 + 현황·차트·공지 3패널 (V3 까지는 파티클 네트워크 배경) |
+| 대시보드(Hero) | `#secHome` | 메인 카피 + 현황·차트·공지 3패널. 배경은 V4-1 파티클 / V4-2 영상 |
+| 대시보드 (V4-2 전용) | `#secDash` | V4-2 에서 3패널이 이 섹션으로 분리됨 |
 | Our Mission | `#secMission` | 미션 문구 |
 | 플랫폼 목적 | `#secWhy` | 가치 3카드 |
 | Stats | `#secStats` | 조직/모듈/운영중/준비중 카운트 (STATE에서 자동 계산) |

@@ -715,7 +715,48 @@
   .hero{
     min-height:100vh;padding:calc(var(--nav-h) + 60px) 0 90px;
     display:flex;align-items:center;overflow:hidden}
-  #pxNet{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;pointer-events:none}
+  /* ===================== V4-2) 히어로 배경 영상 =====================
+     첫 화면은 메인 타이틀과 영상만 보인다. 3패널은 아래 #secDash 로 내려갔으므로
+     영상을 자를 이유가 없다 — 섹션(메뉴 아래~화면 끝) 전체를 그대로 채운다.
+     top 이 0 이 아니라 --nav-h 인 이유: header 가 position:fixed 이고 최상단에서
+     배경이 transparent 라, 0 부터 깔면 메뉴 글자가 영상 위에 얹힌다.
+     height 를 calc 로 못 박는 이유: <video> 는 대체 요소라 height:auto 면
+     top/bottom 이 아니라 영상의 고유 종횡비로 높이를 잡아 섹션 아래가 빈다. */
+  #heroVideo{position:absolute;top:var(--nav-h);left:0;right:0;
+    width:100%;height:calc(100% - var(--nav-h));object-fit:cover;
+    display:block;z-index:0;pointer-events:none;border:0;background:var(--ink)}
+  #heroVeil{position:absolute;top:var(--nav-h);left:0;right:0;height:calc(100% - var(--nav-h));
+    z-index:0;pointer-events:none;background:rgba(0,0,0,.4)}
+  #heroVideo[hidden],#heroVeil[hidden]{display:none}
+  /* 첫 화면은 히어로만 있으므로 세로 가운데로 모은다 */
+  #secHome{justify-content:center}
+  #secHome .home-inner{justify-content:center}
+  /* 문구는 영상 위에 얹힌다 — 박스형 스크림(.hero::before)은 밝은 영상에서 어두운
+     타원으로 드러나므로 쓰지 않고, 글자 자체에 그림자를 준다.
+     제목은 text-shadow 가 아니라 filter:drop-shadow 다. 안의 <span class="grad"> 가
+     background-clip:text + text-fill-color:transparent 라 text-shadow 는 투명한
+     글자 속으로 비쳐 지저분해진다. drop-shadow 는 렌더 결과의 알파를 따른다. */
+  #secHome .hero::before{display:none}
+  #secHome .hero-title{filter:drop-shadow(0 2px 14px rgba(5,7,14,.85))}
+  #secHome .hero .eyebrow,
+  #secHome .hero-tagline,
+  #secHome .hero .sub{text-shadow:0 1px 10px rgba(5,7,14,.85)}
+  /* 스크롤을 유도하는 힌트 — 첫 화면이 히어로뿐이라 아래가 있다는 신호가 필요하다 */
+  /* 하단 고정 검색바(.dockbar: bottom 18px + 높이 48px)를 피해 그 위에 둔다.
+     26px 에 두면 검색바에 정확히 가려진다. */
+  #heroScrollHint{position:absolute;left:50%;bottom:82px;transform:translateX(-50%);
+    z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;
+    background:none;border:0;padding:6px 10px;cursor:pointer;font-family:inherit;
+    font-size:11.5px;font-weight:700;letter-spacing:.14em;color:var(--txt-dim)}
+  #heroScrollHint:hover{color:var(--accent)}
+  #heroScrollHint .chev{width:16px;height:16px;border-right:2px solid currentColor;
+    border-bottom:2px solid currentColor;transform:rotate(45deg);animation:heroChev 1.8s ease-in-out infinite}
+  @keyframes heroChev{0%,100%{transform:rotate(45deg) translate(0,0);opacity:.55}
+    50%{transform:rotate(45deg) translate(3px,3px);opacity:1}}
+  @media (prefers-reduced-motion:reduce){#heroScrollHint .chev{animation:none}}
+  @media(max-width:900px){#heroScrollHint{bottom:70px}}
+  /* 챗봇 창이 열리면 검색바와 함께 물러난다 */
+  body.chatopen #heroScrollHint{opacity:0;pointer-events:none}
   .hero::after{
     content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
     background:
@@ -1467,56 +1508,57 @@
   }
 
   /* ---------- fitScreens 측정 보정 ----------
-     #pxNet 은 absolute 지만 style.height 에 px 이 박혀 있어 .measuring 중에도
-     scrollHeight 를 부풀렸다 → 대시보드가 늘 .tighter 로 눌린 채 여백만 남았다. */
-  .sec.screen.measuring #pxNet{display:none}
+     배경 레이어가 .measuring 중 scrollHeight 를 부풀리면 대시보드가 늘 .tighter 로
+     눌린 채 여백만 남는다. 측정 동안만 빼 둔다. (V3 의 #pxNet 자리) */
+  .sec.screen.measuring #heroVideo,
+  .sec.screen.measuring #heroVeil{display:none}
 
   /* ---------- 1) 대시보드 — 위아래 여백을 걷고 전체를 키운다 ---------- */
   #secHome{justify-content:flex-start;padding-top:calc(var(--nav-h) + 12px);padding-bottom:14px}
   #secHome.tight{padding-top:calc(var(--nav-h) + 10px);padding-bottom:12px}
-  #secHome .home-inner{flex:1;min-height:0;justify-content:center;gap:clamp(18px,4vh,46px)}
+  :is(#secHome,#secDash) .home-inner{flex:1;min-height:0;justify-content:center;gap:clamp(18px,4vh,46px)}
   /* 패널은 내용 높이를 쓴다 — flex:1 로 늘리면 막대와 빈칸만 커진다 */
-  #secHome .home-cols{flex:0 0 auto;grid-template-columns:1fr 1.62fr 1.24fr;gap:16px}
+  :is(#secHome,#secDash) .home-cols{flex:0 0 auto;grid-template-columns:1fr 1.62fr 1.24fr;gap:16px}
 
-  #secHome .hero .eyebrow{font-size:13px;letter-spacing:.13em;margin-bottom:clamp(6px,1.3vh,14px)}
-  #secHome .hero-title{font-size:min(4.9vw,78px);line-height:1.05}
-  #secHome .hero-tagline{font-size:clamp(13px,1.15vw,16px);margin-top:clamp(7px,1.3vh,14px)}
-  #secHome .hero .sub{font-size:clamp(13.5px,1.15vw,16.5px);max-width:820px;margin-top:clamp(5px,1vh,11px)}
-  #secHome .hero-cta{margin-top:clamp(12px,2vh,24px)}
-  #secHome .cta-primary,#secHome .cta-ghost{font-size:14.5px;padding:13px 28px}
-  #secHome .home-actions button{font-size:13.5px;padding:10px 19px}
-  #secHome.tighter .hero-title{font-size:min(3.5vw,46px)}
-  #secHome.tighter .hero .sub{display:block}
+  :is(#secHome,#secDash) .hero .eyebrow{font-size:13px;letter-spacing:.13em;margin-bottom:clamp(6px,1.3vh,14px)}
+  :is(#secHome,#secDash) .hero-title{font-size:min(4.9vw,78px);line-height:1.05}
+  :is(#secHome,#secDash) .hero-tagline{font-size:clamp(13px,1.15vw,16px);margin-top:clamp(7px,1.3vh,14px)}
+  :is(#secHome,#secDash) .hero .sub{font-size:clamp(13.5px,1.15vw,16.5px);max-width:820px;margin-top:clamp(5px,1vh,11px)}
+  :is(#secHome,#secDash) .hero-cta{margin-top:clamp(12px,2vh,24px)}
+  :is(#secHome,#secDash) .cta-primary,:is(#secHome,#secDash) .cta-ghost{font-size:14.5px;padding:13px 28px}
+  :is(#secHome,#secDash) .home-actions button{font-size:13.5px;padding:10px 19px}
+  :is(#secHome,#secDash).tighter .hero-title{font-size:min(3.5vw,46px)}
+  :is(#secHome,#secDash).tighter .hero .sub{display:block}
 
-  #secHome .dash-panel{padding:20px 22px 18px}
-  #secHome .p-stats .stat-row{gap:10px}
-  #secHome .stat-ico{width:clamp(40px,5.8vh,68px);height:clamp(40px,5.8vh,68px);
+  :is(#secHome,#secDash) .dash-panel{padding:20px 22px 18px}
+  :is(#secHome,#secDash) .p-stats .stat-row{gap:10px}
+  :is(#secHome,#secDash) .stat-ico{width:clamp(40px,5.8vh,68px);height:clamp(40px,5.8vh,68px);
     font-size:clamp(19px,2.8vh,31px)}
-  #secHome .stat-num{font-size:clamp(28px,4.5vh,54px)}
-  #secHome .stat-label{font-size:13px;white-space:nowrap}
+  :is(#secHome,#secDash) .stat-num{font-size:clamp(28px,4.5vh,54px)}
+  :is(#secHome,#secDash) .stat-label{font-size:13px;white-space:nowrap}
 
   /* 조직 필터: "전체 ~ 인프라그룹" 6개가 절대 두 줄로 내려가지 않는다.
      줄이지도 자르지도 않고 한 줄에 들어가도록 글자·여백을 폭에 맞춰 좁힌다. */
-  #secHome .p-chart .org-filter{
+  :is(#secHome,#secDash) .p-chart .org-filter{
     display:flex;flex-wrap:nowrap;gap:clamp(3px,.32vw,5px);
     margin-bottom:10px;padding-bottom:9px;overflow:hidden}
-  #secHome .org-chip{
+  :is(#secHome,#secDash) .org-chip{
     flex:0 0 auto;white-space:nowrap;
     font-size:clamp(9px,.72vw,10.5px);padding:5px clamp(5px,.55vw,9px);letter-spacing:-.02em}
-  #secHome .p-chart .cat-chart{
+  :is(#secHome,#secDash) .p-chart .cat-chart{
     flex:0 0 auto;min-height:clamp(130px,26vh,310px);max-height:clamp(130px,28vh,330px)}
-  #secHome .cc-num{font-size:15px}
-  #secHome .cc-name{font-size:12px;min-height:2.6em}
-  #secHome .cc-bar{width:clamp(34px,5.2vw,70px)}
+  :is(#secHome,#secDash) .cc-num{font-size:15px}
+  :is(#secHome,#secDash) .cc-name{font-size:12px;min-height:2.6em}
+  :is(#secHome,#secDash) .cc-bar{width:clamp(34px,5.2vw,70px)}
 
-  #secHome .p-notice .ih-pane{padding:20px 22px 16px}
-  #secHome .ih-pane-title{font-size:16px}
-  #secHome .ih-pane-btns .ih-more{font-size:12px;padding:5px 12px}
-  #secHome .ih-notice-head{font-size:12px;padding-bottom:9px;grid-template-columns:34px 1fr 70px}
-  #secHome .ih-notice{padding:15px 2px;grid-template-columns:34px 1fr 70px}
-  #secHome .ih-no{font-size:12.5px}
-  #secHome .ih-n-title{font-size:14.5px}
-  #secHome .ih-n-date{font-size:12.5px}
+  :is(#secHome,#secDash) .p-notice .ih-pane{padding:20px 22px 16px}
+  :is(#secHome,#secDash) .ih-pane-title{font-size:16px}
+  :is(#secHome,#secDash) .ih-pane-btns .ih-more{font-size:12px;padding:5px 12px}
+  :is(#secHome,#secDash) .ih-notice-head{font-size:12px;padding-bottom:9px;grid-template-columns:34px 1fr 70px}
+  :is(#secHome,#secDash) .ih-notice{padding:15px 2px;grid-template-columns:34px 1fr 70px}
+  :is(#secHome,#secDash) .ih-no{font-size:12.5px}
+  :is(#secHome,#secDash) .ih-n-title{font-size:14.5px}
+  :is(#secHome,#secDash) .ih-n-date{font-size:12.5px}
 
   /* ---------- 2) TOP5 — 남는 아래 여백을 절반으로 ---------- */
   #secTop5 .t5{min-height:clamp(240px,50svh,560px)}
@@ -1573,9 +1615,9 @@
   @media (max-width:900px){:root{--gut:16px}}
 
   /* ---------- 히어로 — 영역을 넓히고 배경을 진하게 ---------- */
-  #secHome .home-inner{justify-content:center;gap:clamp(20px,4.6vh,58px)}
-  #secHome .hero{padding-block:clamp(8px,3.4vh,46px)}
-  #secHome .hero .sub{max-width:min(880px,64vw)}
+  :is(#secHome,#secDash) .home-inner{justify-content:center;gap:clamp(20px,4.6vh,58px)}
+  :is(#secHome,#secDash) .hero{padding-block:clamp(8px,3.4vh,46px)}
+  :is(#secHome,#secDash) .hero .sub{max-width:min(880px,64vw)}
   /* 발광을 제목이 놓인 좌상단으로 옮기고 진하게 */
   #secHome::after{
     background:
@@ -1584,8 +1626,8 @@
       radial-gradient(760px 560px at 12% 92%, rgba(139,123,255,.12), transparent 60%),
       linear-gradient(180deg, transparent 66%, var(--ink) 100%)}
   /* 파티클 위 글씨가 묻히지 않도록 제목 뒤에만 아주 옅은 어둠막 */
-  #secHome .hero{position:relative;z-index:2}
-  #secHome .hero::before{
+  :is(#secHome,#secDash) .hero{position:relative;z-index:2}
+  :is(#secHome,#secDash) .hero::before{
     content:"";position:absolute;z-index:-1;pointer-events:none;
     left:calc(var(--gut) * -0.5);right:auto;top:-4%;width:min(1180px,86%);height:108%;
     background:radial-gradient(60% 70% at 26% 46%, rgba(5,7,14,.62), transparent 72%)}
@@ -1599,8 +1641,8 @@
   /* ---------- 1) 대시보드 — 조직 칩을 막대차트 폭에 맞춰 키우고 가운데로 ----------
      칩 줄과 차트는 같은 패널 폭을 쓰므로, 가운데 정렬하면 차트 영역과 시각적으로 맞는다.
      한 줄 유지는 그대로 — 글자·여백을 폭에 연동해 어떤 해상도에서도 넘치지 않게 한다. */
-  #secHome .p-chart .org-filter{justify-content:center;gap:clamp(3px,.3vw,6px)}
-  #secHome .org-chip{
+  :is(#secHome,#secDash) .p-chart .org-filter{justify-content:center;gap:clamp(3px,.3vw,6px)}
+  :is(#secHome,#secDash) .org-chip{
     font-size:clamp(9.5px,.68vw,13px);padding:6px clamp(5px,.5vw,11px)}
 
   /* ---------- 2) TOP5 ---------- */
@@ -1644,27 +1686,27 @@
   }
 
   /* ---------- 히어로 ---------- */
-  #secHome .hero .eyebrow{font-size:calc(13px * var(--hero-scale))}
-  #secHome .hero-title{font-size:calc(min(4.9vw,78px) * var(--hero-scale))}
-  #secHome .hero-tagline{font-size:calc(clamp(13px,1.15vw,16px) * var(--hero-scale))}
-  #secHome .hero .sub{font-size:calc(clamp(13.5px,1.15vw,16.5px) * var(--hero-scale))}
-  #secHome .cta-primary,#secHome .cta-ghost{font-size:calc(14.5px * var(--hero-scale))}
+  :is(#secHome,#secDash) .hero .eyebrow{font-size:calc(13px * var(--hero-scale))}
+  :is(#secHome,#secDash) .hero-title{font-size:calc(min(4.9vw,78px) * var(--hero-scale))}
+  :is(#secHome,#secDash) .hero-tagline{font-size:calc(clamp(13px,1.15vw,16px) * var(--hero-scale))}
+  :is(#secHome,#secDash) .hero .sub{font-size:calc(clamp(13.5px,1.15vw,16.5px) * var(--hero-scale))}
+  :is(#secHome,#secDash) .cta-primary,:is(#secHome,#secDash) .cta-ghost{font-size:calc(14.5px * var(--hero-scale))}
 
   /* ---------- 대시보드 3패널 ---------- */
-  #secHome .stat-ico{
+  :is(#secHome,#secDash) .stat-ico{
     width:calc(clamp(40px,5.8vh,68px) * var(--panel-scale));
     height:calc(clamp(40px,5.8vh,68px) * var(--panel-scale));
     font-size:calc(clamp(19px,2.8vh,31px) * var(--panel-scale))}
-  #secHome .stat-num{font-size:calc(clamp(28px,4.5vh,54px) * var(--panel-scale))}
-  #secHome .stat-label{font-size:calc(13px * var(--panel-scale))}
-  #secHome .cc-num{font-size:calc(15px * var(--panel-scale))}
-  #secHome .cc-name{font-size:calc(12px * var(--panel-scale))}
-  #secHome .ih-pane-title{font-size:calc(16px * var(--panel-scale))}
-  #secHome .ih-n-title{font-size:calc(14.5px * var(--panel-scale))}
-  #secHome .ih-n-date,#secHome .ih-no{font-size:calc(12.5px * var(--panel-scale))}
+  :is(#secHome,#secDash) .stat-num{font-size:calc(clamp(28px,4.5vh,54px) * var(--panel-scale))}
+  :is(#secHome,#secDash) .stat-label{font-size:calc(13px * var(--panel-scale))}
+  :is(#secHome,#secDash) .cc-num{font-size:calc(15px * var(--panel-scale))}
+  :is(#secHome,#secDash) .cc-name{font-size:calc(12px * var(--panel-scale))}
+  :is(#secHome,#secDash) .ih-pane-title{font-size:calc(16px * var(--panel-scale))}
+  :is(#secHome,#secDash) .ih-n-title{font-size:calc(14.5px * var(--panel-scale))}
+  :is(#secHome,#secDash) .ih-n-date,:is(#secHome,#secDash) .ih-no{font-size:calc(12.5px * var(--panel-scale))}
 
   /* ---------- 조직 필터 칩 ---------- */
-  #secHome .org-chip{
+  :is(#secHome,#secDash) .org-chip{
     font-size:calc(clamp(9.5px,.68vw,13px) * var(--chip-scale));
     padding:calc(6px * var(--chip-scale)) calc(clamp(5px,.5vw,11px) * var(--chip-scale))}
 
@@ -1700,12 +1742,12 @@
      (실측: style 100/100/83/83% → 실제 223/223/223/223px)
      막대가 놓이는 칸을 grid 트랙으로 만들어 퍼센트가 확정 높이 기준으로 풀리게 한다.
      JS 는 건드리지 않는다. */
-  #secHome .cc-col{
+  :is(#secHome,#secDash) .cc-col{
     display:grid;grid-template-rows:auto minmax(0,1fr) auto;
     align-items:end;justify-items:center;gap:6px;height:100%;min-width:0}
-  #secHome .cc-bar{align-self:end;flex:none}
-  #secHome .cc-num{align-self:end}
-  #secHome .cc-name{align-self:start}
+  :is(#secHome,#secDash) .cc-bar{align-self:end;flex:none}
+  :is(#secHome,#secDash) .cc-num{align-self:end}
+  :is(#secHome,#secDash) .cc-name{align-self:start}
 
   /* ---------- TOP5 즐겨찾기 별 → 카드 우측 상단 ----------
      V10 의 .t5 > *{position:relative} 가 .favstar 의 absolute 를 덮어써서
@@ -1805,8 +1847,8 @@
 
 
   /* ---------- 히어로는 화면 압축에서 뺀다 (V3 보정) ----------
-     하단 고정 바가 avail 을 74px 먹으면서 #secHome 이 .tighter 까지 내려갔고,
-     1479줄 #secHome.tighter .hero-title 이 78px → 46px 로 제목을 눌렀다.
+     하단 고정 바가 avail 을 74px 먹으면서 :is(#secHome,#secDash) 이 .tighter 까지 내려갔고,
+     1479줄 :is(#secHome,#secDash).tighter .hero-title 이 78px → 46px 로 제목을 눌렀다.
      "생산기술혁신센터 AI 플랫폼" ~ "AI Agent 둘러보기" 는 V2 크기를 유지하고,
      줄여야 할 높이는 아래 3패널(.dash-panel · .p-notice · .cc-name · .stat-label)이 흡수한다.
      선택자 특이도는 1472~1477 과 같게 두고 순서로만 이긴다.
@@ -1814,25 +1856,25 @@
      세로 640px 미만(저사양 VDI 등)은 예외로 남긴다 — 거기서까지 히어로를 고정하면
      한 화면에 도저히 들어가지 않아 원래 압축이 필요하다. */
   @media (min-height:640px){
-    #secHome.tight .hero .eyebrow,
-    #secHome.tighter .hero .eyebrow{
+    :is(#secHome,#secDash).tight .hero .eyebrow,
+    :is(#secHome,#secDash).tighter .hero .eyebrow{
       font-size:calc(13px * var(--hero-scale));margin-bottom:clamp(6px,1.3vh,14px)}
-    #secHome.tight .hero-title,
-    #secHome.tighter .hero-title{
+    :is(#secHome,#secDash).tight .hero-title,
+    :is(#secHome,#secDash).tighter .hero-title{
       font-size:calc(min(4.9vw,78px) * var(--hero-scale));line-height:1.05}
-    #secHome.tight .hero-tagline,
-    #secHome.tighter .hero-tagline{
+    :is(#secHome,#secDash).tight .hero-tagline,
+    :is(#secHome,#secDash).tighter .hero-tagline{
       font-size:calc(clamp(13px,1.15vw,16px) * var(--hero-scale));margin-top:clamp(7px,1.3vh,14px)}
-    #secHome.tight .hero .sub,
-    #secHome.tighter .hero .sub{
+    :is(#secHome,#secDash).tight .hero .sub,
+    :is(#secHome,#secDash).tighter .hero .sub{
       display:block;font-size:calc(clamp(13.5px,1.15vw,16.5px) * var(--hero-scale));
       max-width:min(880px,64vw);margin-top:clamp(5px,1vh,11px)}
-    #secHome.tight .hero-cta,
-    #secHome.tighter .hero-cta{margin-top:clamp(12px,2vh,24px)}
-    #secHome.tight .cta-primary,#secHome.tight .cta-ghost,
-    #secHome.tighter .cta-primary,#secHome.tighter .cta-ghost{
+    :is(#secHome,#secDash).tight .hero-cta,
+    :is(#secHome,#secDash).tighter .hero-cta{margin-top:clamp(12px,2vh,24px)}
+    :is(#secHome,#secDash).tight .cta-primary,:is(#secHome,#secDash).tight .cta-ghost,
+    :is(#secHome,#secDash).tighter .cta-primary,:is(#secHome,#secDash).tighter .cta-ghost{
       font-size:calc(14.5px * var(--hero-scale));padding:13px 28px}
-    #secHome.tight .hero{padding-block:clamp(8px,3.4vh,46px)}
+    :is(#secHome,#secDash).tight .hero{padding-block:clamp(8px,3.4vh,46px)}
   }
 
 </style>
@@ -1843,7 +1885,7 @@
   <div class="nav-inner">
     <h1 id="homeTitle" title="홈으로" role="link" tabindex="0"><span id="brandLogo"><svg id="introStage" viewBox="0 0 400 92" role="img" aria-label="MAPS"><g id="lnkG"></g><g id="ndG"></g><g id="plsG"></g><text class="wm" x="4" y="62">MAPS</text><circle class="wmdot" id="wmDot" cx="171" cy="55" r="7"/></svg></span></h1>
     <nav class="nav-links">
-      <a href="#secHome">대시보드</a>
+      <a href="#secDash">대시보드</a>
       <a href="#secTop5">TOP5</a>
       <a href="#secPlatform">카테고리별 AI Agent</a>
       <a href="#secCommunity">커뮤니티</a>
@@ -1885,7 +1927,12 @@
 
   <!-- ===================== §1 대시보드 ===================== -->
   <section class="sec screen" id="secHome">
-    <canvas id="pxNet" aria-hidden="true"></canvas>
+    <!-- V4-2) 히어로 배경 영상. loop 속성 대신 JS 로 3~8초 구간만 반복한다.
+         막힌 망에서는 스스로 감춰지고 아래 그라디언트만 남는다. -->
+    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="auto">
+      <source src="https://www.lgensol.com/inc/video/video_main01.mp4#t=3,8" type="video/mp4">
+    </video>
+    <div id="heroVeil" aria-hidden="true"></div>
     <div class="home-inner">
 
       <div class="hero">
@@ -1894,10 +1941,24 @@
         <div class="brand-tagline hero-tagline reveal" data-d="2"><span class="aria-ltr">M</span>anufacturing <span class="aria-ltr">A</span>I agent <span class="aria-ltr">P</span>latform &amp; <span class="aria-ltr">S</span>hared-dashboard</div>
         <p class="sub reveal" data-d="2">생산 효율화와 기술 혁신, 센터가 지향하는 목표에 맞춘 AI Agent를 한 곳에서.</p>
         <div class="hero-cta reveal" data-d="3">
-          <a class="cta-primary" href="#secTop5">AI Agent 둘러보기 <span>→</span></a>
+          <a class="cta-primary" href="#secDash">AI Agent 둘러보기 <span>→</span></a>
         </div>
       </div>
 
+    </div>
+    <button type="button" id="heroScrollHint" aria-label="대시보드로 이동">
+      <span>SCROLL</span><span class="chev" aria-hidden="true"></span>
+    </button>
+  </section>
+
+  <!-- ===================== §1-2 대시보드 (V4-2 에서 히어로와 분리) ===================== -->
+  <section class="sec screen" id="secDash">
+    <div class="sec-inner">
+      <div class="sec-head">
+        <div class="sec-eyebrow reveal">대시보드</div>
+        <h2 class="sec-title reveal" data-d="1">센터 <span class="grad">AI Agent</span> 현황을 한눈에</h2>
+        <p class="sec-desc reveal" data-d="2">전체 Agent와 참여 팀, 카테고리별 분포, 그리고 공지사항을 한 화면에서 확인합니다.</p>
+      </div>
       <div class="home-actions reveal" data-d="3">
         <button type="button" id="agentRegBtn">＋ AI Agent 등록</button>
       </div>
@@ -2087,7 +2148,7 @@
     </div>
     <div class="foot-col">
       <h4>Platform</h4>
-      <a href="#secHome">대시보드</a>
+      <a href="#secDash">대시보드</a>
       <a href="#secTop5">TOP5</a>
       <a href="#secPlatform">카테고리별 AI Agent</a>
     </div>
@@ -4328,142 +4389,80 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
   try{ REDUCED = window.matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){}
 
   /* ---------------------------------------------------------------
-     1) 히어로 파티클 네트워크
+     1) 히어로 배경 영상 (V4-2 — 별자리 파티클 네트워크를 대체)
+        · loop 속성 대신 3~8초 구간만 되돌려 반복한다.
+        · 화면 밖 · 탭 비활성일 때는 세워 둔다 — 배경 영상이 계속 디코딩되면
+          스크롤이 무거워진다(파티클 캔버스를 세우던 것과 같은 이유).
+        · 영상이 막힌 망에서는 스스로 감춰지고 섹션 그라디언트만 남는다.
      --------------------------------------------------------------- */
-  (function particleNet(){
-    var cv = document.getElementById("pxNet");
+  (function heroVideo(){
+    var v = document.getElementById("heroVideo");
     var hero = document.getElementById("secHome");
-    if(!cv || !hero || !cv.getContext) return;
-    var ctx = cv.getContext("2d");
-    var pts = [], w = 0, h = 0, dpr = 1, raf = null, visible = true;
-    var mouse = { x:-9999, y:-9999 };
+    if(!v || !hero) return;
 
-    /* 저부하 프로파일 — prefers-reduced-motion 을 "정지"가 아니라 "가볍게" 로 해석한다.
-       회사 PC·VDI 는 이 설정이 기본으로 켜져 있어, 정지시키면 배경이 통째로 죽는다.
-       (원본 ARIA script #2 도 같은 이유로 VDI 에서 인트로를 강제 재생했다) */
-    var TIER = 0;                          /* 0 기본 · 1 저부하 · 2 최소 */
-    var LINK = 150, SPEED = 0.30, CAP = 120, FRAME_MS = 0;
-    function applyTier(){
-      if(TIER >= 2){      LINK = 0;   SPEED = 0.10; CAP = 22; FRAME_MS = 50; }
-      else if(TIER >= 1){ LINK = 104; SPEED = 0.12; CAP = 34; FRAME_MS = 42; }
-      else {              LINK = 150; SPEED = 0.30; CAP = 120; FRAME_MS = 0;  }
-    }
-    var LITE = REDUCED;
-    if(LITE) TIER = 1;
-    applyTier();
+    var START = 3.0, END = 8.0;
+    var visible = true, dead = false;
 
-    function resize(){
-      var r = hero.getBoundingClientRect();
-      w = Math.max(1, Math.round(r.width));
-      h = Math.max(1, Math.round(r.height));
-      dpr = (TIER >= 1) ? 1 : Math.min(window.devicePixelRatio || 1, 2);
-      cv.width = Math.round(w * dpr);
-      cv.height = Math.round(h * dpr);
-      cv.style.width = w + "px";
-      cv.style.height = h + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      seed();
+    function seekStart(){
+      try{ if(v.currentTime < START || v.currentTime >= END) v.currentTime = START; }catch(e){}
     }
-    function seed(){
-      var target = Math.round(Math.min(CAP, Math.max(16, (w * h) / ((TIER >= 1) ? 38000 : 17000))));
-      pts = [];
-      for(var i=0;i<target;i++){
-        pts.push({
-          x: Math.random()*w,
-          y: Math.random()*h,
-          vx:(Math.random()-0.5)*SPEED,
-          vy:(Math.random()-0.5)*SPEED,
-          r: 0.7 + Math.random()*1.5
-        });
-      }
+    function play(){
+      if(dead || !visible || document.hidden || REDUCED) return;
+      var p = v.play();
+      if(p && p.catch) p.catch(function(){});   /* 자동재생 차단은 오류가 아니다 */
     }
-    function step(){
-      ctx.clearRect(0,0,w,h);
-      var i,j,a,b,dx,dy,d2,al;
-      for(i=0;i<pts.length;i++){
-        a = pts[i];
-        a.x += a.vx; a.y += a.vy;
-        if(a.x < -20) a.x = w+20; else if(a.x > w+20) a.x = -20;
-        if(a.y < -20) a.y = h+20; else if(a.y > h+20) a.y = -20;
-      }
-      /* 연결선 */
-      for(i=0;i<pts.length;i++){
-        a = pts[i];
-        for(j=i+1;j<pts.length;j++){
-          b = pts[j];
-          dx = a.x-b.x; dy = a.y-b.y; d2 = dx*dx + dy*dy;
-          if(d2 < LINK*LINK){
-            al = (1 - Math.sqrt(d2)/LINK) * 0.42;
-            ctx.strokeStyle = "rgba(120,190,255," + al.toFixed(3) + ")";
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
-          }
-        }
-        /* 마우스 근처 강조 */
-        dx = a.x-mouse.x; dy = a.y-mouse.y; d2 = dx*dx + dy*dy;
-        if(d2 < 170*170){
-          al = (1 - Math.sqrt(d2)/170) * 0.42;
-          ctx.strokeStyle = "rgba(77,216,232," + al.toFixed(3) + ")";
-          ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(mouse.x,mouse.y); ctx.stroke();
-        }
-      }
-      /* 점 */
-      for(i=0;i<pts.length;i++){
-        a = pts[i];
-        ctx.fillStyle = "rgba(190,225,255,.78)";
-        ctx.beginPath(); ctx.arc(a.x,a.y,a.r,0,Math.PI*2); ctx.fill();
-      }
-    }
-    /* 적응형 강등 — Citrix/VDI 는 JS 로 감지할 수 없으므로 실측 프레임 시간으로 판단한다.
-       한 번 내려간 등급은 다시 올리지 않는다(진동 방지). */
-    var acc = 0, cnt = 0, last = 0, nextAt = 0;
-    function degrade(now){
-      if(last){ acc += (now - last); cnt++; }
-      last = now;
-      if(cnt >= 60){
-        var avg = acc / cnt; acc = 0; cnt = 0;
-        if(avg > 45 && TIER < 2){ TIER = 2; applyTier(); resize(); document.body.classList.add("lite"); }
-        else if(avg > 28 && TIER < 1){ TIER = 1; applyTier(); resize(); document.body.classList.add("lite"); }
-      }
-    }
-    function loop(now){
-      if(!FRAME_MS || now >= nextAt){
-        if(FRAME_MS) nextAt = now + FRAME_MS;
-        step();
-      }
-      degrade(now);
-      raf = (visible && !document.hidden) ? requestAnimationFrame(loop) : null;
-    }
-    function start(){ if(raf === null){ last = 0; nextAt = 0; raf = requestAnimationFrame(loop); } }
-    function stop(){ if(raf !== null){ cancelAnimationFrame(raf); raf = null; } }
+    function pause(){ try{ v.pause(); }catch(e){} }
 
-    if(LITE) document.body.classList.add("lite");
-    resize();
-    start();
-
-    var rt = null;
-    window.addEventListener("resize", function(){
-      if(rt) clearTimeout(rt);
-      rt = setTimeout(function(){ resize(); }, 160);
+    v.addEventListener("loadedmetadata", function(){ seekStart(); play(); });
+    /* 구간 반복 — timeupdate 는 초당 4~5회라 종료 지점을 살짝 넘길 수 있다.
+       되돌린 뒤 다시 재생시켜 루프 순간 멈추는 것을 막는다. */
+    v.addEventListener("timeupdate", function(){
+      if(v.currentTime >= END){ v.currentTime = START; play(); }
     });
-    hero.addEventListener("mousemove", function(e){
-      var r = hero.getBoundingClientRect();
-      mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top;
-    });
-    hero.addEventListener("mouseleave", function(){ mouse.x = -9999; mouse.y = -9999; });
+    v.addEventListener("ended", function(){ v.currentTime = START; play(); });
+
+    function fail(){
+      if(dead) return;
+      dead = true;
+      v.hidden = true;
+      var veil = document.getElementById("heroVeil");
+      if(veil) veil.hidden = true;               /* 영상 없이 딤만 남으면 더 어색하다 */
+      pause();
+    }
+    v.addEventListener("error", fail, true);
+    var srcEl = v.querySelector("source");
+    if(srcEl) srcEl.addEventListener("error", fail);
+    setTimeout(function(){ if(!dead && v.readyState < 2) fail(); }, 8000);
+
     document.addEventListener("visibilitychange", function(){
-      if(document.hidden) stop(); else start();
+      if(document.hidden) pause(); else play();
     });
-    /* 히어로가 화면 밖이면 정지해 스크롤 성능을 지킨다 */
     if("IntersectionObserver" in window){
       new IntersectionObserver(function(es){
         visible = es[0].isIntersecting;
-        if(visible){
-          if(cv.width === 0 || Math.abs(hero.getBoundingClientRect().width - w) > 2) resize();
-          if(!REDUCED) start();
-        }else stop();
+        if(visible) play(); else pause();
       }, { threshold: 0 }).observe(hero);
+    }
+
+    if(REDUCED){ v.addEventListener("loadeddata", function(){ seekStart(); pause(); }); }
+    else { play(); }
+  })();
+
+  /* 스크롤 힌트 — 첫 화면이 히어로뿐이라 아래가 있다는 신호를 준다 */
+  (function heroHint(){
+    var b = document.getElementById("heroScrollHint");
+    if(!b) return;
+    b.addEventListener("click", function(){
+      var t = document.getElementById("secDash");
+      if(t) t.scrollIntoView({behavior:"smooth", block:"start"});
+    });
+    /* 첫 화면을 벗어나면 힌트를 숨긴다 */
+    if("IntersectionObserver" in window){
+      var hero = document.getElementById("secHome");
+      if(hero) new IntersectionObserver(function(es){
+        b.style.opacity = es[0].isIntersecting ? "" : "0";
+        b.style.pointerEvents = es[0].isIntersecting ? "" : "none";
+      }, { threshold: 0.35 }).observe(hero);
     }
   })();
 
@@ -4934,7 +4933,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
      CSS max-height 미디어쿼리만으로는 "한 화면에 딱"을 보장할 수 없다.
      실측해서 넘치면 압축 등급을 한 단계씩 올린다. 표시 개수는 건드리지 않는다.
      --------------------------------------------------------------- */
-  var FIT_IDS = ["secHome", "secTop5", "secPlatform"];
+  var FIT_IDS = ["secHome", "secDash", "secTop5", "secPlatform"];
   /* V3) 하단 고정 바가 화면 아래를 가린다 — 실측해서 avail 에서 뺀다.
      #dockBar 를 정적 마크업으로 둔 이유가 이것이다(JS 생성이면 첫 측정이 0 이라 압축이 늦는다). */
   function dockH(){

@@ -46,6 +46,7 @@
   .brandmark::after{content:"";position:absolute;left:62%;top:54%;width:.17em;height:.17em;border-radius:50%;background:#8b7bff;box-shadow:0 0 0 .06em rgba(52,216,204,.28);transform:translate(-50%,-50%);pointer-events:none}
   .brand-tagline{margin-top:12px;font-size:14px;font-weight:700;letter-spacing:.02em;color:var(--txt-dim)}
   .brand-tagline .aria-ltr{color:#4dd8e8;font-weight:700}
+  .foot-tag .aria-ltr{color:var(--accent);font-weight:800}
   /* ===== 브랜드 로고 — 오케스트레이션 노드 (무한 루프) ===== */
   #brandLogo{position:relative;display:inline-block;width:clamp(242px,30vw,284px);height:clamp(58px,7.2vw,68px);
     --wm:var(--txt);--teal:#4dd8e8;--aqua:#8b7bff}
@@ -56,7 +57,8 @@
   #introStage .nd{fill:var(--aqua);opacity:.5}
   #introStage .hub{fill:var(--teal);opacity:.92}
   #introStage .pls{fill:var(--teal)}
-  @media (prefers-reduced-motion:reduce){#introStage .pls{display:none}}
+  @media not all{ /* standalone: 감속모션 게이트 해제 (원본: prefers-reduced-motion:reduce) */
+    #introStage .pls{display:none}}
   /* 준비중(관리자 전용) 배지/타일 */
   .badge-prep{font-size:10px;font-weight:800;letter-spacing:.03em;background:rgba(217,154,0,.16);color:#d99a00;padding:3px 7px;border-radius:5px;border:1px solid rgba(217,154,0,.55)}
   .badge-pin{font-size:10px;font-weight:800;background:rgba(77,216,232,.18);color:var(--accent);padding:2px 6px;border-radius:5px;margin-right:3px}
@@ -309,7 +311,8 @@
     body.role-user .item,body.role-user .col-labels{grid-template-columns:40px 1fr 1fr 1fr}
     .acc-add{grid-template-columns:1fr 1fr}
   }
-  @media (prefers-reduced-motion:reduce){.cell,.gear{transition:none}}
+  @media not all{ /* standalone: 감속모션 게이트 해제 */
+    .cell,.gear{transition:none}}
 
   /* 상단 아이콘 버튼: 게시판은 회전 안 함 */
   .gear.nospin:hover{transform:none}
@@ -404,6 +407,14 @@
   .sys-btn.disabled{opacity:.45;cursor:not-allowed;pointer-events:none;text-decoration:line-through}
   .sys-note{font-size:10px;color:var(--txt-faint)}
   .dash-req-box{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+  /* V4) 카탈로그 툴바용 등록 버튼 — 대시보드 화면의 #agentRegBtn 과 같은 얼굴에
+     툴바 높이(.sys-btn)만 맞춘다.
+     .sys-btn 을 두 번 겹쳐 쓴 이유: 아래쪽(661행)에 .banner-btn,.sys-btn 규칙이
+     또 있어 클래스 하나짜리로는 뒤에 오는 그 규칙에 밀린다. */
+  .sys-btn.cat-reg-btn{background:var(--grad);color:#04121a;border-color:transparent;
+    font-weight:800;box-shadow:var(--glow)}
+  .sys-btn.cat-reg-btn:hover{background:var(--grad);color:#04121a;border-color:transparent;
+    box-shadow:0 0 30px rgba(77,216,232,.4)}
   .reqst{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:5px}
   .lockmark{font-size:11px;margin-left:5px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
   .cell-meta{font-size:10px;font-weight:700;margin-left:6px;padding:2px 6px;border-radius:5px;letter-spacing:.02em;white-space:nowrap;background:rgba(0,0,0,.22);color:#fff;text-shadow:none}
@@ -698,7 +709,7 @@
   /* V10 — reduced-motion 이라고 부드러운 스크롤까지 끄지 않는다.
      회사 PC 는 MinAnimate=0 이 기본이라 이 규칙이 걸리면 메뉴 이동이 뚝뚝 끊긴다.
      멀미를 유발하는 리빌의 이동·스케일만 계속 차단한다. (V9 의 판단을 스크롤에도 적용) */
-  @media (prefers-reduced-motion:reduce){
+  @media not all{ /* standalone: 감속모션 게이트 해제 — 리빌을 로컬과 똑같이 살린다 */
     .reveal{opacity:1;transform:none;transition:none}
   }
 
@@ -706,39 +717,7 @@
   .hero{
     min-height:100vh;padding:calc(var(--nav-h) + 60px) 0 90px;
     display:flex;align-items:center;overflow:hidden}
-  /* V4) 히어로 배경 영상 — 별자리 캔버스(#pxNet)를 대체한다.
-     콘텐츠(.home-inner)는 z-index 2, 섹션 그라디언트(#secHome::after)는 1 이므로
-     영상과 딤은 0 에 두고 DOM 순서로 딤이 영상 위에 오게 한다.
-
-     · top 은 0 이 아니라 --nav-h 다. 헤더가 position:fixed 라 최상단에서는 배경이
-       transparent 인데, 영상이 0 부터 깔리면 메뉴 글자가 영상 위에 얹힌다.
-       --nav-h 는 980px 이하에서 60px 으로 재정의되므로 변수로 두면 반응형이 따라온다.
-     · 마스크로 아래쪽을 지운다 — 영상을 히어로 밴드로 한정해, 그 아래 3패널은
-       원래 페이지 배경 위에 놓이게 한다(패널에 불투명 판을 깔지 않아도 되는 이유).
-       페이드 구간은 CTA 버튼이 끝난 뒤 ~ 패널이 시작하기 전의 빈 곳이어야 하는데,
-       그 위치가 레이아웃 전환에 따라 세 구간으로 갈린다(영상 높이 대비 실측):
-         폭 >1200px   CTA 끝 30~36% · 패널 상단 45~53%  → 36% ~ 44%
-         폭 901~1200  CTA 끝 28~31% · 패널 상단 42~49%  → 32% ~ 41%
-         폭 ≤900      CTA 끝 20~25% · 패널 상단 33~40%  → 26% ~ 32%
-       (900px 이하에서 --nav-h 가 60 으로 줄며 비율이 한 번 더 바뀐다)
-     · height 는 calc 로 못 박는다. <video> 는 대체 요소라 height:auto 면 top/bottom
-       constraint 가 아니라 영상의 고유 종횡비로 높이를 잡아 섹션 아래가 빈다. */
-  #heroVideo,#heroVeil{
-    --mask-a:36%; --mask-b:44%;
-    -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 var(--mask-a),transparent var(--mask-b));
-            mask-image:linear-gradient(180deg,#000 0%,#000 var(--mask-a),transparent var(--mask-b))}
-  @media(max-width:1200px){#heroVideo,#heroVeil{--mask-a:32%;--mask-b:41%}}
-  @media(max-width:900px){#heroVideo,#heroVeil{--mask-a:26%;--mask-b:32%}}
-  #heroVideo{position:absolute;top:var(--nav-h);left:0;right:0;
-    width:100%;height:calc(100% - var(--nav-h));object-fit:cover;
-    display:block;z-index:0;pointer-events:none;border:0;background:var(--ink)}
-  #heroVideo[hidden]{display:none}
-  /* 딤 — 영상 위 글자 대비 확보. 아래를 보호할 이유가 없어졌으므로(마스크로 영상이
-     패널 전에 사라진다) 완만한 세로 그라디언트만 남긴다. */
-  #heroVeil{position:absolute;top:var(--nav-h);left:0;right:0;height:calc(100% - var(--nav-h));z-index:0;pointer-events:none;
-    background:
-      linear-gradient(180deg, rgba(5,7,14,.30) 0%, rgba(5,7,14,.42) 46%, rgba(5,7,14,.55) 100%)}
-  #heroVeil[hidden]{display:none}
+  #pxNet{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;pointer-events:none}
   .hero::after{
     content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
     background:
@@ -776,7 +755,8 @@
     background:linear-gradient(180deg,var(--accent),transparent);
     animation:scrollPulse 2.2s ease-in-out infinite}
   @keyframes scrollPulse{0%,100%{opacity:.25;transform:scaleY(.55)}50%{opacity:1;transform:scaleY(1)}}
-  @media (prefers-reduced-motion:reduce){.scroll-hint::after{animation:none;opacity:.6}}
+  @media not all{ /* standalone: 감속모션 게이트 해제 */
+    .scroll-hint::after{animation:none;opacity:.6}}
 
   /* ===================== §2 MISSION ===================== */
   .sec-mission{padding:132px 0}
@@ -1490,10 +1470,9 @@
   }
 
   /* ---------- fitScreens 측정 보정 ----------
-     배경 레이어가 .measuring 중 scrollHeight 를 부풀리면 대시보드가 늘 .tighter 로
-     눌린 채 여백만 남는다. 측정 동안만 빼 둔다. (V3 의 #pxNet 자리) */
-  .sec.screen.measuring #heroVideo,
-  .sec.screen.measuring #heroVeil{display:none}
+     #pxNet 은 absolute 지만 style.height 에 px 이 박혀 있어 .measuring 중에도
+     scrollHeight 를 부풀렸다 → 대시보드가 늘 .tighter 로 눌린 채 여백만 남았다. */
+  .sec.screen.measuring #pxNet{display:none}
 
   /* ---------- 1) 대시보드 — 위아래 여백을 걷고 전체를 키운다 ---------- */
   #secHome{justify-content:flex-start;padding-top:calc(var(--nav-h) + 12px);padding-bottom:14px}
@@ -1513,8 +1492,6 @@
   #secHome.tighter .hero .sub{display:block}
 
   #secHome .dash-panel{padding:20px 22px 18px}
-  /* V4) 패널 배경은 V3 그대로 둔다(불투명 판 없음).
-     영상이 마스크로 패널 위에서 끝나므로 뒤에 비칠 것이 없다 — #heroVideo 주석 참고. */
   #secHome .p-stats .stat-row{gap:10px}
   #secHome .stat-ico{width:clamp(40px,5.8vh,68px);height:clamp(40px,5.8vh,68px);
     font-size:clamp(19px,2.8vh,31px)}
@@ -1609,17 +1586,12 @@
       radial-gradient(820px 600px at 84% 12%, rgba(139,123,255,.17), transparent 62%),
       radial-gradient(760px 560px at 12% 92%, rgba(139,123,255,.12), transparent 60%),
       linear-gradient(180deg, transparent 66%, var(--ink) 100%)}
+  /* 파티클 위 글씨가 묻히지 않도록 제목 뒤에만 아주 옅은 어둠막 */
   #secHome .hero{position:relative;z-index:2}
-  /* V4) 배경이 영상으로 바뀌면서 제목 뒤 어둠막(.hero::before radial-gradient)이
-     큰 어두운 타원으로 드러났다 — 거의 검정이던 별자리 배경에서는 안 보이던 것이다.
-     박스형 스크림을 걷고 글자 자체에 그림자를 준다. 윤곽만 따라가므로 판이 안 보인다.
-     제목은 text-shadow 가 아니라 filter:drop-shadow 다 — 안의 <span class="grad"> 가
-     background-clip:text + text-fill-color:transparent 라, text-shadow 를 주면 투명한
-     글자 속으로 그림자가 비쳐 지저분해진다. drop-shadow 는 렌더 결과의 알파를 따른다. */
-  #secHome .hero-title{filter:drop-shadow(0 2px 12px rgba(5,7,14,.85))}
-  #secHome .hero .eyebrow,
-  #secHome .hero-tagline,
-  #secHome .hero .sub{text-shadow:0 1px 10px rgba(5,7,14,.8)}
+  #secHome .hero::before{
+    content:"";position:absolute;z-index:-1;pointer-events:none;
+    left:calc(var(--gut) * -0.5);right:auto;top:-4%;width:min(1180px,86%);height:108%;
+    background:radial-gradient(60% 70% at 26% 46%, rgba(5,7,14,.62), transparent 72%)}
 
 
   /* ==========================================================================
@@ -1869,6 +1841,35 @@
 </style>
 </head>
 <body>
+<script>
+/* ============================================================================
+   MAPS standalone — 오프라인 가드 (script #1 보다 먼저 실행되어야 한다)
+   백엔드가 없는 곳에서 GET 요청이 매달려 화면이 비는 것을 막는다.
+   ============================================================================ */
+(function(){
+  "use strict";
+  var F = window.fetch;
+  if(typeof F !== "function" || typeof AbortController !== "function") return;
+  var TIMEOUT = 2500;
+  window.fetch = function(input, init){
+    var url = (typeof input === "string") ? input : ((input && input.url) || "");
+    var method = ((init && init.method) || (input && input.method) || "GET").toUpperCase();
+    /* 외부 절대주소 · POST(업로드) · 이미 signal 을 쓰는 호출은 그대로 통과시킨다 */
+    if(method !== "GET" || /^[a-z]+:\/\//i.test(url) || (init && init.signal)){
+      return F.apply(window, arguments);
+    }
+    var ac = new AbortController();
+    var opt = {};
+    if(init) for(var k in init){ if(Object.prototype.hasOwnProperty.call(init, k)) opt[k] = init[k]; }
+    opt.signal = ac.signal;
+    var timer = setTimeout(function(){ try{ ac.abort(); }catch(e){} }, TIMEOUT);
+    return F.call(window, input, opt).then(
+      function(r){ clearTimeout(timer); return r; },
+      function(e){ clearTimeout(timer); throw e; }
+    );
+  };
+})();
+</script>
 <!-- ===================== 고정 상단 네비 ===================== -->
 <header id="siteHeader">
   <div class="nav-inner">
@@ -1916,19 +1917,13 @@
 
   <!-- ===================== §1 대시보드 ===================== -->
   <section class="sec screen" id="secHome">
-    <!-- V4) 히어로 배경 영상. 대시보드 화면에만 붙는다.
-         loop 속성 대신 JS 로 3~8초 구간만 반복한다(#t=3,8 은 첫 재생 위치 힌트).
-         영상이 막힌 망에서는 error 이벤트로 스스로 감춰지고 아래 그라디언트가 남는다. -->
-    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="auto">
-      <source src="https://www.lgensol.com/inc/video/video_main01.mp4#t=3,8" type="video/mp4">
-    </video>
-    <div id="heroVeil" aria-hidden="true"></div>
+    <canvas id="pxNet" aria-hidden="true"></canvas>
     <div class="home-inner">
 
       <div class="hero">
         <div class="eyebrow reveal">생산기술혁신센터 AI 플랫폼</div>
         <h2 class="hero-title reveal" data-d="1">생산기술의 미래를 이끄는 <span class="grad">통합 AI 플랫폼</span></h2>
-        <div class="brand-tagline hero-tagline reveal" data-d="2"><span class="aria-ltr">M</span>anufacturing <span class="aria-ltr">A</span>gent <span class="aria-ltr">P</span>latform &amp; <span class="aria-ltr">S</span>hared-dashboard</div>
+        <div class="brand-tagline hero-tagline reveal" data-d="2"><span class="aria-ltr">M</span>anufacturing <span class="aria-ltr">A</span>I agent <span class="aria-ltr">P</span>latform &amp; <span class="aria-ltr">S</span>hared-dashboard</div>
         <p class="sub reveal" data-d="2">생산 효율화와 기술 혁신, 센터가 지향하는 목표에 맞춘 AI Agent를 한 곳에서.</p>
         <div class="hero-cta reveal" data-d="3">
           <a class="cta-primary" href="#secTop5">AI Agent 둘러보기 <span>→</span></a>
@@ -2006,7 +2001,7 @@
         <div class="grid-toolbar">
     <div class="gt-status">
       <span class="legend-label">상태</span>
-      <span class="chip live">● 사용 가능</span><span class="chip soon">▪ 준비중</span><span class="chip fail">● 접속 장애</span>
+      <span class="chip live">● 사용 가능</span><span class="chip soon">● 준비중</span><span class="chip fail">● 접속 장애</span>
     </div>
     <div class="search-wrap">
       <select id="searchField" title="검색 조건">
@@ -2019,8 +2014,7 @@
     </div>
     <div class="showN-wrap">
       <div class="dash-req-box" id="dashReqBox" style="display:none">
-        <span class="sys-label">대시보드</span>
-        <button class="sys-btn" id="dashReqBtn">추가요청</button>
+        <button class="sys-btn cat-reg-btn" id="dashReqBtn">＋ AI Agent 등록</button>
         <button class="sys-btn" id="reqStatusBtn">신청현황</button>
       </div>
       <span class="gt-label">표시 개수</span>
@@ -2121,7 +2115,7 @@
   <div class="foot-inner">
     <div class="foot-brand">
       <div class="foot-logo brandmark">MAPS</div>
-      <div class="foot-tag">Manufacturing Agent Platform &amp; Shared-dashboard<br>생산기술혁신센터 업무 카테고리별 AI Agent를 한 곳에서.</div>
+      <div class="foot-tag"><span class="aria-ltr">M</span>anufacturing <span class="aria-ltr">A</span>I agent <span class="aria-ltr">P</span>latform &amp; <span class="aria-ltr">S</span>hared-dashboard<br>생산기술혁신센터 업무 카테고리별 AI Agent를 한 곳에서.</div>
     </div>
     <div class="foot-col">
       <h4>Platform</h4>
@@ -2209,17 +2203,19 @@
 <!-- 대시보드 추가요청 모달 -->
 <div class="overlay" id="reqOv">
   <div class="modal sm" role="dialog" aria-modal="true">
-    <div class="modal-head"><div><h2>AI Agent 등록 요청</h2><p>1차 IT 검토 → 2차 적절성 검토 후 등록됩니다</p></div><button class="xbtn" data-close="reqOv">&times;</button></div>
+    <div class="modal-head"><div><h2>AI Agent 등록 요청</h2></div><button class="xbtn" data-close="reqOv">&times;</button></div>
     <div style="padding:18px 24px">
       <div class="field"><label>AI Agent 명</label><input id="rqName" placeholder="등록할 AI Agent 이름"></div>
-      <div class="field"><label>요청자</label><input id="rqAuthor" maxlength="40" placeholder="이름 (비우면 '익명')"></div>
-      <div class="field"><label>조직</label><input id="rqOrg" placeholder="예: 해외법인 양산 지원"></div>
-      <div class="field"><label>설명</label><textarea id="rqDesc" rows="3" placeholder="용도·요청 사유 등"></textarea></div>
+      <div class="field"><label>요청자</label><input id="rqAuthor" maxlength="40" placeholder="이름"></div>
+      <div class="field"><label>기술그룹</label><input id="rqOrg" placeholder="예 : 전극기술그룹"></div>
+      <div class="field"><label>팀</label><input id="rqTeam" maxlength="60" placeholder="예 : 믹싱공정기술팀"></div>
+      <div class="field"><label>설명</label><textarea id="rqDesc" rows="3" placeholder="AI Agent에 대한 부연설명 기입"></textarea></div>
       <div class="field"><label>기능추가</label>
         <div class="feat-checks">
-          <label class="feat-item"><input type="checkbox" class="rqFeat" value="데이터 서버저장"> 데이터 서버저장</label>
-          <label class="feat-item"><input type="checkbox" class="rqFeat" value="공개(비로그인 화면)"> 공개(비로그인 화면)</label>
-          <label class="feat-item"><input type="checkbox" class="rqFeat" value="비공개(로그인 화면)"> 비공개(로그인 화면)</label>
+          <label class="feat-item"><input type="checkbox" class="rqFeat" value="新공정/공법 개발"> 新공정/공법 개발</label>
+          <label class="feat-item"><input type="checkbox" class="rqFeat" value="해외법인 양산 지원"> 해외법인 양산 지원</label>
+          <label class="feat-item"><input type="checkbox" class="rqFeat" value="제품 개발 대응"> 제품 개발 대응</label>
+          <label class="feat-item"><input type="checkbox" class="rqFeat" value="공통 및 루틴 업무"> 공통 및 루틴 업무</label>
           <label class="feat-item"><input type="checkbox" id="rqFeatEtc"> 기타</label>
         </div>
         <input id="rqFeatEtcText" placeholder="기타 내용을 입력하세요" style="margin-top:6px;display:none">
@@ -2504,14 +2500,14 @@ const FALLBACK={columns:[
  {team:"新 공정/공법 개발",tag:"New Process & Method Development",items:[
   {name:"공정 조건 최적화 Agent",desc:"실험 데이터 기반 최적 조건 탐색",owner:"",addr:"",order:1,org:"전극기술그룹",likes:34},
   {name:"신공법 사례 조사 Agent",desc:"특허·논문에서 유사 공법 자동 수집",owner:"",addr:"",order:2,org:"전극기술그룹",likes:21},
-  {name:"설비 사양 검토 Agent",desc:"신규 설비 요구사양 초안 작성",owner:"",addr:"",order:3,org:"파우치형기술그룹",likes:18},
+  {name:"설비 사양 검토 Agent",desc:"신규 설비 요구사양 초안 작성",owner:"",addr:"",order:3,org:"파우치/각형기술그룹",likes:18},
   {name:"공법 변경 영향 예측",desc:"변경 시 품질·수율 파급 범위 추정",owner:"",addr:"",order:4,org:"원통형기술그룹",likes:27},
-  {name:"파일럿 결과 요약 Agent",desc:"시험 로트 결과 자동 정리·비교",owner:"",addr:"",order:5,org:"파우치형기술그룹",likes:15},
+  {name:"파일럿 결과 요약 Agent",desc:"시험 로트 결과 자동 정리·비교",owner:"",addr:"",order:5,org:"파우치/각형기술그룹",likes:15},
   {name:"공정 표준서 초안 생성",desc:"검증 완료 조건을 표준 문서로 변환",owner:"",addr:"",order:6,org:"전극기술그룹",likes:9}]},
  {team:"해외법인 양산 지원",tag:"Overseas Plant Production Support",items:[
   {name:"해외법인 수율 모니터링",desc:"법인별 수율 추이·이상 구간 알림",owner:"",addr:"",order:1,org:"Pack기술그룹",likes:41},
   {name:"현지 이슈 원인분석 Agent",desc:"불량 발생 구간 역추적 · 원인 후보 제시",owner:"",addr:"",order:2,org:"원통형기술그룹",likes:38},
-  {name:"설비 알람 대응 가이드",desc:"알람 이력 기반 조치 절차 자동 안내",owner:"",addr:"",order:3,org:"파우치형기술그룹",likes:24},
+  {name:"설비 알람 대응 가이드",desc:"알람 이력 기반 조치 절차 자동 안내",owner:"",addr:"",order:3,org:"파우치/각형기술그룹",likes:24},
   {name:"양산 조건 이관 점검",desc:"국내 조건과 현지 조건 차이 자동 대조",owner:"",addr:"",order:4,org:"전극기술그룹",likes:17},
   {name:"현지 교육자료 생성 Agent",desc:"공정 문서를 현지어 교육안으로 변환",owner:"",addr:"",order:5,org:"인프라그룹",likes:12},
   {name:"법인 간 실적 비교",desc:"동일 공정 지표를 법인별로 정렬 비교",owner:"",addr:"",order:6,org:"Pack기술그룹",likes:8}]},
@@ -2519,7 +2515,7 @@ const FALLBACK={columns:[
   {name:"개발 요구사양 정리 Agent",desc:"고객 요구를 검증 항목으로 분해",owner:"",addr:"",order:1,org:"Pack기술그룹",likes:33},
   {name:"설계 변경 영향 분석",desc:"변경 파급 범위와 재검증 항목 자동 추적",owner:"",addr:"",order:2,org:"원통형기술그룹",likes:29},
   {name:"개발 일정 리스크 경보",desc:"마일스톤 지연 위험 사전 탐지",owner:"",addr:"",order:3,org:"Pack기술그룹",likes:22},
-  {name:"시험 결과 판정 지원",desc:"규격 대비 합부 자동 판정 · 근거 제시",owner:"",addr:"",order:4,org:"파우치형기술그룹",likes:19},
+  {name:"시험 결과 판정 지원",desc:"규격 대비 합부 자동 판정 · 근거 제시",owner:"",addr:"",order:4,org:"파우치/각형기술그룹",likes:19},
   {name:"과거 개발 이력 검색",desc:"유사 과제의 판단 근거를 찾아 제시",owner:"",addr:"",order:5,org:"인프라그룹",likes:14}]},
  {team:"공통 및 루틴 업무",tag:"Common & Routine Operations",items:[
   {name:"회의록 자동 정리 Agent",desc:"녹취·메모를 결정사항과 액션으로 분리",owner:"",addr:"",order:1,org:"인프라그룹",likes:45},
@@ -4022,7 +4018,7 @@ function setReqStatus(m,c){const e=document.getElementById("reqStatus");e.classN
 (function(){var e=document.getElementById("rqFeatEtc");if(e)e.addEventListener("change",function(){document.getElementById("rqFeatEtcText").style.display=this.checked?"":"none";});})();
 document.getElementById("dashReqBtn").addEventListener("click",async()=>{
   await checkMe();
-  setReqStatus("");["rqName","rqAuthor","rqOrg","rqDesc"].forEach(id=>document.getElementById(id).value="");
+  setReqStatus("");["rqName","rqAuthor","rqOrg","rqTeam","rqDesc"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("rqFile").value="";
   document.querySelectorAll(".rqFeat").forEach(c=>c.checked=false);
   document.getElementById("rqFeatEtc").checked=false;document.getElementById("rqFeatEtcText").value="";document.getElementById("rqFeatEtcText").style.display="none";
@@ -4032,6 +4028,7 @@ document.getElementById("reqSubmit").addEventListener("click",async()=>{
   const name=document.getElementById("rqName").value.trim();
   const author=document.getElementById("rqAuthor")?document.getElementById("rqAuthor").value.trim():"";
   const org=document.getElementById("rqOrg").value.trim();
+  const team=document.getElementById("rqTeam")?document.getElementById("rqTeam").value.trim():"";
   const desc=document.getElementById("rqDesc").value.trim();
   const features=[...document.querySelectorAll(".rqFeat:checked")].map(c=>c.value);
   const etcOn=document.getElementById("rqFeatEtc").checked;
@@ -4043,7 +4040,7 @@ document.getElementById("reqSubmit").addEventListener("click",async()=>{
   try{
     let html="",fname="";
     if(f){html=await f.text();fname=f.name;}
-    const r=await fetch("api/dash-request",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,author,org,desc,features,etc,html,fname})});
+    const r=await fetch("api/dash-request",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,author,org,team,desc,features,etc,html,fname})});
     const j=await r.json();
     if(r.ok&&j.ok){close("reqOv");alert("대시보드 추가요청이 접수되었습니다. 관리자 검토 후 반영됩니다.");}
     else setReqStatus(j.error||"요청 실패","err");
@@ -4314,6 +4311,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
   var CYCLE=3000,TRAVEL=720,STAGGER=190,GLOW=560;
   var reduce=false;
   try{reduce=window.matchMedia("(prefers-reduced-motion:reduce)").matches;}catch(e){}
+  reduce=false;   /* standalone: 로컬과 동일한 화면이 목적이라 OS 설정을 따르지 않는다 */
   function render(t){
     var k=t%CYCLE,j,p,tt,g;
     for(j=0;j<N;j++){
@@ -4361,69 +4359,186 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
   "use strict";
   var REDUCED = false;
   try{ REDUCED = window.matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){}
+  REDUCED = false;   /* standalone: 로컬과 동일한 화면이 목적이라 OS 설정을 따르지 않는다 */
 
   /* ---------------------------------------------------------------
-     1) 히어로 배경 영상 (V4 — 별자리 파티클 네트워크를 대체)
-        · loop 속성 대신 3~8초 구간만 되돌려 반복한다.
-        · 화면 밖 · 탭 비활성일 때는 세워 둔다 — 배경 영상이 계속 디코딩되면
-          스크롤이 무거워진다(파티클 캔버스를 세우던 것과 같은 이유).
-        · 영상이 막힌 망에서는 스스로 감춰지고 섹션 그라디언트만 남는다.
+     1) 히어로 파티클 네트워크
      --------------------------------------------------------------- */
-  (function heroVideo(){
-    var v = document.getElementById("heroVideo");
+  (function particleNet(){
+    var cv = document.getElementById("pxNet");
     var hero = document.getElementById("secHome");
-    if(!v || !hero) return;
+    if(!cv || !hero || !cv.getContext) return;
+    var ctx = cv.getContext("2d");
+    var pts = [], w = 0, h = 0, dpr = 1, raf = null, visible = true;
+    var mouse = { x:-9999, y:-9999 };
 
-    var START = 3.0, END = 8.0;
-    var visible = true, dead = false;
-
-    function seekStart(){
-      try{ if(v.currentTime < START || v.currentTime >= END) v.currentTime = START; }catch(e){}
+    /* 저부하 프로파일 — prefers-reduced-motion 을 "정지"가 아니라 "가볍게" 로 해석한다.
+       회사 PC·VDI 는 이 설정이 기본으로 켜져 있어, 정지시키면 배경이 통째로 죽는다.
+       (원본 ARIA script #2 도 같은 이유로 VDI 에서 인트로를 강제 재생했다) */
+    var TIER = 0;                          /* 0 기본 · 1 저부하 · 2 최소 */
+    var LINK = 150, SPEED = 0.30, CAP = 120, FRAME_MS = 0;
+    /* standalone: 등급을 항상 TIER 0(로컬 기본)으로 고정한다. 어느 등급이든
+       원본은 강등 시 seed() 로 점을 새 난수 위치에 다시 뿌려 별자리가 깜빡이며
+       자리를 옮겼고, 강등 후에는 18~24fps 스로틀에 갇혀 배경이 뚝뚝 끊겼다.
+       그리기 비용은 아래 P9 일괄화가 줄이므로 60fps · 풀 밀도를 유지한다. */
+    var DENS = 17000, LALPHA = 0.42;
+    /* 연결선을 투명도 단계별로 모아 두는 버퍼. 매 프레임 length=0 으로 비우고
+       재사용한다 — 프레임마다 배열을 새로 만들면 GC 가 스크롤 중에 튄다. */
+    var BK = 8, LBUF = [[],[],[],[],[],[],[],[]];
+    function applyTier(){
+      LINK = 150; SPEED = 0.30; CAP = 120; FRAME_MS = 0;
     }
-    function play(){
-      if(dead || !visible || document.hidden || REDUCED) return;
-      var p = v.play();
-      if(p && p.catch) p.catch(function(){});   /* 자동재생 차단은 오류가 아니다 */
-    }
-    function pause(){ try{ v.pause(); }catch(e){} }
+    var LITE = REDUCED;
+    if(LITE) TIER = 1;
+    applyTier();
 
-    v.addEventListener("loadedmetadata", function(){ seekStart(); play(); });
-    /* 구간 반복 — timeupdate 는 초당 4~5회라 종료 지점을 살짝 넘길 수 있다.
-       되돌린 뒤 다시 재생시켜 루프 순간 멈추는 것을 막는다. */
-    v.addEventListener("timeupdate", function(){
-      if(v.currentTime >= END){ v.currentTime = START; play(); }
+    var pw = -1, ph = -1;   /* standalone: 마지막으로 seed 한 크기 */
+    function resize(){
+      var r = hero.getBoundingClientRect();
+      w = Math.max(1, Math.round(r.width));
+      h = Math.max(1, Math.round(r.height));
+      /* standalone: 크기가 그대로면 재배치하지 않는다 — 별자리 자리 이동 방지 */
+      if(cv.width > 0 && Math.abs(w - pw) < 3 && Math.abs(h - ph) < 3) return;
+      pw = w; ph = h;
+      dpr = (TIER >= 1) ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+      cv.width = Math.round(w * dpr);
+      cv.height = Math.round(h * dpr);
+      cv.style.width = w + "px";
+      cv.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      seed();
+    }
+    function seed(){
+      var target = Math.round(Math.min(CAP, Math.max(16, (w * h) / DENS)));   /* standalone: TIER0 고정 밀도 */
+      pts = [];
+      for(var i=0;i<target;i++){
+        pts.push({
+          x: Math.random()*w,
+          y: Math.random()*h,
+          vx:(Math.random()-0.5)*SPEED,
+          vy:(Math.random()-0.5)*SPEED,
+          r: 0.7 + Math.random()*1.5
+        });
+      }
+    }
+    function step(){
+      ctx.clearRect(0,0,w,h);
+      var i,j,a,b,dx,dy,d2,al;
+      for(i=0;i<pts.length;i++){
+        a = pts[i];
+        a.x += a.vx; a.y += a.vy;
+        if(a.x < -20) a.x = w+20; else if(a.x > w+20) a.x = -20;
+        if(a.y < -20) a.y = h+20; else if(a.y > h+20) a.y = -20;
+      }
+      /* 연결선 — standalone: 투명도를 BK 단계로 양자화해 단계마다 한 번씩만 stroke 한다.
+         원본은 선 하나마다 상태 변경 + stroke 를 반복해 프레임당 드로우 콜이
+         선 개수만큼 나갔다. 좌표·색·굵기는 그대로다. */
+      var bi, bx, seg;
+      for(bi=0;bi<BK;bi++) LBUF[bi].length = 0;
+      for(i=0;i<pts.length;i++){
+        a = pts[i];
+        for(j=i+1;j<pts.length;j++){
+          b = pts[j];
+          dx = a.x-b.x; dy = a.y-b.y; d2 = dx*dx + dy*dy;
+          if(d2 < LINK*LINK){
+            al = 1 - Math.sqrt(d2)/LINK;
+            bx = (al * BK) | 0; if(bx >= BK) bx = BK - 1; else if(bx < 0) bx = 0;
+            LBUF[bx].push(a.x,a.y,b.x,b.y);
+          }
+        }
+      }
+      ctx.lineWidth = 1;
+      for(bi=0;bi<BK;bi++){
+        seg = LBUF[bi];
+        if(!seg.length) continue;
+        ctx.strokeStyle = "rgba(120,190,255," + (((bi + 0.5) / BK) * LALPHA).toFixed(3) + ")";
+        ctx.beginPath();
+        for(j=0;j<seg.length;j+=4){ ctx.moveTo(seg[j],seg[j+1]); ctx.lineTo(seg[j+2],seg[j+3]); }
+        ctx.stroke();
+      }
+      /* 마우스 근처 강조 — 커서가 히어로 밖이면(-9999) 계산 자체를 건너뛴다 */
+      if(mouse.x > -9000){
+        for(bi=0;bi<BK;bi++) LBUF[bi].length = 0;
+        for(i=0;i<pts.length;i++){
+          a = pts[i];
+          dx = a.x-mouse.x; dy = a.y-mouse.y; d2 = dx*dx + dy*dy;
+          if(d2 < 28900){
+            al = 1 - Math.sqrt(d2)/170;
+            bx = (al * BK) | 0; if(bx >= BK) bx = BK - 1; else if(bx < 0) bx = 0;
+            LBUF[bx].push(a.x,a.y);
+          }
+        }
+        for(bi=0;bi<BK;bi++){
+          seg = LBUF[bi];
+          if(!seg.length) continue;
+          ctx.strokeStyle = "rgba(77,216,232," + (((bi + 0.5) / BK) * 0.42).toFixed(3) + ")";
+          ctx.beginPath();
+          for(j=0;j<seg.length;j+=2){ ctx.moveTo(seg[j],seg[j+1]); ctx.lineTo(mouse.x,mouse.y); }
+          ctx.stroke();
+        }
+      }
+      /* 점 — standalone: 색이 전부 같으므로 한 경로에 모아 한 번만 fill 한다 */
+      ctx.fillStyle = "rgba(190,225,255,.78)";
+      ctx.beginPath();
+      for(i=0;i<pts.length;i++){
+        a = pts[i];
+        ctx.moveTo(a.x + a.r, a.y);
+        ctx.arc(a.x,a.y,a.r,0,Math.PI*2);
+      }
+      ctx.fill();
+    }
+    /* 적응형 강등 — Citrix/VDI 는 JS 로 감지할 수 없으므로 실측 프레임 시간으로 판단한다.
+       한 번 내려간 등급은 다시 올리지 않는다(진동 방지). */
+    var acc = 0, cnt = 0, last = 0, nextAt = 0;
+    function degrade(now){
+      if(last){ acc += (now - last); cnt++; }
+      last = now;
+      if(cnt >= 60){
+        var avg = acc / cnt; acc = 0; cnt = 0;
+        /* standalone: 강등하지 않는다 — 강등의 resize()→seed() 가 별자리를
+           깜빡이며 재배치시키고, 이후 프레임 스로틀로 배경이 뚝뚝 끊긴다.
+           로컬과 같은 60fps · 풀 밀도를 유지한다. (원본 코드:
+           avg>45 → TIER2, avg>28 → TIER1 + body.lite) */
+      }
+    }
+    function loop(now){
+      if(!FRAME_MS || now >= nextAt){
+        if(FRAME_MS) nextAt = now + FRAME_MS;
+        step();
+      }
+      degrade(now);
+      raf = (visible && !document.hidden) ? requestAnimationFrame(loop) : null;
+    }
+    function start(){ if(raf === null){ last = 0; nextAt = 0; raf = requestAnimationFrame(loop); } }
+    function stop(){ if(raf !== null){ cancelAnimationFrame(raf); raf = null; } }
+
+    if(LITE) document.body.classList.add("lite");
+    resize();
+    start();
+
+    var rt = null;
+    window.addEventListener("resize", function(){
+      if(rt) clearTimeout(rt);
+      rt = setTimeout(function(){ resize(); }, 160);
     });
-    v.addEventListener("ended", function(){ v.currentTime = START; play(); });
-
-    /* 재생 불가(망 차단 · 코덱 없음 · 404) → 배경 그라디언트만 남긴다 */
-    function fail(){
-      if(dead) return;
-      dead = true;
-      v.hidden = true;
-      /* 딤도 같이 걷는다 — 영상이 없는데 옅은 띠만 남으면 그게 더 어색하다 */
-      var veil = document.getElementById("heroVeil");
-      if(veil) veil.hidden = true;
-      pause();
-    }
-    v.addEventListener("error", fail, true);
-    var srcEl = v.querySelector("source");
-    if(srcEl) srcEl.addEventListener("error", fail);
-    /* 8초 안에 한 프레임도 못 받으면 막힌 것으로 본다 */
-    setTimeout(function(){ if(!dead && v.readyState < 2) fail(); }, 8000);
-
+    hero.addEventListener("mousemove", function(e){
+      var r = hero.getBoundingClientRect();
+      mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top;
+    });
+    hero.addEventListener("mouseleave", function(){ mouse.x = -9999; mouse.y = -9999; });
     document.addEventListener("visibilitychange", function(){
-      if(document.hidden) pause(); else play();
+      if(document.hidden) stop(); else start();
     });
+    /* 히어로가 화면 밖이면 정지해 스크롤 성능을 지킨다 */
     if("IntersectionObserver" in window){
       new IntersectionObserver(function(es){
         visible = es[0].isIntersecting;
-        if(visible) play(); else pause();
+        if(visible){
+          if(cv.width === 0 || Math.abs(hero.getBoundingClientRect().width - w) > 2) resize();
+          start();   /* standalone: 감속모션이어도 재시작한다 — 배경이 정지한 채 남지 않게 */
+        }else stop();
       }, { threshold: 0 }).observe(hero);
     }
-
-    /* 감속모션이면 첫 프레임만 세워 둔다 — 정지 화면은 남는다 */
-    if(REDUCED){ v.addEventListener("loadeddata", function(){ seekStart(); pause(); }); }
-    else { play(); }
   })();
 
   /* ---------------------------------------------------------------
@@ -4540,7 +4655,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
 
   /* 담당 조직 — FALLBACK 각 item 의 org 와 문자열이 일치해야 필터가 맞는다.
      TODO: 실제 담당 조직이 확정되면 이 배열과 FALLBACK 의 org 를 함께 교체한다. */
-  var ORG_LIST = ["전극기술그룹","파우치형기술그룹","원통형기술그룹","Pack기술그룹","인프라그룹"];
+  var ORG_LIST = ["전극기술그룹","파우치/각형기술그룹","원통형기술그룹","Pack기술그룹","인프라그룹"];
 
   /* 카테고리 화면이 한 화면에 들어오도록 컬럼당 3개만 먼저 보여준다.
      SHOW_N 은 script #1 의 최상위 let 이라 전역 렉시컬 스코프를 공유한다 — 원문 수정이 아니다.
@@ -4674,7 +4789,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
   function statusBadge(live, st){
     if(live && st === "fail") return '<span class="v10badge fail">● 접속 장애</span>';
     if(live)                  return '<span class="v10badge live">● 사용 가능</span>';
-    return '<span class="v10badge soon">▪ 준비중</span>';
+    return '<span class="v10badge soon">● 준비중</span>';
   }
   function likeHTML(team, it){
     var on = likedByMe(team, it.name);
@@ -4784,7 +4899,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
      script #1 의 refreshNoticeHub 를 교체한다. 원문은 건드리지 않는다. */
   var NOTICE_SAMPLE = [
     {id:0, title:"MAPS 오픈 안내 — 센터 업무 카테고리별 AI Agent를 한 곳에서", ts:"2026-08-04", category:"공지"},
-    {id:0, title:"AI Agent 등록 신청 절차 안내", ts:"2026-08-01", category:"안내"},
+    {id:0, title:"AI Agent 등록 신청 절차 안내", ts:"2026-08-01", category:"안내"},   /* 공지 아님 — 필터에서 빠진다 */
     {id:0, title:"8월 사내 AI 활용 교육 일정 안내", ts:"2026-07-30", category:"교육"},
     {id:0, title:"조직별 담당 AI Agent 배정 현황 공유", ts:"2026-07-28", category:"공지"},
     {id:0, title:"TOP5 좋아요 집계 기준 안내", ts:"2026-07-24", category:"안내"},
@@ -4793,7 +4908,13 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     {id:0, title:"신규 AI Agent 아이디어 제안 상시 접수", ts:"2026-07-15", category:"안내"}
   ];
   /* V3) 더보기 = 게시판 이동이 아니라 목록 펼치기. NOTICE_TOTAL 은 자르기 전 총계다. */
-  var NOTICE_N = 5, NOTICE_TOTAL = 0;
+  /* V4) 6) 한 화면에서 잘리지 않도록 4건까지만 · 7) [공지] 글만 노출 */
+  var NOTICE_N = 4, NOTICE_TOTAL = 0;
+  function isNoticeOnly(p){
+    var c = String((p && p.category) || "").trim();
+    var t = String((p && p.title) || "");
+    return c === "공지" || c === "[공지]" || /^\s*\[공지\]/.test(t);
+  }
   window.refreshNoticeHub = function(){
     var box = document.getElementById("ihNoticeList");
     if(!box) return;
@@ -4802,6 +4923,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     try{ if(!list.length && typeof NOTICE !== "undefined" && NOTICE) list = [{id:NOTICE.id, title:NOTICE.title, ts:"", category:"공지"}]; }catch(e){}
     var sample = !list.length;
     if(sample) list = NOTICE_SAMPLE.slice();
+    list = list.filter(isNoticeOnly);            /* V4) [공지] 태그 글만 */
     list.sort(function(a,b){ return String(b.ts||"").localeCompare(String(a.ts||"")); });
     NOTICE_TOTAL = list.length;              /* 자르기 전에 총계를 잡는다 — 번호와 더보기 판정의 기준 */
     list = list.slice(0, NOTICE_N);
@@ -4829,7 +4951,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     });
     var _more = document.getElementById("ihNoticeMore");
     if(_more){
-      _more.style.display = (NOTICE_TOTAL > 5) ? "" : "none";
+      _more.style.display = (NOTICE_TOTAL > 4) ? "" : "none";
       _more.textContent   = (NOTICE_N >= NOTICE_TOTAL) ? "접기" : "더보기 +";
     }
   };
@@ -5158,7 +5280,7 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     var c = mb.cloneNode(true);
     mb.parentNode.replaceChild(c, mb);
     c.addEventListener("click", function(){
-      NOTICE_N = (NOTICE_N > 5) ? 5 : Math.max(5, NOTICE_TOTAL);
+      NOTICE_N = (NOTICE_N > 4) ? 4 : Math.max(4, NOTICE_TOTAL);
       window.refreshNoticeHub();
       fitScreens();
     });
@@ -5311,6 +5433,118 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     applyShowN(SET.showN, false);      /* SHOW_N 자체는 위쪽(4417 자리)에서 이미 복원했다 */
   })();
 
+})();
+</script>
+<script>
+/* ============================================================================
+   MAPS standalone — 데모 데이터 주입
+   백엔드가 없어도 공지 · 자료공유 · Q&A · 게시판이 채워지도록 로더만 교체한다.
+   내용은 tools/demo_data.py 에 있고 미리보기 빌드와 같은 것을 쓴다.
+   ============================================================================ */
+(function demoData(){
+  "use strict";
+  var DEMO_SHARE  = [{"id": "s1", "name": "공정 이상 원인분석 리포트 템플릿", "desc": "불량 발생 구간별 원인 후보를 자동 정리하는 리포트 양식", "who": "김도현", "org": "이슈 원인분석", "fname": "rca_report_v2.html", "size": 184320}, {"id": "s2", "name": "설비 알람 이력 대시보드", "desc": "최근 90일 알람을 설비·유형별로 집계", "who": "박서연", "org": "MRM 과제 운영", "url": "http://10.31.24.11:8080/alarm"}, {"id": "s3", "name": "수율 드리프트 추적 노트북", "desc": "로트별 수율 변화를 시계열로 분해", "who": "이준호", "org": "이슈 원인분석", "fname": "yield_drift.ipynb", "size": 96256}, {"id": "s4", "name": "기술 트렌드 스캐닝 결과 (7월)", "desc": "전고체·건식전극 관련 특허 및 논문 요약", "who": "익명", "org": "기술개발 도출 지원", "fname": "trend_2607.pptx", "size": 3241984}, {"id": "s5", "name": "개발 게이트 산출물 체크리스트", "desc": "게이트별 필수 산출물 충족도 자동 점검 시트", "who": "정민아", "org": "제품 개발 프로세스 개선", "fname": "gate_checklist.xlsx", "size": 51200}, {"id": "s6", "name": "과제 리스크 조기경보 기준", "desc": "일정·비용·품질 리스크 판정 임계값 정리", "who": "최우식", "org": "MRM 과제 운영", "url": "http://10.31.24.37:9000/risk"}, {"id": "s7", "name": "선행기술 조사 자동화 스크립트", "desc": "키워드 입력 시 경쟁사 공개특허를 대조", "who": "한지우", "org": "기술개발 도출 지원", "fname": "prior_art.py", "size": 18432}];
+  var DEMO_LOUNGE = [{"id": "l1", "name": "김도현", "org": "이슈 원인분석", "anon": false, "tag": "활용사례", "ts": "2026-07-29 10:22", "likes": 12, "liked": false, "attachments": [], "text": "공정 이상 원인분석 Agent로 지난주 불량 건 역추적해봤는데, 후보 3개 중 2번째가 실제 원인이었습니다.\n수작업으로 반나절 걸리던 걸 15분 만에 좁혔어요. 로트 번호만 넣으면 되니 한 번씩 써보시길.", "replies": [{"id": "r1", "name": "박서연", "org": "MRM 과제 운영", "anon": false, "ts": "2026-07-29 11:05", "text": "오 저희 라인에도 적용 가능할까요? 설비 구성이 좀 다른데."}, {"id": "r2", "name": "김도현", "org": "이슈 원인분석", "anon": false, "ts": "2026-07-29 11:31", "text": "설비 태그만 매핑해주면 됩니다. 담당자분 연결해드릴게요."}, {"id": "r3", "name": "", "org": "", "anon": true, "ts": "2026-07-29 13:47", "text": "저도 관심 있습니다. 매핑 가이드 공유 가능하신가요?"}]}, {"id": "l2", "name": "", "org": "", "anon": true, "tag": "질문", "ts": "2026-07-28 16:40", "likes": 4, "liked": false, "attachments": [], "text": "준비중으로 표시된 Agent는 언제쯤 열리나요? 오픈예정일이 안 적힌 것들이 있어서요.", "replies": [{"id": "r4", "name": "운영자", "org": "생산기술혁신센터", "anon": false, "ts": "2026-07-28 17:12", "text": "일정 확정된 건부터 타일에 오픈예정일을 채우고 있습니다. 8월 중 대부분 표기될 예정입니다."}]}, {"id": "l3", "name": "이준호", "org": "이슈 원인분석", "anon": false, "tag": "팁", "ts": "2026-07-27 09:15", "likes": 21, "liked": true, "attachments": [], "text": "대시보드 검색창에서 담당자 이름으로도 검색됩니다. 검색 조건을 '담당자'로 바꾸면 그 사람이 맡은 Agent만 모아볼 수 있어요.\n인수인계 때 꽤 유용했습니다.", "replies": []}, {"id": "l4", "name": "정민아", "org": "제품 개발 프로세스 개선", "anon": false, "tag": "잡담", "ts": "2026-07-25 18:02", "likes": 7, "liked": false, "attachments": [], "text": "즐겨찾기(★) 눌러두면 카테고리 안에서 위로 올라옵니다. 자주 쓰는 것 3~4개만 찍어두니 훨씬 빠르네요.", "replies": []}];
+  var DEMO_BOARD  = [{"id": "b1", "title": "MAPS 포털 정식 오픈 안내", "author": "운영자", "ts": "2026-07-28 09:12", "views": 342, "comments": 5, "pinned": true, "category": "공지", "attachments": true, "likes": 18, "read": true}, {"id": "b2", "title": "[필독] 대시보드 추가요청 절차 변경", "author": "운영자", "ts": "2026-07-20 11:00", "views": 288, "comments": 2, "pinned": true, "category": "공지", "attachments": false, "likes": 9, "read": true}, {"id": "b3", "title": "8월 AI Agent 활용 사내 교육 일정", "author": "박서연", "ts": "2026-07-24 14:03", "views": 156, "comments": 8, "pinned": false, "category": "교육", "attachments": true, "likes": 11, "read": true}, {"id": "b4", "title": "온습도 이상감지 Agent 알람 기준 변경 공유", "author": "김도현", "ts": "2026-07-21 17:40", "views": 97, "comments": 3, "pinned": false, "category": "공유", "attachments": false, "likes": 6, "read": true}, {"id": "b5", "title": "수율 저하 요인 분석 결과 리포트", "author": "이준호", "ts": "2026-07-18 10:25", "views": 134, "comments": 4, "pinned": false, "category": "공유", "attachments": true, "likes": 14, "read": true}, {"id": "b6", "title": "과제 진척 모니터링에 마일스톤 필터 추가 제안", "author": "최우식", "ts": "2026-07-15 13:50", "views": 62, "comments": 1, "pinned": false, "category": "제안", "attachments": false, "likes": 3, "read": true}, {"id": "b7", "title": "선행기술 조사 Agent 결과가 중복되는 건 왜인가요?", "author": "익명", "ts": "2026-07-11 16:08", "views": 88, "comments": 6, "pinned": false, "category": "문의", "attachments": false, "likes": 0, "read": true}, {"id": "b8", "title": "설계 변경 영향 분석 사용 후기", "author": "정민아", "ts": "2026-07-08 09:44", "views": 71, "comments": 2, "pinned": false, "category": "자유", "attachments": false, "likes": 5, "read": true}];
+
+  /* 공지는 건드리지 않는다 — script #3 의 NOTICE_SAMPLE 이 이미 8건을 갖고 있고
+     `더보기 +` 토글까지 그 총계를 기준으로 돈다. 여기서 덮으면 오히려 줄어든다. */
+  window.loadShare       = async function(){ SHARE_ITEMS = DEMO_SHARE;  renderShare(); };
+  window.loadLounge      = async function(){ LG_POSTS    = DEMO_LOUNGE; lgRenderFeed(); };
+  window.loadPosts       = async function(){ BOARD_POSTS = DEMO_BOARD;  PAGE_SHOWN = PAGE_SIZE; renderBoardRows(); };
+  window.refreshBoardDot = async function(){};
+
+  try{ loadShare(); }catch(e){}
+  try{ lgRenderComposer(); loadLounge(); }catch(e){}
+  try{ loadPosts(); }catch(e){}
+})();
+</script>
+<script>
+/* ============================================================================
+   MAPS standalone — 복원 레이어
+   script #1·#2·#3 은 건드리지 않는다. 밖에서 보강만 한다.
+   ============================================================================ */
+(function(){
+  "use strict";
+
+  /* -------- P4) 부드러운 스크롤 — scroll-behavior 미지원 브라우저 대체 -------- */
+  var NATIVE = false;
+  try{ NATIVE = "scrollBehavior" in document.documentElement.style; }catch(e){}
+
+  function navH(){
+    try{
+      var v = getComputedStyle(document.documentElement).getPropertyValue("--nav-h");
+      return parseFloat(v) || 68;
+    }catch(e){ return 68; }
+  }
+  function glide(to){
+    var from = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var dist = to - from;
+    if(Math.abs(dist) < 2){ window.scrollTo(0, to); return; }
+    var dur = Math.min(900, Math.max(320, Math.abs(dist) * 0.55)), t0 = null;
+    function frame(ts){
+      if(t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / dur);
+      var e = p < 0.5 ? 4*p*p*p : 1 - Math.pow(-2*p + 2, 3) / 2;   /* easeInOutCubic */
+      window.scrollTo(0, Math.round(from + dist * e));
+      if(p < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  if(!NATIVE){
+    /* 앵커 이동 — 원본 위임 핸들러(홈이 아닐 때만 가로챈다)와 겹치지 않게 마지막에 붙는다 */
+    document.addEventListener("click", function(e){
+      var a = (e.target && e.target.closest) ? e.target.closest('a[href^="#"]') : null;
+      if(!a) return;
+      var href = a.getAttribute("href");
+      if(!href || href === "#") return;
+      var t = null;
+      try{ t = document.querySelector(href); }catch(err){ return; }
+      if(!t) return;
+      e.preventDefault();
+      var top = t.getBoundingClientRect().top + (window.pageYOffset || 0) - navH();
+      glide(Math.max(0, top));
+    });
+    /* 맨 위로 버튼 — 원본은 scrollTo({behavior:"smooth"}) 를 쓴다 */
+    var top = document.getElementById("toTopBtn");
+    if(top) top.addEventListener("click", function(e){ e.preventDefault(); glide(0); }, true);
+  }
+
+  /* -------- P5) 리빌 안전망 — 옵저버가 놓친 요소를 보이는 순간 켠다 --------
+     스크롤마다 getBoundingClientRect 를 돌리면 매 프레임 레이아웃이 강제돼
+     정작 스크롤이 버벅인다. 원본 옵저버가 이미 대부분을 처리하므로 여기서는
+     남은 것만 저빈도 타이머로 훑고, 다 켜지면 스스로 멈춘다. */
+  (function revealNet(){
+    var left = document.querySelectorAll(".reveal").length;
+    if(!left) return;
+    var iv = setInterval(function(){
+      var els = document.querySelectorAll(".reveal:not(.in)");
+      if(!els.length){ clearInterval(iv); return; }      /* 할 일이 없으면 타이머를 끈다 */
+      var vh = window.innerHeight || 0;
+      for(var i=0;i<els.length;i++){
+        var r = els[i].getBoundingClientRect();
+        if(r.top < vh * 0.94 && r.bottom > 0) els[i].classList.add("in");
+      }
+    }, 500);
+    setTimeout(function(){ clearInterval(iv); }, 60000);  /* 최후 보루 — 무한히 돌지 않는다 */
+  })();
+
+  /* -------- P5) 높이 재측정 — fitScreens 는 script #3 안의 지역 함수라
+     직접 못 부른다. 원본이 걸어 둔 resize 리스너를 대신 깨운다. -------- */
+  function nudge(){
+    try{ window.dispatchEvent(new Event("resize")); }
+    catch(e){
+      try{ var ev = document.createEvent("Event"); ev.initEvent("resize", true, true); window.dispatchEvent(ev); }catch(e2){}
+    }
+  }
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){ setTimeout(nudge, 0); });
+  }else{
+    setTimeout(nudge, 0);
+  }
+  setTimeout(nudge, 900);
+  setTimeout(nudge, 2600);   /* 폴백 데이터까지 다 그려진 뒤 한 번 더 */
 })();
 </script>
 </body>

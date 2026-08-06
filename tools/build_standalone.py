@@ -87,9 +87,10 @@ def latest_release() -> Path:
     dirs = []
     for d in (ROOT / "releases").glob("MAPS-V*"):
         if d.is_dir() and (d / "index.html").is_file():
-            tail = d.name[len("MAPS-V"):]
-            if tail.isdigit():
-                dirs.append((int(tail), d))
+            # "MAPS-V4-1" 처럼 마이너가 붙는 이름도 정렬되도록 튜플로 만든다
+            parts = d.name[len("MAPS-V"):].split("-")
+            if all(x.isdigit() for x in parts) and parts:
+                dirs.append((tuple(int(x) for x in parts), d))
     if not dirs:
         raise SystemExit("[중단] releases/MAPS-V<n>/index.html 을 찾지 못했습니다.")
     return max(dirs)[1]
