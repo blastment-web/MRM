@@ -722,11 +722,17 @@
      배경이 transparent 라, 0 부터 깔면 메뉴 글자가 영상 위에 얹힌다.
      height 를 calc 로 못 박는 이유: <video> 는 대체 요소라 height:auto 면
      top/bottom 이 아니라 영상의 고유 종횡비로 높이를 잡아 섹션 아래가 빈다. */
+  /* translateZ(0) · contain:paint — 영상과 딤을 각각 독립 합성 레이어로 고정한다.
+     매 프레임 주변까지 다시 칠하지 않게 해, 원격 데스크톱처럼 GPU 없는 환경에서
+     화면 갱신 범위를 히어로 안으로 가둔다.
+     딤을 filter:brightness() 로 영상에 합치는 방법은 쓰지 않는다 — 필터는 매 프레임
+     연산이라 GPU 없는 VM 에서 오히려 손해다. 단색 레이어 합성이 싸다. */
   #heroVideo{position:absolute;top:var(--nav-h);left:0;right:0;
     width:100%;height:calc(100% - var(--nav-h));object-fit:cover;
-    display:block;z-index:0;pointer-events:none;border:0;background:var(--ink)}
+    display:block;z-index:0;pointer-events:none;border:0;background:var(--ink);
+    transform:translateZ(0);backface-visibility:hidden;contain:paint}
   #heroVeil{position:absolute;top:var(--nav-h);left:0;right:0;height:calc(100% - var(--nav-h));
-    z-index:0;pointer-events:none;background:rgba(0,0,0,.4)}
+    z-index:0;pointer-events:none;background:rgba(0,0,0,.4);transform:translateZ(0)}
   #heroVideo[hidden],#heroVeil[hidden]{display:none}
   /* 첫 화면은 히어로만 있으므로 세로 가운데로 모은다 */
   #secHome{justify-content:center}
@@ -1932,7 +1938,7 @@
   <section class="sec screen" id="secHome">
     <!-- V4-2) 히어로 배경 영상. loop 속성 대신 JS 로 3~8초 구간만 반복한다.
          막힌 망에서는 스스로 감춰지고 아래 그라디언트만 남는다. -->
-    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="auto">
+    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="metadata">
       <source src="https://www.lgensol.com/inc/video/video_main01.mp4#t=3,8" type="video/mp4">
     </video>
     <div id="heroVeil" aria-hidden="true"></div>
@@ -4446,6 +4452,18 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
         if(visible) play(); else pause();
       }, { threshold: 0 }).observe(hero);
     }
+
+    /* 스크롤 중에는 세운다 — 사내 클라우드(원격 데스크톱)에서 버벅임이 가장 심한
+       구간이 "스크롤 + 영상 재생"이 겹칠 때다. 원격 프로토콜이 화면 이동과 영상
+       변화를 동시에 인코딩해야 하기 때문이다. 멈추면 곧바로 다시 튼다.
+       재개는 play() 를 그대로 쓴다 — visible · document.hidden · dead 검사가
+       이미 들어 있어 히어로 밖에서는 되살아나지 않는다. */
+    var scrollT = null;
+    window.addEventListener("scroll", function(){
+      if(!v.paused) pause();
+      if(scrollT) clearTimeout(scrollT);
+      scrollT = setTimeout(play, 180);
+    }, { passive: true });
 
     if(REDUCED){ v.addEventListener("loadeddata", function(){ seekStart(); pause(); }); }
     else { play(); }

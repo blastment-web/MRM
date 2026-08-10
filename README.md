@@ -33,6 +33,7 @@ releases/MAPS-V3/         확정 버전 스냅샷 + index.standalone.html
 releases/MAPS-V4-1/       확정 버전 스냅샷 (최신 · 별자리 히어로) + index.standalone.html
 releases/MAPS-V4-2/       확정 버전 스냅샷 (최신 · 영상 히어로) + index.standalone.html
 docs/기능-사양-작성법.md   AI 매니저 추천·Agent 등록·챗봇 기능 지시 방법
+docs/사내-공유-및-서버화-가이드.md  URL 공유·서버화 단계별 방법 + 원격 데스크톱 성능 대응
 preview/                  빌드 산출물 (git 제외 — 언제든 재생성 가능)
 ```
 
