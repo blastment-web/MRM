@@ -6,16 +6,20 @@ Windows 에 이미 들어 있는 **IIS** 를 배치 파일로 켜고 끈다.
 
 ## 전달할 폴더 만들기
 
-이 폴더의 파일 3개 + 화면 파일 1개를 한 폴더에 모아 압축해서 건넨다.
+이 폴더의 파일 4개 + 화면 파일 3개를 한 폴더에 모아 압축해서 건넨다.
 
 ```bash
 mkdir -p "MAPS-실험"
-cp releases/MAPS-V4-1/index.standalone.html "MAPS-실험/index.html"
-cp tools/rehearsal/1_서버켜기.bat tools/rehearsal/2_서버끄기.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
+cp releases/MAPS-V4-1/index.standalone.html "MAPS-실험/index-V4-1.html"
+cp releases/MAPS-V4-2/index.standalone.html "MAPS-실험/index-V4-2.html"
+cp releases/MAPS-V4-2/index.standalone.html "MAPS-실험/index.html"
+cp tools/rehearsal/*.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
 ```
 
 `index.html` **이름이 중요하다.** IIS 가 기본 문서로 찾는 이름이고,
 배치 파일도 그 이름을 복사한다.
+버전별 원본을 `index-V4-1.html` · `index-V4-2.html` 로 같이 넣는 이유는,
+`index.html` 을 덮어써도 원본이 남아야 `3_화면바꾸기.bat` 이 되돌릴 수 있어서다.
 
 압축할 때는 파일 이름에 **UTF-8 플래그(범용 비트 11)** 를 세워야 한다.
 안 그러면 Windows 탐색기에서 한글 파일명이 깨진다. `zip` 기본 동작은 플래그를
@@ -33,15 +37,43 @@ cp tools/rehearsal/1_서버켜기.bat tools/rehearsal/2_서버끄기.bat tools/r
 | 단계 | 명령 |
 |---|---|
 | 1 | `net session` 으로 관리자 권한 확인 |
-| 2 | 같은 폴더에 `index.html` 이 있는지 확인 |
+| 2 | 같은 폴더에 `index.html` 이 있는지 확인 + **어느 버전인지 판정해 출력** + `index.html.html` 경고 |
 | 3 | `dism /online /enable-feature` 를 **기능마다 한 번씩** |
 | 4 | `index.html` → `C:\inetpub\wwwroot\` 복사 (기존 파일은 `.maps-backup` 로 백업) |
 | 5 | `netsh advfirewall` 로 인바운드 TCP 80 허용 (`MAPS-Rehearsal-HTTP-80`) |
 | 6 | `sc config` + `net start w3svc` |
-| 확인 | `curl` 로 `http://localhost/` 를 호출해 200 인지 보고, `ipconfig` 에서 사내 IP 를 찍는다 |
+| 확인 | `curl` 로 `http://localhost/?v=난수` 를 호출해 200 인지 보고, **응답 바이트에서 버전을 판정**해 찍고, `ipconfig` 에서 사내 IP 를 찍는다 |
+
+`3_화면바꾸기.bat` 은 `1` 또는 `2` 를 받아 해당 버전을 폴더와 `wwwroot` 양쪽에 복사하고
+캐시를 피한 주소로 브라우저를 다시 연다.
 
 `2_서버끄기.bat` 는 4·5·6 을 되돌린다. **IIS 기능 자체는 끄지 않는다** —
 끄면 재부팅을 요구할 수 있어 오히려 번거롭다.
+
+## 화면이 안 바뀌는 문제 — 왜 생기고, 어떻게 잡았나
+
+**서버가 읽는 파일은 `C:\inetpub\wwwroot\index.html` 이라는 복사본이다.**
+폴더의 `index.html` 을 바꿔도 배치를 다시 돌려 복사하기 전까지 응답 바이트는 그대로다.
+여기에 브라우저 캐시와 탐색기의 확장자 숨김(`index.html.html`)까지 겹치면
+원인이 셋인데 화면은 하나라 사용자가 짚을 수가 없다.
+
+그래서 배치가 **서버 응답 바이트를 직접 받아 판정**한다. 폴더의 파일이 아니라 응답을 본다.
+
+```
+서버가 지금 내보내는 화면 : V4-2 영상 히어로
+```
+
+판정은 `V4-1 = id="pxNet"` / `V4-2 = id="heroVideo"` 두 표식으로 한다.
+두 파일은 크기 차이가 **2KB 뿐**(350,927 / 353,245)이라 탐색기 눈대중으로는 구분이 안 된다.
+
+브라우저 캐시는 `web.config` 대신 **주소에 `?v=난수` 를 붙여** 피한다.
+`web.config` 는 설정 섹션이 잠겨 있으면 **500.19** 로 사이트 전체를 죽인다 —
+리허설 도구가 가질 실패 모드가 아니다. 동료에게 줄 주소는 쿼리 없이 따로 찍는다.
+
+> **배치 문법 함정 하나.** `if 조건 명령 && set ...` 은 쓰면 안 된다.
+> `if` 가 거짓이면 명령이 실행되지 않고 **직전 errorlevel 이 남아 `&&` 가 통과**한다.
+> 버전 판정에 이 형태를 쓰면 V4-2 를 감지하고도 V4-1 로 덮어쓴다.
+> `if` 없이 `findstr ... && set` 두 줄을 나란히 두는 방식으로 피했다.
 
 ## 설계 판단 두 가지
 
@@ -60,7 +92,8 @@ cp tools/rehearsal/1_서버켜기.bat tools/rehearsal/2_서버끄기.bat tools/r
 | 항목 | 상태 |
 |---|---|
 | 배치 파일 문법 · 인코딩 · CRLF | 검토 완료 |
-| `index.html` (V4-1 standalone) | 헤드리스 Chromium 확인 — 별자리 히어로 렌더(잉크 0.85%), 카테고리 4, 공지 3, 게시판 8행, **외부 요청 0건 · JS 오류 0건** |
+| `index-V4-1.html` | 헤드리스 Chromium 확인 — 별자리 히어로 렌더(잉크 0.85%), 카테고리 4, 공지 3, 게시판 8행, **외부 요청 0건 · JS 오류 0건** |
+| `index-V4-2.html` | 헤드리스 Chromium 확인 — `#secHome` 1600×900 히어로 전용 / `#secDash` 3패널 분리, `#secDash` 링크 3개, JS 오류 0건. **영상 재생은 확인 못 함** — 이 환경에서 `lgensol.com` 이 차단되어 `fail()` 이 영상을 숨긴다(설계된 폴백). 외부 요청 1건이 바로 그 영상이다 |
 | **Windows 에서의 실제 실행** | **검증 못 함.** 이 저장소를 만든 환경은 Linux 다 |
 
 마지막 항목 때문에 로직을 발명하지 않고 표준 명령만 조합했고, 단계마다 OK/실패를 찍어
