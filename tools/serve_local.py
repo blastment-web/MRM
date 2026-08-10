@@ -20,9 +20,21 @@ IIS · nginx · Docker nginx 는 Range 를 기본 지원하므로 실제 서버�
 
 ## 사용법
 
-    python3 tools/serve_local.py                          # 최신 릴리스를 8080 으로
-    python3 tools/serve_local.py --dir releases/MAPS-V4-1
-    python3 tools/serve_local.py --port 9000
+**Windows 에는 `python3` 명령이 없다.** `python` 또는 `py` 를 쓴다.
+
+    py serve_local.py                    # Windows — 이 스크립트가 있는 폴더를 서빙
+    python serve_local.py                # Windows (py 가 없을 때)
+    python3 tools/serve_local.py         # macOS · Linux
+
+    --dir "C:\경로\폴더"    서빙할 폴더 지정 (기본: 저장소면 최신 릴리스, 아니면 이 파일이 있는 폴더)
+    --port 9000              포트 변경 (기본 8080)
+
+저장소 없이 **이 파일 하나만** 받았다면, 같은 폴더에 보여줄 HTML 을 `index.html`
+이라는 이름으로 두고 실행하면 된다.
+
+> **Python 이 안 깔려 있다면** 이 스크립트는 쓸 수 없다.
+> Windows 에 기본 내장된 IIS 를 쓰는 편이 낫다 —
+> `docs/로컬-PC-리허설-체크리스트.md` 의 **경로 A** 참고.
 
 기동하면 **동료에게 전달할 사내 IP URL** 을 직접 찍어 준다.
 리허설의 핵심이 "내 PC 에 남이 실제로 접속되는가" 이기 때문이다.
@@ -69,7 +81,7 @@ MIME = {
 RANGE_RE = re.compile(r"^bytes=(\d*)-(\d*)$")
 
 
-def latest_release() -> Path:
+def latest_release():
     """releases/MAPS-V<n>[-<m>]/ 중 번호가 가장 큰 것.
     tools/build_standalone.py 의 같은 이름 함수와 동일한 규칙을 쓴다."""
     dirs = []
@@ -79,7 +91,7 @@ def latest_release() -> Path:
             if parts and all(x.isdigit() for x in parts):
                 dirs.append((tuple(int(x) for x in parts), d))
     if not dirs:
-        raise SystemExit("[중단] releases/MAPS-V<n>/index.html 을 찾지 못했습니다.")
+        return None          # 저장소 없이 파일만 받은 경우 — 중단하지 않는다
     return max(dirs)[1]
 
 
@@ -213,11 +225,24 @@ def main() -> None:
     ap.add_argument("--port", type=int, default=8080, help="포트 (기본 8080)")
     args = ap.parse_args()
 
-    target = Path(args.dir).resolve() if args.dir else latest_release()
-    if not target.is_dir():
-        raise SystemExit(f"[중단] 폴더가 없습니다: {target}")
+    if args.dir:
+        target = Path(args.dir).resolve()
+        if not target.is_dir():
+            raise SystemExit(f"[중단] 폴더가 없습니다: {target}")
+    else:
+        # 저장소 안이면 최신 릴리스, 파일만 받은 경우면 이 스크립트가 있는 폴더
+        target = latest_release() or Path(__file__).resolve().parent
+
     if not (target / "index.html").is_file():
-        raise SystemExit(f"[중단] {target} 에 index.html 이 없습니다.")
+        here = Path(__file__).resolve().parent
+        raise SystemExit(
+            f"[중단] 서빙할 index.html 이 없습니다.\n"
+            f"  찾아본 곳 : {target}\n\n"
+            f"  다음 중 하나를 하세요.\n"
+            f"   1) 보여줄 HTML 을 {here} 에 'index.html' 이라는 이름으로 두기\n"
+            f"      (받은 파일이 MAPS-V4-2-standalone.html 이면 index.html 로 이름 변경)\n"
+            f"   2) 또는 폴더를 직접 지정 :  --dir \"C:\\경로\\폴더\""
+        )
 
     Handler.directory = str(target)
 
