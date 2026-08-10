@@ -27,7 +27,10 @@ tools/build_preview.py    디자인 미리보기 생성 스크립트
 tools/build_v4.py         V3 → V4-1 / V4-2 생성 스크립트
 tools/build_standalone.py 단독 실행용 사본 생성 스크립트
 tools/serve_local.py      리허설용 로컬 서버 (Range 지원 — 영상 구간 반복에 필수)
-tools/rehearsal/          Windows 배치 3종 — 클릭 한 번으로 IIS 를 켜고 끄는 리허설 꾸러미
+tools/rehearsal/          Windows 배치 4종 — IIS 켜기/끄기·화면 전환·AI Agent 연결
+tools/make_rehearsal_bats.py  위 배치 파일 생성 (CP949 + CRLF 로 저장한다)
+tools/make_dashboards_json.py 코드의 FALLBACK 을 뽑아 data/dashboards.json 생성
+data/dashboards.json      카드 목록의 원본. addr 을 채우면 그 카드가 LIVE 가 된다
 tools/demo_data.py        위 두 빌더가 공유하는 데모 데이터 (공지·공유·Q&A·게시판)
 releases/MAPS-V1/         확정 버전 스냅샷
 releases/MAPS-V2/         확정 버전 스냅샷
@@ -107,12 +110,14 @@ python3 tools/build_preview.py          # → preview/aims-preview.html
 
 `ORG_ORDER` 상수가 그리드 정렬 순서를 결정하며, 아래 4개 문자열과 정확히 일치해야 합니다.
 
-1. 기술개발 도출 지원
-2. 이슈 원인분석
-3. MRM 과제 운영
-4. 제품 개발 프로세스 개선
+1. 新 공정/공법 개발
+2. 해외법인 양산 지원
+3. 제품 개발 대응
+4. 공통 및 루틴 업무
 
 각 항목의 `addr`가 비어 있으면 **준비중**, 주소가 있으면 **운영중(LIVE)** 으로 표시됩니다.
+`addr`에는 **전체 URL**을 넣어야 합니다 — `normAddr()`이 스킴 없는 값 앞에 `http://`를
+붙이므로 `agents/foo/` 같은 상대경로는 `http://agents/foo/`가 되어 깨집니다.
 
 ## 백엔드 의존성
 

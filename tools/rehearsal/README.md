@@ -6,7 +6,7 @@ Windows 에 이미 들어 있는 **IIS** 를 배치 파일로 켜고 끈다.
 
 ## 전달할 폴더 만들기
 
-이 폴더의 파일 4개 + 화면 파일 3개를 한 폴더에 모아 압축해서 건넨다.
+이 폴더의 배치·안내 5개 + 화면 파일 3개 + `data/` + `agents/` 를 한 폴더에 모아 압축해서 건넨다.
 
 ```bash
 mkdir -p "MAPS-실험"
@@ -14,6 +14,10 @@ cp releases/MAPS-V4-1/index.standalone.html "MAPS-실험/index-V4-1.html"
 cp releases/MAPS-V4-2/index.standalone.html "MAPS-실험/index-V4-2.html"
 cp releases/MAPS-V4-2/index.standalone.html "MAPS-실험/index.html"
 cp tools/rehearsal/*.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
+cp -r tools/rehearsal/agents "MAPS-실험/"
+mkdir -p "MAPS-실험/data"
+python3 tools/make_dashboards_json.py --out "MAPS-실험/data/dashboards.json" \
+        --live "공정 조건 최적화 Agent" --addr "http://localhost/agents/sample-agent/"
 ```
 
 `index.html` **이름이 중요하다.** IIS 가 기본 문서로 찾는 이름이고,
@@ -47,6 +51,12 @@ cp tools/rehearsal/*.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
 `3_화면바꾸기.bat` 은 `1` 또는 `2` 를 받아 해당 버전을 폴더와 `wwwroot` 양쪽에 복사하고
 캐시를 피한 주소로 브라우저를 다시 연다.
 
+`4_에이전트연결.bat` 은 남이 만든 HTML 을 `agents/<폴더>/index.html` 로 올리고
+붙여넣을 `"addr"` 한 줄을 실제 IP 로 찍어 준 뒤, `start /wait notepad` 로
+`dashboards.json` 을 열고 **메모장이 닫히면 그 파일을 `wwwroot` 로 반영**한다.
+편집 대상은 꾸러미 폴더의 원본이다 — `wwwroot` 쪽을 고치게 하면
+`1_서버켜기.bat` 을 다시 돌릴 때 덮여 사라진다.
+
 `2_서버끄기.bat` 는 4·5·6 을 되돌린다. **IIS 기능 자체는 끄지 않는다** —
 끄면 재부팅을 요구할 수 있어 오히려 번거롭다.
 
@@ -75,6 +85,38 @@ cp tools/rehearsal/*.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
 > 버전 판정에 이 형태를 쓰면 V4-2 를 감지하고도 V4-1 로 덮어쓴다.
 > `if` 없이 `findstr ... && set` 두 줄을 나란히 두는 방식으로 피했다.
 
+## AI Agent 를 연결한다는 것 — 데이터 한 줄이다
+
+```js
+function isLive(it){ return it.addr && it.addr.trim()!=="" && !it.prep }   // index.html:2453
+```
+
+`loadData()` 는 `data/dashboards.json` 을 먼저 찾고 없으면 코드 안 `FALLBACK` 으로
+대체한다. 그러니 이 파일을 서버에 놓는 순간부터 **카드 목록의 원본은 이 파일**이고,
+연결이란 해당 항목의 `addr` 을 채우는 일이다. 백엔드는 이걸 자동화할 뿐 필수가 아니다.
+
+세 가지를 실측으로 확인했다 (`serve_local.py` + 헤드리스 Chromium).
+
+| 확인 | 결과 |
+|---|---|
+| 백엔드 없이 카드가 켜지나 | 켜진다. `● 사용 가능`, 헤더 `6개 · 운영 1` |
+| `api/health` 가 없으면 "접속장애" 로 뜨나 | **안 뜬다.** 실패가 `catch(e){}` 로 삼켜져 `HEALTH` 가 빈 객체로 남고 `state` 가 `"ok"` 로 기본값 처리된다 |
+| 카드를 누르면 올린 페이지가 열리나 | 열린다. `href` 가 그대로 `agents/<폴더>/` 로 잡힌다 |
+
+**`addr` 에는 반드시 전체 URL 을 넣어야 한다.**
+
+```js
+function normAddr(a){ return /^https?:\/\//i.test(a) ? a : "http://"+a }   // index.html:2455
+```
+
+`"agents/foo/"` 를 넣으면 `http://agents/foo/` 가 되어 깨진다.
+`make_dashboards_json.py` 의 `--addr` 는 이걸 미리 막는다.
+
+> **보안** — 남이 만든 HTML 을 MAPS 와 같은 출처에서 서비스하면, 그 페이지의 스크립트가
+> MAPS 세션 쿠키를 읽고 `api/*` 를 호출할 수 있다. 지금은 백엔드도 세션도 없어 실질
+> 위험이 없지만 **백엔드를 붙이는 순간 문제가 된다.** 운영 전에 업로드 영역을
+> 다른 포트/호스트로 분리해야 한다.
+
 ## 설계 판단 두 가지
 
 **`appcmd set vdir` 로 사이트 경로를 옮기지 않는다.**
@@ -94,6 +136,7 @@ cp tools/rehearsal/*.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
 | 배치 파일 문법 · 인코딩 · CRLF | 검토 완료 |
 | `index-V4-1.html` | 헤드리스 Chromium 확인 — 별자리 히어로 렌더(잉크 0.85%), 카테고리 4, 공지 3, 게시판 8행, **외부 요청 0건 · JS 오류 0건** |
 | `index-V4-2.html` | 헤드리스 Chromium 확인 — `#secHome` 1600×900 히어로 전용 / `#secDash` 3패널 분리, `#secDash` 링크 3개, JS 오류 0건. **영상 재생은 확인 못 함** — 이 환경에서 `lgensol.com` 이 차단되어 `fail()` 이 영상을 숨긴다(설계된 폴백). 외부 요청 1건이 바로 그 영상이다 |
+| **Agent 연결 경로** | `serve_local.py` 로 실제 서빙해 헤드리스 Chromium 으로 확인 — 대상 카드 `● 사용 가능`, `href` 정확, 클릭 시 올린 페이지가 200 으로 열림, JS 오류 0건 |
 | **Windows 에서의 실제 실행** | **검증 못 함.** 이 저장소를 만든 환경은 Linux 다 |
 
 마지막 항목 때문에 로직을 발명하지 않고 표준 명령만 조합했고, 단계마다 OK/실패를 찍어

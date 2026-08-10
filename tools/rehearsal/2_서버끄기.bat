@@ -22,7 +22,9 @@ sc config w3svc start= demand >nul 2>&1
 echo   [2/4] 웹 서비스 중지 ......... OK
 
 if exist "%WWW%\index.html" del /f /q "%WWW%\index.html" >nul 2>&1
-echo   [3/4] 배치한 화면 파일 삭제 .. OK
+if exist "%WWW%\data" rd /s /q "%WWW%\data" >nul 2>&1
+if exist "%WWW%\agents" rd /s /q "%WWW%\agents" >nul 2>&1
+echo   [3/4] 배치한 파일 삭제 ....... OK  (원본은 꾸러미 폴더에 그대로 있습니다)
 
 if exist "%WWW%\index.html.maps-backup" goto RESTORE
 echo   [4/4] 복원할 원본 없음 ....... OK

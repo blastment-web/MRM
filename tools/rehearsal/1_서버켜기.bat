@@ -62,6 +62,16 @@ copy /y "%SRC%" "%WWW%\index.html" >nul
 if errorlevel 1 goto NOCOPY
 for %%S in ("%WWW%\index.html") do echo   [4/6] 화면 파일 배치 ......... OK  -  %%~zS 바이트  %%~tS
 
+rem 대시보드 목록(data)과 올려 둔 Agent(agents)도 같이 올린다. 없으면 조용히 넘어간다.
+if exist "%~dp0data\dashboards.json" (
+    xcopy "%~dp0data" "%WWW%\data" /e /i /y >nul 2>&1
+    echo         data\dashboards.json .. OK
+)
+if exist "%~dp0agents" (
+    xcopy "%~dp0agents" "%WWW%\agents" /e /i /y >nul 2>&1
+    echo         agents\ ............... OK
+)
+
 rem ---------------- 5. 방화벽 ----------------
 netsh advfirewall firewall delete rule name="%RULE%" >nul 2>&1
 netsh advfirewall firewall add rule name="%RULE%" dir=in action=allow protocol=TCP localport=80 profile=any >nul 2>&1
