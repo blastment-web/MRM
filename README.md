@@ -26,6 +26,7 @@ index.html                포털 화면 전체 (HTML + CSS + JS 단일 파일)
 tools/build_preview.py    디자인 미리보기 생성 스크립트
 tools/build_v4.py         V3 → V4-1 / V4-2 생성 스크립트
 tools/build_standalone.py 단독 실행용 사본 생성 스크립트
+tools/serve_local.py      리허설용 로컬 서버 (Range 지원 — 영상 구간 반복에 필수)
 tools/demo_data.py        위 두 빌더가 공유하는 데모 데이터 (공지·공유·Q&A·게시판)
 releases/MAPS-V1/         확정 버전 스냅샷
 releases/MAPS-V2/         확정 버전 스냅샷
@@ -35,6 +36,7 @@ releases/MAPS-V4-2/       확정 버전 스냅샷 (최신 · 영상 히어로) +
 docs/기능-사양-작성법.md   AI 매니저 추천·Agent 등록·챗봇 기능 지시 방법
 docs/사내-공유-및-서버화-가이드.md  URL 공유·서버화 선택지 비교 + 원격 데스크톱 성능 대응
 docs/온프레미스-서버-구축-절차.md   PC 1대 서버 구성 실행 절차 (사양·IT 신청·설치·백업)
+docs/로컬-PC-리허설-체크리스트.md   새 PC 전에 지금 PC 로 시험하는 절차
 preview/                  빌드 산출물 (git 제외 — 언제든 재생성 가능)
 ```
 
