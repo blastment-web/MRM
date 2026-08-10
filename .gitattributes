@@ -1,0 +1,4 @@
+# 배치 파일은 CP949 + CRLF 로 저장되어 있다. git 이 줄바꿈/인코딩을 건드리면
+# cmd 창에서 한글 안내가 깨지므로 손대지 않게 한다.
+tools/rehearsal/*.bat -text -diff
+tools/rehearsal/*.txt -text

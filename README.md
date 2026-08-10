@@ -27,6 +27,7 @@ tools/build_preview.py    디자인 미리보기 생성 스크립트
 tools/build_v4.py         V3 → V4-1 / V4-2 생성 스크립트
 tools/build_standalone.py 단독 실행용 사본 생성 스크립트
 tools/serve_local.py      리허설용 로컬 서버 (Range 지원 — 영상 구간 반복에 필수)
+tools/rehearsal/          Windows 배치 3종 — 클릭 한 번으로 IIS 를 켜고 끄는 리허설 꾸러미
 tools/demo_data.py        위 두 빌더가 공유하는 데모 데이터 (공지·공유·Q&A·게시판)
 releases/MAPS-V1/         확정 버전 스냅샷
 releases/MAPS-V2/         확정 버전 스냅샷
