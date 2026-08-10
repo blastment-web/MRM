@@ -74,7 +74,7 @@ python3 tools/make_dashboards_json.py --out "MAPS-실험/data/dashboards.json" \
 ```
 
 판정은 `V4-1 = id="pxNet"` / `V4-2 = id="heroVideo"` 두 표식으로 한다.
-두 파일은 크기 차이가 **2KB 뿐**(350,927 / 353,245)이라 탐색기 눈대중으로는 구분이 안 된다.
+두 파일은 크기 차이가 **2KB 안팎**(365,780 / 368,098)이라 탐색기 눈대중으로는 구분이 안 된다.
 
 브라우저 캐시는 `web.config` 대신 **주소에 `?v=난수` 를 붙여** 피한다.
 `web.config` 는 설정 섹션이 잠겨 있으면 **500.19** 로 사이트 전체를 죽인다 —
@@ -112,10 +112,29 @@ function normAddr(a){ return /^https?:\/\//i.test(a) ? a : "http://"+a }   // in
 `"agents/foo/"` 를 넣으면 `http://agents/foo/` 가 되어 깨진다.
 `make_dashboards_json.py` 의 `--addr` 는 이걸 미리 막는다.
 
-> **보안** — 남이 만든 HTML 을 MAPS 와 같은 출처에서 서비스하면, 그 페이지의 스크립트가
-> MAPS 세션 쿠키를 읽고 `api/*` 를 호출할 수 있다. 지금은 백엔드도 세션도 없어 실질
-> 위험이 없지만 **백엔드를 붙이는 순간 문제가 된다.** 운영 전에 업로드 영역을
-> 다른 포트/호스트로 분리해야 한다.
+## 카드를 누르면 팝업으로 열린다
+
+같은 서버의 `/agents/` 자료는 새 탭이 아니라 화면 안 팝업으로 뜬다.
+링크를 만드는 렌더러가 3곳(카탈로그 카드 · TOP5 · 인기 모듈)이라 각각 고치는 대신
+**document 캡처 단계에서 한 번 가로챈다.** 다른 서버 주소는 새 탭 그대로 둔다 —
+남의 서버는 대개 프레이밍을 거부하고, 교차 출처라 그 실패를 감지할 방법이 없어
+흰 화면만 남기 때문이다. 항목의 `"open":"popup"|"tab"` 으로 강제할 수 있다.
+
+**샌드박스로 격리해서 띄운다.** `allow-same-origin` 을 주지 않아 불투명 출처가 된다.
+공격 페이지를 실제로 올려 확인한 결과다.
+
+```
+parent.document        → 차단됨 (SecurityError)
+parent.document.cookie → 차단됨 (SecurityError)
+document.cookie        → 차단됨 (SecurityError)
+localStorage           → 차단됨 (SecurityError)
+window.origin          → null
+```
+
+대가로 그 페이지는 **옆 파일을 `fetch` 로 못 읽고 `localStorage` 도 못 쓴다.**
+업로더에게 **단일 HTML 파일**을 요청해야 하는 이유이고, 그 제약이 문제가 되면
+새 PC 에서 **업로드 영역을 다른 포트의 사이트로 분리**하면 된다 —
+진짜 다른 출처가 되어 `allow-same-origin` 을 켜도 MAPS 에는 닿지 못한다.
 
 ## 설계 판단 두 가지
 
@@ -137,6 +156,7 @@ function normAddr(a){ return /^https?:\/\//i.test(a) ? a : "http://"+a }   // in
 | `index-V4-1.html` | 헤드리스 Chromium 확인 — 별자리 히어로 렌더(잉크 0.85%), 카테고리 4, 공지 3, 게시판 8행, **외부 요청 0건 · JS 오류 0건** |
 | `index-V4-2.html` | 헤드리스 Chromium 확인 — `#secHome` 1600×900 히어로 전용 / `#secDash` 3패널 분리, `#secDash` 링크 3개, JS 오류 0건. **영상 재생은 확인 못 함** — 이 환경에서 `lgensol.com` 이 차단되어 `fail()` 이 영상을 숨긴다(설계된 폴백). 외부 요청 1건이 바로 그 영상이다 |
 | **Agent 연결 경로** | `serve_local.py` 로 실제 서빙해 헤드리스 Chromium 으로 확인 — 대상 카드 `● 사용 가능`, `href` 정확, 클릭 시 올린 페이지가 200 으로 열림, JS 오류 0건 |
+| **Agent 팝업** | V4-1 · V4-2 각각 **28개 항목 전부 통과 · JS 오류 0건**. 샌드박스 격리는 공격 페이지를 실제로 올려 확인했다 — `parent.document` · 쿠키 · `localStorage` 모두 `SecurityError`, `window.origin` 은 `null` |
 | **Windows 에서의 실제 실행** | **검증 못 함.** 이 저장소를 만든 환경은 Linux 다 |
 
 마지막 항목 때문에 로직을 발명하지 않고 표준 명령만 조합했고, 단계마다 OK/실패를 찍어

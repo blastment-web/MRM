@@ -113,6 +113,9 @@ def main() -> None:
     ap.add_argument("--live", metavar="NAME",
                     help="이 이름의 항목 하나를 LIVE 로 만든다 (--addr 와 함께)")
     ap.add_argument("--addr", help="--live 항목에 넣을 전체 URL")
+    ap.add_argument("--open", dest="open_mode", choices=["popup", "tab"],
+                    help="--live 항목의 열기 방식 강제. 생략하면 자동 판정 "
+                         "(같은 서버의 /agents/ 는 팝업, 그 밖은 새 탭)")
     args = ap.parse_args()
 
     src = Path(args.src) if args.src else (latest_release() / "index.html")
@@ -143,6 +146,8 @@ def main() -> None:
             names = [it["name"] for c in data["columns"] for it in c["items"]]
             raise SystemExit(f"[중단] '{args.live}' 항목이 없습니다.\n  있는 이름: {names[:5]} …")
         hit["addr"] = args.addr
+        if args.open_mode:
+            hit["open"] = args.open_mode
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
