@@ -59,6 +59,8 @@ for %%F in ("%~dp0index-*.html") do (
     copy /y "%%F" "%WWW%\!SLUG!\index.html" >nul
     rem 상대 경로로 읽히는 유일한 파일이라 버전 폴더마다 넣는다.
     copy /y "%~dp0data\dashboards.json" "%WWW%\!SLUG!\data\dashboards.json" >nul
+    rem hero.mp4 를 넣어 두면 영상을 사내 홈페이지 대신 이 서버에서 받는다 (없으면 건너뛴다)
+    if exist "%~dp0hero.mp4" copy /y "%~dp0hero.mp4" "%WWW%\!SLUG!\hero.mp4" >nul
     >> "%WWW%\versions.js" echo   {"slug":"!SLUG!"},
     set "SLUGS=!SLUGS! !SLUG!"
     echo         /!SLUG!/

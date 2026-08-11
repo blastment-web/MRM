@@ -273,17 +273,43 @@ P9B_TO = """      /* 점 — standalone: 색이 전부 같으므로 한 경로�
       }
       ctx.fill();"""
 
-# 강등 자체를 끈다. 강등이 일어날 때마다 resize()→seed() 가 점 전체를 새 난수
-# 위치에 다시 뿌려 "별자리가 깜빡이며 자리를 옮기는" 현상의 원인이 됐다.
-# 페이지 진입 직후는 데이터 로드·리빌·카운트업이 겹쳐 어느 PC 든 프레임이 늦는
-# 순간이 있는데, 그 일시 부하를 영구 강등으로 오판한다(등급은 다시 오르지 않는다).
-# 판정 코드는 남겨 두되 등급 변경만 하지 않는다.
+# 강등에서 "점을 다시 뿌리는" 축만 영구히 버리고, "프레임 수를 낮추는" 축은 되살린다.
+#
+# 원본 강등은 등급을 내릴 때마다 applyTier()+resize() 로 점 전체를 새 난수 위치에
+# 다시 뿌려 "별자리가 깜빡이며 자리를 옮기는" 현상의 원인이 됐다. 그래서 한때 강등을
+# 통째로 비워 뒀는데, 그러면 원격 데스크톱(사내 클라우드)에서 쓸 수단이 없어진다.
+# 화면 전체를 60fps 로 다시 칠하면 화면 전송 인코더가 그 영역에 대역을 다 쓰고
+# 주변 글자가 손실 압축으로 뭉개진다. 2560x1080 은 1920x1080 보다 픽셀이 33% 많아
+# 같은 코드가 넓은 화면에서만 무너진다.
+#
+# 그래서 FRAME_MS 만 건드린다. 점 좌표·개수·연결거리는 그대로라 재배치가 원천적으로 없다.
+#   - body.lite (설정의 "원격 화면 최적화" 또는 자동 감지) 면 곧바로 20fps
+#   - 프레임 시간 실측이 나쁘면 30fps -> 20fps 로 한 단계씩만 (되돌리지 않는다)
+# body.lite 를 끄면 60fps 로 복귀한다 — 사용자가 명시적으로 끈 것이므로 존중한다.
+#
+# 점 개수는 손대지 않는다. CAP=120 이 1920 에서도 2560 에서도 이미 걸려 있어
+# (raw 122 / 163 -> 둘 다 120) 밀도 상한을 넣어도 실제로 바뀌는 값이 없다.
 P9C_FROM = """        if(avg > 45 && TIER < 2){ TIER = 2; applyTier(); resize(); document.body.classList.add("lite"); }
         else if(avg > 28 && TIER < 1){ TIER = 1; applyTier(); resize(); document.body.classList.add("lite"); }"""
-P9C_TO = """        /* standalone: 강등하지 않는다 — 강등의 resize()→seed() 가 별자리를
-           깜빡이며 재배치시키고, 이후 프레임 스로틀로 배경이 뚝뚝 끊긴다.
-           로컬과 같은 60fps · 풀 밀도를 유지한다. (원본 코드:
-           avg>45 → TIER2, avg>28 → TIER1 + body.lite) */"""
+P9C_TO = """        /* standalone: 등급(점 밀도)은 절대 내리지 않는다 — applyTier()+resize() 가
+           점을 다시 뿌려 깜빡임을 만든다. 프레임 수만 낮춘다. */
+        if(avg > 45)      FRAME_MS = Math.max(FRAME_MS, 50);   /* 20fps */
+        else if(avg > 28) FRAME_MS = Math.max(FRAME_MS, 33);   /* 30fps */"""
+
+# body.lite 를 매 프레임 확인해 즉시 반영한다. classList 조회 한 번은 무시할 수 있는 비용이고,
+# 설정 스위치를 켠 순간 바로 조용해지는 것이 사용자에게 훨씬 분명하다.
+P9E_FROM = """    var acc = 0, cnt = 0, last = 0, nextAt = 0;
+    function degrade(now){
+      if(last){ acc += (now - last); cnt++; }"""
+P9E_TO = """    var acc = 0, cnt = 0, last = 0, nextAt = 0, liteWas = null;
+    function degrade(now){
+      /* 원격 화면 최적화 스위치를 켜면 곧바로 20fps 로 내려간다. 점은 그대로다. */
+      var lite = document.body.classList.contains("lite");
+      if(lite !== liteWas){
+        liteWas = lite;
+        FRAME_MS = lite ? 50 : 0;
+      }
+      if(last){ acc += (now - last); cnt++; }"""
 
 # 크기가 실제로 바뀌지 않았으면 재배치하지 않는다. 원본 resize() 는 호출될 때마다
 # 무조건 seed() 로 점을 새 난수 위치에 뿌린다. fitScreens 를 깨우려고 쏘는 resize
@@ -473,7 +499,8 @@ PARTICLE_STEPS = [
     ("P6b 점 개수 산식", lambda: (P6B_FROM, P6B_TO)),
     ("P9a 연결선 드로우 콜 일괄화", lambda: (P9A_FROM, P9A_TO)),
     ("P9b 점 드로우 콜 일괄화", lambda: (P9B_FROM, P9B_TO)),
-    ("P9c 적응형 강등 중지", lambda: (P9C_FROM, P9C_TO)),
+    ("P9e 원격 화면 스위치를 프레임 수에 반영", lambda: (P9E_FROM, P9E_TO)),
+    ("P9c 강등을 프레임 수만 낮추도록 교체", lambda: (P9C_FROM, P9C_TO)),
     ("P9d 동일 크기 resize 의 재배치 차단", lambda: (P9D_FROM, P9D_TO)),
 ]
 

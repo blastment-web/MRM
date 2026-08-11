@@ -557,11 +557,140 @@ def popup(s: str) -> str:
     return s
 
 # ===========================================================================
+# 공통 9) 원격 화면(화면 전송) 대응
+#
+# 사내 클라우드·원격 데스크톱에서는 브라우저가 그린 픽셀이 네트워크로 전송된다.
+# 화면에 계속 움직이는 영역이 크면 인코더가 그 영역에 대역을 다 쓰고, 주변 글자가
+# 손실 압축으로 뭉개진다("글자가 깨진다"). 처음에 저화질로 오다가 점점 선명해지는
+# 것도 같은 이유다. 2560x1080 은 1920x1080 보다 픽셀이 33% 많아 넓은 화면에서만
+# 무너진다.
+#
+# 자동 감지만으로는 안 된다. 원본 강등은 requestAnimationFrame 간격을 재는데,
+# 원격에서는 이 값이 정상으로 나온다 — 브라우저는 VM 안에서 잘 그리고 있고 막히는
+# 곳은 인코더이며, 브라우저는 자기 화면이 전송된다는 사실을 모른다. 그래서
+# **사용자가 직접 켜는 스위치가 본체**이고, WebGL 렌더러 문자열로 하는 자동 감지는 보조다.
+# ===========================================================================
+LITE_CSS = '''  /* ----- 원격 화면 최적화(body.lite) 추가분 -----
+     여기 있는 것들이 화면 전송 비용의 대부분이다. 흐림 효과는 위에서 --blur 로 이미 꺼진다. */
+  body.lite .reveal{opacity:1;transform:none;transition:none}
+  /* 큰 글자를 transform 으로 움직이면 그 구간 동안 텍스트가 레이어로 굳어 뭉개진다 */
+  body.lite :is(#secHome,#secDash) .hero-title{filter:none}
+  /* filter 를 끄는 대신 딤을 조금 올려 제목 대비를 지킨다 (V4-2) */
+  body.lite #heroVeil{background:rgba(0,0,0,.52)}
+  body.lite .cell,body.lite .t5,body.lite .col,body.lite .panel,body.lite .modal{box-shadow:none}
+  body.lite .brand-logo,body.lite .logo-pulse{animation:none}
+'''
+
+LITE_ROW = '''      <div class="set-row">
+        <div class="set-lab"><label>원격 화면 최적화</label><span class="set-hint">사내 클라우드·원격 접속에서 화면이 흐리거나 글자가 뭉개질 때 켜세요</span></div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt-dim);white-space:nowrap;cursor:pointer"><input type="checkbox" id="setLite" style="width:auto;margin:0">켜기</label>
+      </div>
+'''
+
+LITE_JS_STATE = '''  var SET      = { fs:"m", showN:3, lite:null };   /* lite:null = 아직 고르지 않음(자동 판단) */
+
+  /* 원격 데스크톱·가상 화면은 대부분 소프트웨어 렌더러로 뜬다.
+     프레임 시간으로는 판별할 수 없어(원격에서도 VM 안에서는 60fps 가 나온다)
+     렌더러 이름을 본다. 어디까지나 보조 판단이고, 사용자의 선택이 언제나 이긴다. */
+  function looksRemote(){
+    try{
+      var c  = document.createElement("canvas");
+      var gl = c.getContext("webgl") || c.getContext("experimental-webgl");
+      if(!gl) return true;                       /* 가속 자체가 없으면 켜 두는 편이 낫다 */
+      var ex = gl.getExtension("WEBGL_debug_renderer_info");
+      var r  = ex ? String(gl.getParameter(ex.UNMASKED_RENDERER_WEBGL) || "") : "";
+      return /swiftshader|llvmpipe|softwarerasterizer|basic render|vmware|virtualbox|citrix|parallels|remotefx/i.test(r);
+    }catch(e){ return false; }
+  }
+  function applyLite(on){
+    document.body.classList.toggle("lite", !!on);
+    var cb = document.getElementById("setLite");
+    if(cb) cb.checked = !!on;
+  }
+'''
+
+LITE_JS_LOAD = '''      if(o && typeof o.lite === "boolean") SET.lite = o.lite;
+'''
+
+LITE_JS_WIRE = '''
+    var lb = document.getElementById("setLite");
+    if(lb) lb.addEventListener("change", function(){
+      SET.lite = !!lb.checked; setSave(); applyLite(SET.lite);
+      toast(SET.lite ? "원격 화면 최적화를 켰습니다." : "원격 화면 최적화를 껐습니다.");
+    });
+'''
+
+
+def lite(s: str) -> str:
+    s = sub1(
+        s,
+        "  body.lite .modal{backdrop-filter:none;-webkit-backdrop-filter:none}\n",
+        "  body.lite .modal{backdrop-filter:none;-webkit-backdrop-filter:none}\n" + LITE_CSS,
+        "9-a 원격 화면 CSS",
+    )
+    s = sub1(
+        s,
+        '      <div class="set-row">\n'
+        '        <div class="set-lab"><label>좋아요 · 즐겨찾기</label>',
+        LITE_ROW +
+        '      <div class="set-row">\n'
+        '        <div class="set-lab"><label>좋아요 · 즐겨찾기</label>',
+        "9-b 설정 패널 스위치",
+    )
+    s = sub1(
+        s,
+        '  var SET      = { fs:"m", showN:3 };\n',
+        LITE_JS_STATE,
+        "9-c 설정 상태 + 자동 판단",
+    )
+    s = sub1(
+        s,
+        "      if(o && [3,5,10,20].indexOf(+o.showN) >= 0) SET.showN = +o.showN;\n",
+        "      if(o && [3,5,10,20].indexOf(+o.showN) >= 0) SET.showN = +o.showN;\n" + LITE_JS_LOAD,
+        "9-d 설정 불러오기",
+    )
+    s = sub1(
+        s,
+        "    var rb = document.getElementById(\"setResetBtn\");",
+        LITE_JS_WIRE + "\n    var rb = document.getElementById(\"setResetBtn\");",
+        "9-e 스위치 배선",
+    )
+    s = sub1(
+        s,
+        "    markFsSeg(SET.fs);\n    var ss = document.getElementById(\"setShowN\");\n"
+        "    if(ss) ss.value = String(SET.showN);\n    open(\"setOv\");",
+        "    markFsSeg(SET.fs);\n    var ss = document.getElementById(\"setShowN\");\n"
+        "    if(ss) ss.value = String(SET.showN);\n"
+        "    var lb = document.getElementById(\"setLite\");\n"
+        "    if(lb) lb.checked = document.body.classList.contains(\"lite\");\n"
+        "    open(\"setOv\");",
+        "9-f 설정 열 때 스위치 상태 동기화",
+    )
+    s = sub1(
+        s,
+        "    applyFontScale(SET.fs);\n    applyShowN(SET.showN, false);",
+        "    /* 사용자가 고른 적이 있으면 그 값, 없으면 자동 판단 */\n"
+        "    applyLite(SET.lite === null ? looksRemote() : SET.lite);\n"
+        "    applyFontScale(SET.fs);\n    applyShowN(SET.showN, false);",
+        "9-g 시작 시 적용",
+    )
+    return s
+
+# ===========================================================================
 # V4-2 — 히어로 영상 + 첫 화면 / 대시보드 화면 분리
 # ===========================================================================
 HERO_MEDIA = f'''    <!-- V4-2) 히어로 배경 영상. loop 속성 대신 JS 로 3~8초 구간만 반복한다.
-         막힌 망에서는 스스로 감춰지고 아래 그라디언트만 남는다. -->
-    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="metadata">
+         막힌 망에서는 스스로 감춰지고 아래 그라디언트만 남는다.
+
+         source 가 둘인 이유: 같은 폴더에 hero.mp4 가 있으면 그것을 먼저 쓰고,
+         없으면(404) 브라우저가 다음 source 로 넘어가 지금처럼 사내 홈페이지에서
+         받아온다. 나중에 ffmpeg 로 만든 파일을 폴더에 넣기만 하면 코드를 고치지
+         않고 로컬 재생으로 바뀐다 — 외부 왕복이 사라져 첫 재생 지연이 없어진다.
+
+         preload 는 metadata 가 아니라 auto 다. metadata 는 머리말만 받아 두고
+         본체는 재생 시점에 받기 시작해서 초반이 끊긴다. -->
+    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="auto">
+      <source src="hero.mp4#t=3,8" type="video/mp4">
       <source src="{VIDEO_URL}" type="video/mp4">
     </video>
     <div id="heroVeil" aria-hidden="true"></div>
@@ -822,6 +951,8 @@ def main() -> None:
     v1 = common(base)
     print("\n[공통 8) Agent 팝업]")
     v1 = popup(v1)
+    print("\n[공통 9) 원격 화면 최적화]")
+    v1 = lite(v1)
     OUT1.parent.mkdir(parents=True, exist_ok=True)
     OUT1.write_text(v1, encoding="utf-8")
     print(f"\n출력: {OUT1.relative_to(ROOT)}  ({len(v1):,} bytes)")

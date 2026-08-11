@@ -1018,6 +1018,15 @@
   body.lite{--blur:0px}
   body.lite .overlay{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(3,5,11,.93)}
   body.lite .modal{backdrop-filter:none;-webkit-backdrop-filter:none}
+  /* ----- 원격 화면 최적화(body.lite) 추가분 -----
+     여기 있는 것들이 화면 전송 비용의 대부분이다. 흐림 효과는 위에서 --blur 로 이미 꺼진다. */
+  body.lite .reveal{opacity:1;transform:none;transition:none}
+  /* 큰 글자를 transform 으로 움직이면 그 구간 동안 텍스트가 레이어로 굳어 뭉개진다 */
+  body.lite :is(#secHome,#secDash) .hero-title{filter:none}
+  /* filter 를 끄는 대신 딤을 조금 올려 제목 대비를 지킨다 (V4-2) */
+  body.lite #heroVeil{background:rgba(0,0,0,.52)}
+  body.lite .cell,body.lite .t5,body.lite .col,body.lite .panel,body.lite .modal{box-shadow:none}
+  body.lite .brand-logo,body.lite .logo-pulse{animation:none}
   .btn,.minibtn,.home-btn,.board-open-btn,.orgtab,.lfile-btn,.sf-file,.share-fchip,.lchip,.prep-btn,.chip-q,.like-btn{border-radius:var(--radius)}
   .btn-ghost,.minibtn,.home-btn,.board-open-btn,.orgtab,.lfile-btn,.sf-file,.share-fchip,.lchip,.prep-btn,.chip-q,.like-btn{
     background:rgba(255,255,255,.05);border:1px solid var(--panel-line);color:var(--txt-dim)}
@@ -1977,8 +1986,17 @@
   <!-- ===================== §1 대시보드 ===================== -->
   <section class="sec screen" id="secHome">
     <!-- V4-2) 히어로 배경 영상. loop 속성 대신 JS 로 3~8초 구간만 반복한다.
-         막힌 망에서는 스스로 감춰지고 아래 그라디언트만 남는다. -->
-    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="metadata">
+         막힌 망에서는 스스로 감춰지고 아래 그라디언트만 남는다.
+
+         source 가 둘인 이유: 같은 폴더에 hero.mp4 가 있으면 그것을 먼저 쓰고,
+         없으면(404) 브라우저가 다음 source 로 넘어가 지금처럼 사내 홈페이지에서
+         받아온다. 나중에 ffmpeg 로 만든 파일을 폴더에 넣기만 하면 코드를 고치지
+         않고 로컬 재생으로 바뀐다 — 외부 왕복이 사라져 첫 재생 지연이 없어진다.
+
+         preload 는 metadata 가 아니라 auto 다. metadata 는 머리말만 받아 두고
+         본체는 재생 시점에 받기 시작해서 초반이 끊긴다. -->
+    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="auto">
+      <source src="hero.mp4#t=3,8" type="video/mp4">
       <source src="https://www.lgensol.com/inc/video/video_main01.mp4#t=3,8" type="video/mp4">
     </video>
     <div id="heroVeil" aria-hidden="true"></div>
@@ -2248,6 +2266,10 @@
       <div class="set-row">
         <div class="set-lab"><label>화면 밀도</label><span class="set-hint">카테고리 한 칸에 보이는 AI Agent 개수</span></div>
         <select id="setShowN"><option value="3">3개</option><option value="5">5개</option><option value="10">10개</option><option value="20">20개</option></select>
+      </div>
+      <div class="set-row">
+        <div class="set-lab"><label>원격 화면 최적화</label><span class="set-hint">사내 클라우드·원격 접속에서 화면이 흐리거나 글자가 뭉개질 때 켜세요</span></div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt-dim);white-space:nowrap;cursor:pointer"><input type="checkbox" id="setLite" style="width:auto;margin:0">켜기</label>
       </div>
       <div class="set-row">
         <div class="set-lab"><label>좋아요 · 즐겨찾기</label><span class="set-hint">이 브라우저에 저장된 기록을 지웁니다</span></div>
@@ -5364,13 +5386,33 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
   var FS_MAP   = { s:0.92, m:1, l:1.10 };
   /* --t5-h(카드 높이)는 일부러 빼 둔다 — .tight/.tighter 압축 규칙과 충돌한다 */
   var FS_VARS  = ["--hero-scale","--panel-scale","--t5-scale","--card-scale","--chip-scale"];
-  var SET      = { fs:"m", showN:3 };
+  var SET      = { fs:"m", showN:3, lite:null };   /* lite:null = 아직 고르지 않음(자동 판단) */
+
+  /* 원격 데스크톱·가상 화면은 대부분 소프트웨어 렌더러로 뜬다.
+     프레임 시간으로는 판별할 수 없어(원격에서도 VM 안에서는 60fps 가 나온다)
+     렌더러 이름을 본다. 어디까지나 보조 판단이고, 사용자의 선택이 언제나 이긴다. */
+  function looksRemote(){
+    try{
+      var c  = document.createElement("canvas");
+      var gl = c.getContext("webgl") || c.getContext("experimental-webgl");
+      if(!gl) return true;                       /* 가속 자체가 없으면 켜 두는 편이 낫다 */
+      var ex = gl.getExtension("WEBGL_debug_renderer_info");
+      var r  = ex ? String(gl.getParameter(ex.UNMASKED_RENDERER_WEBGL) || "") : "";
+      return /swiftshader|llvmpipe|softwarerasterizer|basic render|vmware|virtualbox|citrix|parallels|remotefx/i.test(r);
+    }catch(e){ return false; }
+  }
+  function applyLite(on){
+    document.body.classList.toggle("lite", !!on);
+    var cb = document.getElementById("setLite");
+    if(cb) cb.checked = !!on;
+  }
 
   function setLoad(){
     try{
       var o = JSON.parse(localStorage.getItem(SET_KEY) || "{}");
       if(o && FS_MAP[o.fs]) SET.fs = o.fs;
       if(o && [3,5,10,20].indexOf(+o.showN) >= 0) SET.showN = +o.showN;
+      if(o && typeof o.lite === "boolean") SET.lite = o.lite;
     }catch(e){}
   }
   function setSave(){ try{ localStorage.setItem(SET_KEY, JSON.stringify(SET)); }catch(e){} }
@@ -5400,6 +5442,8 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     markFsSeg(SET.fs);
     var ss = document.getElementById("setShowN");
     if(ss) ss.value = String(SET.showN);
+    var lb = document.getElementById("setLite");
+    if(lb) lb.checked = document.body.classList.contains("lite");
     open("setOv");                                 /* script #1 의 open/close (window.open 아님) */
   }
 
@@ -5433,6 +5477,13 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
       var s2 = document.getElementById("setShowN"); if(s2) s2.value = String(SET.showN);
     });
 
+
+    var lb = document.getElementById("setLite");
+    if(lb) lb.addEventListener("change", function(){
+      SET.lite = !!lb.checked; setSave(); applyLite(SET.lite);
+      toast(SET.lite ? "원격 화면 최적화를 켰습니다." : "원격 화면 최적화를 껐습니다.");
+    });
+
     var rb = document.getElementById("setResetBtn");
     if(rb) rb.addEventListener("click", function(){
       if(!confirm("좋아요와 즐겨찾기를 모두 초기화합니다. 계속할까요?")) return;
@@ -5458,6 +5509,8 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
       });
     });
 
+    /* 사용자가 고른 적이 있으면 그 값, 없으면 자동 판단 */
+    applyLite(SET.lite === null ? looksRemote() : SET.lite);
     applyFontScale(SET.fs);
     applyShowN(SET.showN, false);      /* SHOW_N 자체는 위쪽(4417 자리)에서 이미 복원했다 */
   })();
