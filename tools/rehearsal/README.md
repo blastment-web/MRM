@@ -6,24 +6,20 @@ Windows 에 이미 들어 있는 **IIS** 를 배치 파일로 켜고 끈다.
 
 ## 전달할 폴더 만들기
 
-이 폴더의 배치·안내 5개 + 화면 파일 3개 + `data/` + `agents/` 를 한 폴더에 모아 압축해서 건넨다.
+이 폴더의 배치·안내 4개 + 화면 파일 3개 + `data/` + `agents/` 를 한 폴더에 모아 압축해서 건넨다.
 
 ```bash
-mkdir -p "MAPS-실험"
+mkdir -p "MAPS-실험/data"
 cp releases/MAPS-V4-1/index.standalone.html "MAPS-실험/index-V4-1.html"
 cp releases/MAPS-V4-2/index.standalone.html "MAPS-실험/index-V4-2.html"
-cp releases/MAPS-V4-2/index.standalone.html "MAPS-실험/index.html"
-cp tools/rehearsal/*.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
+cp tools/rehearsal/index-선택화면.html tools/rehearsal/*.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
 cp -r tools/rehearsal/agents "MAPS-실험/"
-mkdir -p "MAPS-실험/data"
 python3 tools/make_dashboards_json.py --out "MAPS-실험/data/dashboards.json" \
         --live "공정 조건 최적화 Agent" --addr "http://localhost/agents/sample-agent/"
 ```
 
-`index.html` **이름이 중요하다.** IIS 가 기본 문서로 찾는 이름이고,
-배치 파일도 그 이름을 복사한다.
-버전별 원본을 `index-V4-1.html` · `index-V4-2.html` 로 같이 넣는 이유는,
-`index.html` 을 덮어써도 원본이 남아야 `3_화면바꾸기.bat` 이 되돌릴 수 있어서다.
+꾸러미에는 `index.html` 이 없다. 배치가 서버에서 만든다 — 선택 화면은 루트에,
+두 버전은 각각 `v4-1\index.html` · `v4-2\index.html` 로 들어간다.
 
 압축할 때는 파일 이름에 **UTF-8 플래그(범용 비트 11)** 를 세워야 한다.
 안 그러면 Windows 탐색기에서 한글 파일명이 깨진다. `zip` 기본 동작은 플래그를
@@ -41,49 +37,45 @@ python3 tools/make_dashboards_json.py --out "MAPS-실험/data/dashboards.json" \
 | 단계 | 명령 |
 |---|---|
 | 1 | `net session` 으로 관리자 권한 확인 |
-| 2 | 같은 폴더에 `index.html` 이 있는지 확인 + **어느 버전인지 판정해 출력** + `index.html.html` 경고 |
+| 2 | 꾸러미 파일 4종이 다 있는지 확인 (빠진 것을 이름으로 알려 준다) |
 | 3 | `dism /online /enable-feature` 를 **기능마다 한 번씩** |
-| 4 | `index.html` → `C:\inetpub\wwwroot\` 복사 (기존 파일은 `.maps-backup` 로 백업) |
+| 4 | 선택 화면 → `wwwroot\index.html`, 두 버전 → `wwwroot\v4-1\` · `wwwroot\v4-2\`, `data/` 는 두 폴더 모두에, `agents/` 는 루트에 한 벌 |
 | 5 | `netsh advfirewall` 로 인바운드 TCP 80 허용 (`MAPS-Rehearsal-HTTP-80`) |
 | 6 | `sc config` + `net start w3svc` |
-| 확인 | `curl` 로 `http://localhost/?v=난수` 를 호출해 200 인지 보고, **응답 바이트에서 버전을 판정**해 찍고, `ipconfig` 에서 사내 IP 를 찍는다 |
+| 확인 | `curl` 로 **세 주소(`/` · `/v4-1/` · `/v4-2/`)** 를 호출해 각각 200 인지 찍고, `ipconfig` 에서 사내 IP 를 찍는다 |
 
-`3_화면바꾸기.bat` 은 `1` 또는 `2` 를 받아 해당 버전을 폴더와 `wwwroot` 양쪽에 복사하고
-캐시를 피한 주소로 브라우저를 다시 연다.
-
-`4_에이전트연결.bat` 은 남이 만든 HTML 을 `agents/<폴더>/index.html` 로 올리고
+`3_에이전트연결.bat` 은 남이 만든 HTML 을 `agents/<폴더>/index.html` 로 올리고
 붙여넣을 `"addr"` 한 줄을 실제 IP 로 찍어 준 뒤, `start /wait notepad` 로
-`dashboards.json` 을 열고 **메모장이 닫히면 그 파일을 `wwwroot` 로 반영**한다.
+`dashboards.json` 을 열고 **메모장이 닫히면 두 버전 폴더 양쪽에 반영**한다.
 편집 대상은 꾸러미 폴더의 원본이다 — `wwwroot` 쪽을 고치게 하면
 `1_서버켜기.bat` 을 다시 돌릴 때 덮여 사라진다.
 
 `2_서버끄기.bat` 는 4·5·6 을 되돌린다. **IIS 기능 자체는 끄지 않는다** —
 끄면 재부팅을 요구할 수 있어 오히려 번거롭다.
 
-## 화면이 안 바뀌는 문제 — 왜 생기고, 어떻게 잡았나
-
-**서버가 읽는 파일은 `C:\inetpub\wwwroot\index.html` 이라는 복사본이다.**
-폴더의 `index.html` 을 바꿔도 배치를 다시 돌려 복사하기 전까지 응답 바이트는 그대로다.
-여기에 브라우저 캐시와 탐색기의 확장자 숨김(`index.html.html`)까지 겹치면
-원인이 셋인데 화면은 하나라 사용자가 짚을 수가 없다.
-
-그래서 배치가 **서버 응답 바이트를 직접 받아 판정**한다. 폴더의 파일이 아니라 응답을 본다.
+## 주소 두 개 — 버전을 갈아 끼우지 않는다
 
 ```
-서버가 지금 내보내는 화면 : V4-2 영상 히어로
+http://10.x.x.x/          선택 화면
+http://10.x.x.x/v4-1/     별자리 히어로
+http://10.x.x.x/v4-2/     영상 히어로
 ```
 
-판정은 `V4-1 = id="pxNet"` / `V4-2 = id="heroVideo"` 두 표식으로 한다.
-두 파일은 크기 차이가 **2KB 안팎**(365,780 / 368,098)이라 탐색기 눈대중으로는 구분이 안 된다.
+**`agents/` 를 버전 폴더 안에 넣지 않는 것이 이 구조의 핵심이다.** `dashboards.json` 의
+`addr` 은 전체 URL 이라 버전과 무관하게 열린다. 자료 실물이 한 벌이면 두 버전이 같은 것을
+가리키고 올릴 때도 한 번만 올리면 된다.
 
-브라우저 캐시는 `web.config` 대신 **주소에 `?v=난수` 를 붙여** 피한다.
-`web.config` 는 설정 섹션이 잠겨 있으면 **500.19** 로 사이트 전체를 죽인다 —
-리허설 도구가 가질 실패 모드가 아니다. 동료에게 줄 주소는 쿼리 없이 따로 찍는다.
+앱이 **상대 경로로 읽는 것은 `data/dashboards.json` 하나뿐**이고 루트 절대경로(`/…`) 참조는
+0건이라, 화면 파일을 하위 폴더로 옮겨도 깨지는 링크가 없다. 그 한 파일만 두 폴더에 복사한다.
+원본은 꾸러미 폴더의 파일 하나이므로 두 사본이 어긋날 수 없다.
+
+> **이전 구조에서 왜 바꿨나.** `index.html` 한 개를 갈아 끼우는 방식이었고, 서버가 읽는
+> 것은 `wwwroot` 의 **복사본**이라 배치를 다시 돌리기 전까지 응답 바이트가 바뀌지 않았다.
+> 여기에 브라우저 캐시와 탐색기 확장자 숨김(`index.html.html`)까지 겹쳐 원인이 셋인데
+> 증상은 하나였다. 폴더를 나누면서 이 문제군이 통째로 사라져 `3_화면바꾸기.bat` 을 없앴다.
 
 > **배치 문법 함정 하나.** `if 조건 명령 && set ...` 은 쓰면 안 된다.
 > `if` 가 거짓이면 명령이 실행되지 않고 **직전 errorlevel 이 남아 `&&` 가 통과**한다.
-> 버전 판정에 이 형태를 쓰면 V4-2 를 감지하고도 V4-1 로 덮어쓴다.
-> `if` 없이 `findstr ... && set` 두 줄을 나란히 두는 방식으로 피했다.
 
 ## AI Agent 를 연결한다는 것 — 데이터 한 줄이다
 
@@ -157,6 +149,8 @@ window.origin          → null
 | `index-V4-2.html` | 헤드리스 Chromium 확인 — `#secHome` 1600×900 히어로 전용 / `#secDash` 3패널 분리, `#secDash` 링크 3개, JS 오류 0건. **영상 재생은 확인 못 함** — 이 환경에서 `lgensol.com` 이 차단되어 `fail()` 이 영상을 숨긴다(설계된 폴백). 외부 요청 1건이 바로 그 영상이다 |
 | **Agent 연결 경로** | `serve_local.py` 로 실제 서빙해 헤드리스 Chromium 으로 확인 — 대상 카드 `● 사용 가능`, `href` 정확, 클릭 시 올린 페이지가 200 으로 열림, JS 오류 0건 |
 | **Agent 팝업** | V4-1 · V4-2 각각 **28개 항목 전부 통과 · JS 오류 0건**. 샌드박스 격리는 공격 페이지를 실제로 올려 확인했다 — `parent.document` · 쿠키 · `localStorage` 모두 `SecurityError`, `window.origin` 은 `null` |
+| **주소 두 개 구조** | 새 폴더 구조 그대로 서빙해 **20개 항목 전부 통과** — 세 주소 200, 선택 화면 링크 이동, 두 버전이 서로 섞이지 않음(`#pxNet` / `#heroVideo`), 양쪽 모두 카드 LIVE·팝업·딥링크 정상, 두 버전이 같은 `/agents/` 한 벌을 가리킴 |
+| `index-선택화면.html` | 외부 참조 0건 · 링크 전부 상대 경로 (`localhost` 로 열든 `10.x.x.x` 로 열든 동작) |
 | **Windows 에서의 실제 실행** | **검증 못 함.** 이 저장소를 만든 환경은 Linux 다 |
 
 마지막 항목 때문에 로직을 발명하지 않고 표준 명령만 조합했고, 단계마다 OK/실패를 찍어

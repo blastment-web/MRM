@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MAPS · 버전 선택</title>
+<style>
+  /* 외부 참조 0건 · 단일 파일. 링크는 전부 상대 경로라
+     localhost 로 열든 http://10.x.x.x/ 로 열든 그대로 동작한다. */
+  :root{
+    --ink:#05070e; --ink-2:#0b1120; --line:rgba(120,150,200,.22);
+    --txt:#eaf0fb; --dim:rgba(234,240,251,.62); --faint:rgba(234,240,251,.38);
+    --accent:#4dd8e8; --accent-2:#8b7bff;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--ink);color:var(--txt);
+    font-family:"Malgun Gothic","맑은 고딕",system-ui,-apple-system,sans-serif;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:40px 20px;gap:34px;
+    background-image:
+      radial-gradient(80% 60% at 15% -10%, rgba(77,216,232,.10), transparent 60%),
+      radial-gradient(70% 60% at 95% 105%, rgba(139,123,255,.10), transparent 60%)}
+  header{text-align:center}
+  .brand{font-size:36px;font-weight:900;letter-spacing:.14em}
+  .brand{color:var(--txt)}
+  .tag{margin-top:8px;font-size:13px;font-weight:700;color:var(--dim);letter-spacing:.02em}
+  .tag b{color:var(--accent);font-weight:800}
+  .lead{margin-top:16px;font-size:15px;color:var(--dim)}
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;
+    width:100%;max-width:860px}
+  a.card{display:block;text-decoration:none;color:inherit;
+    background:var(--ink-2);border:1px solid var(--line);border-radius:18px;
+    padding:26px 26px 22px;transition:border-color .15s, transform .15s}
+  a.card:hover,a.card:focus-visible{border-color:var(--accent);transform:translateY(-3px);outline:none}
+  .thumb{height:110px;border-radius:12px;margin-bottom:18px;position:relative;overflow:hidden;
+    border:1px solid var(--line)}
+  .thumb.stars{background:
+      radial-gradient(1.6px 1.6px at 18% 30%, #cfe6ff, transparent),
+      radial-gradient(1.6px 1.6px at 62% 22%, #bcd8ff, transparent),
+      radial-gradient(1.4px 1.4px at 40% 68%, #a9ccff, transparent),
+      radial-gradient(1.8px 1.8px at 82% 60%, #dceaff, transparent),
+      radial-gradient(1.3px 1.3px at 30% 88%, #9dc4ff, transparent),
+      linear-gradient(160deg,#070c18,#0a1226)}
+  .thumb.stars::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(72deg,transparent 46%,rgba(140,190,255,.28) 47%,transparent 48%),
+               linear-gradient(-38deg,transparent 58%,rgba(140,190,255,.22) 59%,transparent 60%)}
+  .thumb.video{background:linear-gradient(115deg,#0a1830,#123a4a 45%,#0d1526);
+    display:grid;place-items:center}
+  .thumb.video::after{content:"";width:0;height:0;
+    border-left:22px solid rgba(255,255,255,.82);
+    border-top:14px solid transparent;border-bottom:14px solid transparent;
+    filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
+  .name{font-size:19px;font-weight:800}
+  .name em{font-style:normal;color:var(--accent)}
+  .desc{margin-top:8px;font-size:13px;line-height:1.65;color:var(--dim)}
+  .go{margin-top:16px;display:inline-flex;align-items:center;gap:7px;
+    font-size:13px;font-weight:800;color:var(--accent)}
+  .path{margin-top:12px;font-size:11px;color:var(--faint)}
+  footer{font-size:12px;color:var(--faint);text-align:center;line-height:1.8}
+  @media (max-width:720px){ .cards{grid-template-columns:1fr} .brand{font-size:30px} }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">MAPS</div>
+    <div class="tag"><b>M</b>anufacturing <b>A</b>I agent <b>P</b>latform &amp; <b>S</b>hared-dashboard</div>
+    <div class="lead">두 가지 첫 화면을 만들어 두었습니다. 눌러서 비교해 보세요.</div>
+  </header>
+
+  <div class="cards">
+    <a class="card" href="v4-1/">
+      <div class="thumb stars" aria-hidden="true"></div>
+      <div class="name">V4-1 · <em>별자리 히어로</em></div>
+      <div class="desc">배경에 별자리가 움직입니다. 첫 화면에 현황·차트·공지 3패널이 함께 보입니다.
+        외부 통신이 전혀 없어 가장 가볍습니다.</div>
+      <div class="go">열기 →</div>
+      <div class="path">v4-1/</div>
+    </a>
+
+    <a class="card" href="v4-2/">
+      <div class="thumb video" aria-hidden="true"></div>
+      <div class="name">V4-2 · <em>영상 히어로</em></div>
+      <div class="desc">첫 화면은 배경 영상만 크게 보이고, 대시보드 3패널은 아래 화면으로 분리됩니다.
+        영상은 사내 홈페이지에서 받아옵니다.</div>
+      <div class="go">열기 →</div>
+      <div class="path">v4-2/</div>
+    </a>
+  </div>
+
+  <footer>
+    두 주소는 동시에 살아 있습니다. 링크를 그대로 동료에게 전달해도 됩니다.<br>
+    생산기술혁신센터 · 사내 시험 운영 중
+  </footer>
+</body>
+</html>
