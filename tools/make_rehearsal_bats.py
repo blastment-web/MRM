@@ -56,16 +56,23 @@ if %NV%==0 goto NOVER
 echo   [2/6] 꾸러미 파일 확인 ....... OK  -  화면 %NV%개
 
 rem ---------------- 3. IIS 켜기 ----------------
+rem IIS 가 켜져 있어도 ASP.NET 은 빠져 있을 수 있으므로 둘 다 확인한다.
+set "ASPOK="
+if exist "%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" set "ASPOK=1"
 sc query w3svc >nul 2>&1
-if not errorlevel 1 goto IISOK
+if not errorlevel 1 if defined ASPOK goto IISOK
 echo   [3/6] IIS 켜는 중 ............ 처음이면 1~3분 걸립니다. 그대로 기다려 주세요.
 echo MAPS IIS setup > "%LOG%"
-for %%F in (IIS-WebServerRole IIS-WebServer IIS-CommonHttpFeatures IIS-StaticContent IIS-DefaultDocument IIS-HttpErrors IIS-RequestFiltering IIS-WebServerManagementTools IIS-ManagementConsole) do (
+rem ASP.NET 넷은 등록요청 업로드(api\dash-request.ashx)를 받기 위한 것이다.
+rem .NET Framework 는 Windows 에 이미 들어 있어 새로 내려받을 것이 없다.
+for %%F in (IIS-WebServerRole IIS-WebServer IIS-CommonHttpFeatures IIS-StaticContent IIS-DefaultDocument IIS-HttpErrors IIS-RequestFiltering IIS-WebServerManagementTools IIS-ManagementConsole NetFx4Extended-ASPNET45 IIS-NetFxExtensibility45 IIS-ISAPIExtensions IIS-ISAPIFilter IIS-ASPNET45) do (
     echo ---- %%F >> "%LOG%"
     dism /online /enable-feature /featurename:%%F /all /norestart >> "%LOG%" 2>&1
 )
 sc query w3svc >nul 2>&1
 if errorlevel 1 goto NOIIS
+set "ASPOK="
+if exist "%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" set "ASPOK=1"
 echo         IIS ................... 설치 완료
 goto IISDONE
 :IISOK
@@ -81,6 +88,7 @@ rem 선택 화면이 읽을 목록. 배열 끝의 쉼표는 자바스크립트�
 > "%WWW%\versions.js" echo window.MAPS_VERSIONS = [
 
 set "SLUGS="
+set "FIRST="
 for %%F in ("%~dp0index-*.html") do (
     set "FN=%%~nF"
     set "SLUG=!FN:index-=!"
@@ -90,14 +98,23 @@ for %%F in ("%~dp0index-*.html") do (
     copy /y "%~dp0data\dashboards.json" "%WWW%\!SLUG!\data\dashboards.json" >nul
     rem hero.mp4 를 넣어 두면 영상을 사내 홈페이지 대신 이 서버에서 받는다 (없으면 건너뛴다)
     if exist "%~dp0hero.mp4" copy /y "%~dp0hero.mp4" "%WWW%\!SLUG!\hero.mp4" >nul
+    rem 앱이 api/* 를 상대 경로로 부르므로 화면 폴더마다 둔다 (data 와 같은 이유)
+    if exist "%~dp0api" xcopy "%~dp0api" "%WWW%\!SLUG!\api" /e /i /y >nul 2>&1
     >> "%WWW%\versions.js" echo   {"slug":"!SLUG!"},
     set "SLUGS=!SLUGS! !SLUG!"
+    if not defined FIRST set "FIRST=!SLUG!"
     echo         /!SLUG!/
 )
 >> "%WWW%\versions.js" echo ];
 
 rem 올린 자료는 버전과 무관하게 한 벌만 둔다 (addr 이 전체 URL 이라 어디서든 열린다)
 if exist "%~dp0agents" xcopy "%~dp0agents" "%WWW%\agents" /e /i /y >nul 2>&1
+rem 업로드가 파일을 쓰는 곳은 이 두 폴더뿐이다. 나머지는 읽기 전용으로 남겨 둔다.
+rem S-1-5-32-568 = IIS_IUSRS (언어팩과 무관하게 같은 SID 라 한글 Windows 에서도 통한다)
+if not exist "%WWW%\agents"   mkdir "%WWW%\agents"   >nul 2>&1
+if not exist "%WWW%\requests" mkdir "%WWW%\requests" >nul 2>&1
+icacls "%WWW%\agents"   /grant "*S-1-5-32-568:(OI)(CI)M" >nul 2>&1
+icacls "%WWW%\requests" /grant "*S-1-5-32-568:(OI)(CI)M" >nul 2>&1
 echo   [4/6] 화면 %NV%개 + 자료 배포 ... OK
 
 rem ---------------- 5. 방화벽 ----------------
@@ -151,6 +168,9 @@ goto SHOWEND
 :NOIP
 echo        사내 IP 를 찾지 못했습니다 - 네트워크 연결을 확인하세요
 :SHOWEND
+echo.
+if defined ASPOK echo   업로드 받기  : 준비됨  ^(확인 http://localhost/!FIRST!/api/dash-request.ashx ^)
+if not defined ASPOK echo   업로드 받기  : 안 됨 - 등록요청은 "요청서 내려받기" 로 대신할 수 있습니다.
 echo --------------------------------------------------------------
 
 rem 주소 뒤의 ?v= 는 브라우저 캐시를 피하려는 것이다. 서버는 이 값을 무시한다.
@@ -231,6 +251,7 @@ for %%F in ("%~dp0index-*.html") do (
     if exist "%WWW%\!SLUG!" rd /s /q "%WWW%\!SLUG!" >nul 2>&1
 )
 if exist "%WWW%\agents" rd /s /q "%WWW%\agents" >nul 2>&1
+if exist "%WWW%\requests" rd /s /q "%WWW%\requests" >nul 2>&1
 if exist "%WWW%\data"   rd /s /q "%WWW%\data"   >nul 2>&1
 echo   [3/4] 배치한 파일 삭제 ....... OK  (원본은 꾸러미 폴더에 그대로 있습니다)
 
@@ -372,6 +393,93 @@ echo.
 pause
 """
 
+REVIEW = r"""@echo off
+setlocal enabledelayedexpansion
+title MAPS - 올라온 등록요청 확인
+
+set "WWW=%SystemDrive%\inetpub\wwwroot"
+set "JSON=%~dp0data\dashboards.json"
+
+echo.
+echo ==============================================================
+echo    올라온 등록요청 확인
+echo ==============================================================
+echo.
+
+net session >nul 2>&1
+if errorlevel 1 goto NOADMIN
+
+if not exist "%WWW%\requests" goto NONE
+
+set "MYIP="
+for /f "tokens=2 delims=:" %%A in ('ipconfig ^| findstr /c:"IPv4"') do (
+    for /f "tokens=*" %%B in ("%%A") do if not defined MYIP set "MYIP=%%B"
+)
+if not defined MYIP set "MYIP=localhost"
+
+set /a N=0
+for %%F in ("%WWW%\requests\*.txt") do (
+    set /a N+=1
+    echo --------------------------------------------------------------
+    echo   [!N!]  폴더 이름 : %%~nF
+    type "%%F"
+    if exist "%WWW%\agents\%%~nF\index.html" (
+        echo   미리 보기   : http://%MYIP%/agents/%%~nF/
+        echo.
+        echo   dashboards.json 에 붙여 넣을 줄:
+        echo       "addr":"http://%MYIP%/agents/%%~nF/"
+    ) else (
+        echo   첨부 파일이 없는 요청입니다 ^(메타만 접수^)
+    )
+    echo.
+)
+if %N%==0 goto NONE
+
+echo --------------------------------------------------------------
+echo   위에서 공개할 것을 골라, 그 줄을 dashboards.json 의 해당 Agent
+echo   "addr": "" 자리에 붙여 넣고 저장한 뒤 메모장을 닫으세요.
+echo.
+echo   ※ 붙여 넣기 전까지는 아무에게도 보이지 않습니다.
+echo      올라와 있다고 공개된 것이 아닙니다.
+echo.
+pause
+
+start /wait notepad "%JSON%"
+
+set /a M=0
+for %%F in ("%~dp0index-*.html") do (
+    set "FN=%%~nF"
+    set "VER=!FN:index-=!"
+    if exist "%WWW%\!VER!" (
+        if not exist "%WWW%\!VER!\data" mkdir "%WWW%\!VER!\data" >nul 2>&1
+        copy /y "%JSON%" "%WWW%\!VER!\data\dashboards.json" >nul
+        set /a M+=1
+    )
+)
+echo.
+echo   화면 !M!개에 반영했습니다. 브라우저에서 Ctrl+F5 로 새로고침하세요.
+start "" "http://localhost/?v=%RANDOM%"
+goto END
+
+:NONE
+echo   아직 올라온 등록요청이 없습니다.
+echo.
+echo   구성원이 화면에서 [＋ AI Agent 등록] 으로 HTML 을 올리면
+echo   여기에 나타납니다.
+echo.
+echo   ※ 업로드가 안 되고 "요청서 내려받기" 만 뜬다면 ASP.NET 이 꺼져 있는 것입니다.
+echo      1_서버켜기.bat 을 관리자 권한으로 다시 실행해 보세요.
+goto END
+
+:NOADMIN
+echo   [중단] 관리자 권한이 없습니다.
+echo   이 파일을 마우스 우클릭 하고 "관리자 권한으로 실행" 을 눌러 주세요.
+
+:END
+echo.
+pause
+"""
+
 README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 보기
 ====================================================
 
@@ -384,7 +492,8 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
 
   3. 실험이 끝나면  2_서버끄기.bat  을 같은 방식으로 실행
 
-  AI Agent 를 연결할 때는 3_에이전트연결.bat 을 씁니다.
+  AI Agent 를 직접 연결할 때는 3_에이전트연결.bat,
+  구성원이 올린 요청을 확인할 때는 4_요청확인.bat 을 씁니다.
 
 
 ■ 화면을 하나 더 올리려면  ★ 파일 이름이 곧 주소입니다
@@ -468,6 +577,29 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
      내 PC 에서는 열리지만 동료 PC 에서는 열리지 않습니다.
      동료에게 보여주려면 3_에이전트연결.bat 이 찍어 주는 실제 IP 주소로
      바꿔 주세요.
+
+
+■ 구성원이 직접 HTML 을 올리게 하기  ★
+
+  화면에서 [＋ AI Agent 등록] 을 누르고 HTML 을 넣으면 서버에 바로 올라갑니다.
+  1_서버켜기.bat 이 그 준비까지 해 줍니다 (추가로 설치할 프로그램 없음).
+
+  ★ 올린다고 바로 공개되지 않습니다.
+     올라온 파일은 관리자가 dashboards.json 에 주소를 넣기 전까지
+     아무 카드에도 나타나지 않습니다. 즉 아무나 올릴 수는 있어도
+     아무나 게시할 수는 없습니다.
+
+  관리자가 할 일 :
+     4_요청확인.bat 을 우클릭 -> "관리자 권한으로 실행"
+     올라온 요청이 요청자·설명·미리보기 주소와 함께 나열됩니다.
+     공개할 것만 골라 "addr" 줄을 dashboards.json 에 붙여 넣고 저장하면 끝입니다.
+
+  검은 창 맨 아래에 "업로드 받기 : 준비됨" 이라고 나오면 준비된 것입니다.
+  "안 됨" 이라고 나오면 회사 정책으로 ASP.NET 기능이 막힌 경우인데,
+  그때는 화면에 [요청서 내려받기] 버튼이 대신 나옵니다. 구성원이 그 파일을
+  받아서 관리자에게 전달하면 같은 일을 할 수 있습니다. 어느 쪽이든 막히지 않습니다.
+
+  ※ 올릴 수 있는 것 : HTML 파일 1개, 3MB 까지.
 
 
 ■ 카드를 누르면 팝업으로 열립니다
@@ -557,6 +689,7 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
 (OUT / "1_서버켜기.bat").write_bytes(START.replace("\n", "\r\n").encode("cp949"))
 (OUT / "2_서버끄기.bat").write_bytes(STOP.replace("\n", "\r\n").encode("cp949"))
 (OUT / "3_에이전트연결.bat").write_bytes(CONNECT.replace("\n", "\r\n").encode("cp949"))
+(OUT / "4_요청확인.bat").write_bytes(REVIEW.replace("\n", "\r\n").encode("cp949"))
 (OUT / "읽어보세요.txt").write_bytes(
     b"\xef\xbb\xbf" + README_TXT.replace("\n", "\r\n").encode("utf-8")
 )

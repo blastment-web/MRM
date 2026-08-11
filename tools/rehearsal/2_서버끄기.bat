@@ -30,6 +30,7 @@ for %%F in ("%~dp0index-*.html") do (
     if exist "%WWW%\!SLUG!" rd /s /q "%WWW%\!SLUG!" >nul 2>&1
 )
 if exist "%WWW%\agents" rd /s /q "%WWW%\agents" >nul 2>&1
+if exist "%WWW%\requests" rd /s /q "%WWW%\requests" >nul 2>&1
 if exist "%WWW%\data"   rd /s /q "%WWW%\data"   >nul 2>&1
 echo   [3/4] 배치한 파일 삭제 ....... OK  (원본은 꾸러미 폴더에 그대로 있습니다)
 

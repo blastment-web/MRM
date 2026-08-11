@@ -4153,6 +4153,53 @@ async function approveReq(id,approve){
 
 /* ---------- 대시보드 추가요청(사용자) ---------- */
 function setReqStatus(m,c){const e=document.getElementById("reqStatus");e.className="status"+(c?(" "+c):"");e.textContent=m;}
+/* 서버가 못 받았을 때 — 입력값과 원본 HTML 을 한 파일로 묶어 내려받게 한다.
+   결과물은 메타를 주석으로 얹은 원본 HTML 이라, 관리자가 index.html 로 이름만 바꿔
+   agents 폴더에 넣으면 바로 동작한다. */
+function buildRequestDoc(p){
+  var meta = [
+    "MAPS AI Agent 등록요청",
+    "요청 시각   : " + new Date().toLocaleString("ko-KR"),
+    "AI Agent 명 : " + (p.name || ""),
+    "요청자      : " + (p.author || ""),
+    "기술그룹    : " + (p.org || ""),
+    "팀          : " + (p.team || ""),
+    "카테고리    : " + ((p.features || []).join(", ")),
+    "설명        : " + (p.desc || ""),
+    "원본 파일명 : " + (p.fname || "(첨부 없음)")
+  ].join("\n  ").replace(/-->/g, "- ->");   /* 값 안에 --> 가 있으면 주석이 일찍 닫힌다 */
+  var head = "<!--\n  " + meta +
+    "\n\n  이 파일을 서버의  agents\\<폴더이름>\\index.html  로 넣으면 그대로 동작합니다.\n-->\n";
+  if(p.html) return head + p.html;
+  /* body 태그는 쓰지 않는다 — 이 문자열이 index.html 안에 들어가는데,
+     standalone 빌더가 </bo dy> 를 유일한 앵커로 쓰기 때문이다. div 로 충분하다. */
+  return head + '<!DOCTYPE html><meta charset="utf-8"><title>' + esc(p.name || "등록요청") + '</title>' +
+    '<div style="font-family:sans-serif;padding:36px;line-height:1.8;background:#0b1120;color:#eaf0fb;min-height:100vh">' +
+    '<h1>' + esc(p.name || "") + '</h1><p>첨부 HTML 이 없는 등록요청입니다. 위 주석의 내용을 확인해 주세요.</p></div>';
+}
+function offerRequestDownload(p){
+  var el = document.getElementById("reqStatus");
+  el.className = "status err";
+  el.innerHTML = '서버가 업로드를 받지 못했습니다. ' +
+    '<button class="minibtn" type="button" id="rqDlBtn" style="margin-left:6px">요청서 내려받기</button>';
+  var btn = document.getElementById("rqDlBtn");
+  btn.addEventListener("click", function(){
+    var blob = new Blob([buildRequestDoc(p)], {type:"text/html;charset=utf-8"});
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement("a");
+    a.href = url;
+    /* 파일 이름은 ASCII 로만 만든다. 브라우저에 따라 a.download 의 비ASCII 이름을
+       통째로 버리고 "download" 로 저장해 버린다(헤드리스 Chromium 에서 실측).
+       한글 이름은 파일 안 주석에 그대로 남으므로 정보가 사라지지 않는다. */
+    var d = new Date(), z = function(n){ return (n < 10 ? "0" : "") + n; };
+    var stamp = d.getFullYear() + z(d.getMonth()+1) + z(d.getDate()) + "-" + z(d.getHours()) + z(d.getMinutes());
+    var tail = String(p.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30);
+    a.download = "MAPS-request-" + stamp + (tail ? "-" + tail : "") + ".html";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    setReqStatus("내려받았습니다. 이 파일을 관리자에게 전달해 주세요.", "ok");
+  });
+}
 (function(){var e=document.getElementById("rqFeatEtc");if(e)e.addEventListener("change",function(){document.getElementById("rqFeatEtcText").style.display=this.checked?"":"none";});})();
 document.getElementById("dashReqBtn").addEventListener("click",async()=>{
   await checkMe();
@@ -4174,15 +4221,35 @@ document.getElementById("reqSubmit").addEventListener("click",async()=>{
   if(etcOn)features.push(etc?("기타: "+etc):"기타");
   const f=document.getElementById("rqFile").files[0];
   if(!name){setReqStatus("대시보드명을 입력하세요.","err");return;}
+  if(f){
+    if(!/\.html?$/i.test(f.name)){setReqStatus("HTML 파일만 올릴 수 있습니다.","err");return;}
+    /* 서버(ASP.NET)의 기본 요청 한도가 4MB 다. 문자열로 부풀 것을 감안해 3MB 에서 막는다.
+       보내고 나서 실패하는 것보다 보내기 전에 이유를 말해 주는 편이 낫다. */
+    if(f.size > 3*1024*1024){setReqStatus("파일이 3MB 를 넘습니다. 이미지를 줄이거나 나눠 주세요.","err");return;}
+  }
   setReqStatus("전송 중…");
-  try{
-    let html="",fname="";
-    if(f){html=await f.text();fname=f.name;}
-    const r=await fetch("api/dash-request",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,author,org,team,desc,features,etc,html,fname})});
-    const j=await r.json();
-    if(r.ok&&j.ok){close("reqOv");alert("대시보드 추가요청이 접수되었습니다. 관리자 검토 후 반영됩니다.");}
-    else setReqStatus(j.error||"요청 실패","err");
-  }catch(e){setReqStatus("서버에 연결할 수 없습니다.","err");}
+  let html="",fname="";
+  if(f){
+    try{ html=await f.text(); fname=f.name; }
+    catch(e){ setReqStatus("파일을 읽지 못했습니다.","err"); return; }
+  }
+  const payload={name,author,org,team,desc,features,etc,html,fname};
+  const body=JSON.stringify(payload);
+  /* 1) 진짜 백엔드 → 2) IIS 핸들러 → 3) 파일로 받아 전달 */
+  for(const url of ["api/dash-request","api/dash-request.ashx"]){
+    try{
+      const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body});
+      if(!r.ok) continue;                       /* 404·405 면 다음 후보로 */
+      const j=await r.json().catch(()=>null);
+      if(j&&j.ok){
+        close("reqOv");
+        alert("등록 요청이 접수되었습니다.\n관리자가 확인한 뒤 화면에 반영됩니다.");
+        return;
+      }
+      if(j&&j.error){ setReqStatus(j.error,"err"); return; }   /* 서버가 이유를 말해 준 경우 */
+    }catch(e){}
+  }
+  offerRequestDownload(payload);
 });
 
 /* 요청자 표시: 이름 (소속) + ID (이름 없으면 ID만) */

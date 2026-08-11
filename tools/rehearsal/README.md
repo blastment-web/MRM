@@ -6,14 +6,14 @@ Windows 에 이미 들어 있는 **IIS** 를 배치 파일로 켜고 끈다.
 
 ## 전달할 폴더 만들기
 
-이 폴더의 배치·안내 4개 + 화면 파일 3개(+ 선택 사항 `hero.mp4`) + `data/` + `agents/` 를 한 폴더에 모아 압축해서 건넨다.
+이 폴더의 배치·안내 5개 + `api/` + 화면 파일 3개(+ 선택 사항 `hero.mp4`) + `data/` + `agents/` 를 한 폴더에 모아 압축해서 건넨다.
 
 ```bash
 mkdir -p "MAPS-실험/data"
 cp releases/MAPS-V4-1/index.standalone.html "MAPS-실험/index-v4-1.html"
 cp releases/MAPS-V4-2/index.standalone.html "MAPS-실험/index-v4-2.html"
 cp tools/rehearsal/선택화면.html tools/rehearsal/*.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
-cp -r tools/rehearsal/agents "MAPS-실험/"
+cp -r tools/rehearsal/agents tools/rehearsal/api "MAPS-실험/"
 python3 tools/make_dashboards_json.py --out "MAPS-실험/data/dashboards.json" \
         --live "공정 조건 최적화 Agent" --addr "http://localhost/agents/sample-agent/"
 ```
@@ -165,6 +165,9 @@ window.origin          → null
 | **버전 자동 추가** | V3 를 세 번째 화면으로 넣어 **15개 항목 전부 통과** — 선택 화면 카드 3장(V3 는 일반 카드), 각 카드 이동, `versions.js` 제거 시 2장 폴백·오류 0, 세 버전 모두 같은 자료를 가리킴. **팝업이 없는 옛 버전(V3)도 정상 동작**하며 카드는 새 탭으로 열린다 |
 | `선택화면.html` | 외부 참조 0건 · 링크 전부 상대 경로 (`localhost` 로 열든 `10.x.x.x` 로 열든 동작) |
 | **원격 화면 최적화** | 2560×1080 에서 실측 — 캔버스 다시 그리기 **60.0 → 18.7회/초**(166 → 52 Mpx/s), 토글 순간 캔버스 변화량이 평소보다 작아 **재배치 0건**, `body.lite` 에서 `.reveal` 트랜지션·`--blur`·제목 `filter` 모두 해제, 스위치 저장·복원 양방향 동작, 자동 감지가 사용자 선택을 덮지 않음. **원격 전송 증상 자체는 재현 불가** — 헤드리스에는 화면 전송 인코더가 없다 |
+| **등록요청 업로드 (화면 쪽)** | 임시 서버를 세워 **17개 항목 전부 통과** — 1단계 `api/dash-request` 접수·파일 저장·메타 저장, 2단계 `.ashx` 재시도 순서, 3단계 요청서 내려받기(원본 HTML 온전·주석 조기 종료 없음), 3MB·확장자 거부, JS 오류 0 |
+| **등록요청 업로드 (핸들러)** | **실행 검증 못 함** — Windows·.NET 이 없다. 대신 하는 일을 저장으로만 한정했고, 슬러그 규칙을 파이썬으로 옮겨 `../`·한글·`%2e%2e%2f` 등 16종 입력으로 **경로 이탈 0건** 확인 |
+| **다운로드 파일명** | 헤드리스 Chromium 이 `a.download` 의 **비ASCII 이름을 통째로 버리는** 것을 실측 → ASCII(`MAPS-request-<시각>-<슬러그>.html`)로 바꿨다. 한글 이름은 파일 안 주석에 남는다 |
 | **Windows 에서의 실제 실행** | **검증 못 함.** 이 저장소를 만든 환경은 Linux 다 |
 
 마지막 항목 때문에 로직을 발명하지 않고 표준 명령만 조합했고, 단계마다 OK/실패를 찍어

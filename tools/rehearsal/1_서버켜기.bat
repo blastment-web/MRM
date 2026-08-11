@@ -27,16 +27,23 @@ if %NV%==0 goto NOVER
 echo   [2/6] 꾸러미 파일 확인 ....... OK  -  화면 %NV%개
 
 rem ---------------- 3. IIS 켜기 ----------------
+rem IIS 가 켜져 있어도 ASP.NET 은 빠져 있을 수 있으므로 둘 다 확인한다.
+set "ASPOK="
+if exist "%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" set "ASPOK=1"
 sc query w3svc >nul 2>&1
-if not errorlevel 1 goto IISOK
+if not errorlevel 1 if defined ASPOK goto IISOK
 echo   [3/6] IIS 켜는 중 ............ 처음이면 1~3분 걸립니다. 그대로 기다려 주세요.
 echo MAPS IIS setup > "%LOG%"
-for %%F in (IIS-WebServerRole IIS-WebServer IIS-CommonHttpFeatures IIS-StaticContent IIS-DefaultDocument IIS-HttpErrors IIS-RequestFiltering IIS-WebServerManagementTools IIS-ManagementConsole) do (
+rem ASP.NET 넷은 등록요청 업로드(api\dash-request.ashx)를 받기 위한 것이다.
+rem .NET Framework 는 Windows 에 이미 들어 있어 새로 내려받을 것이 없다.
+for %%F in (IIS-WebServerRole IIS-WebServer IIS-CommonHttpFeatures IIS-StaticContent IIS-DefaultDocument IIS-HttpErrors IIS-RequestFiltering IIS-WebServerManagementTools IIS-ManagementConsole NetFx4Extended-ASPNET45 IIS-NetFxExtensibility45 IIS-ISAPIExtensions IIS-ISAPIFilter IIS-ASPNET45) do (
     echo ---- %%F >> "%LOG%"
     dism /online /enable-feature /featurename:%%F /all /norestart >> "%LOG%" 2>&1
 )
 sc query w3svc >nul 2>&1
 if errorlevel 1 goto NOIIS
+set "ASPOK="
+if exist "%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" set "ASPOK=1"
 echo         IIS ................... 설치 완료
 goto IISDONE
 :IISOK
@@ -52,6 +59,7 @@ rem 선택 화면이 읽을 목록. 배열 끝의 쉼표는 자바스크립트에서 허용된다.
 > "%WWW%\versions.js" echo window.MAPS_VERSIONS = [
 
 set "SLUGS="
+set "FIRST="
 for %%F in ("%~dp0index-*.html") do (
     set "FN=%%~nF"
     set "SLUG=!FN:index-=!"
@@ -61,14 +69,23 @@ for %%F in ("%~dp0index-*.html") do (
     copy /y "%~dp0data\dashboards.json" "%WWW%\!SLUG!\data\dashboards.json" >nul
     rem hero.mp4 를 넣어 두면 영상을 사내 홈페이지 대신 이 서버에서 받는다 (없으면 건너뛴다)
     if exist "%~dp0hero.mp4" copy /y "%~dp0hero.mp4" "%WWW%\!SLUG!\hero.mp4" >nul
+    rem 앱이 api/* 를 상대 경로로 부르므로 화면 폴더마다 둔다 (data 와 같은 이유)
+    if exist "%~dp0api" xcopy "%~dp0api" "%WWW%\!SLUG!\api" /e /i /y >nul 2>&1
     >> "%WWW%\versions.js" echo   {"slug":"!SLUG!"},
     set "SLUGS=!SLUGS! !SLUG!"
+    if not defined FIRST set "FIRST=!SLUG!"
     echo         /!SLUG!/
 )
 >> "%WWW%\versions.js" echo ];
 
 rem 올린 자료는 버전과 무관하게 한 벌만 둔다 (addr 이 전체 URL 이라 어디서든 열린다)
 if exist "%~dp0agents" xcopy "%~dp0agents" "%WWW%\agents" /e /i /y >nul 2>&1
+rem 업로드가 파일을 쓰는 곳은 이 두 폴더뿐이다. 나머지는 읽기 전용으로 남겨 둔다.
+rem S-1-5-32-568 = IIS_IUSRS (언어팩과 무관하게 같은 SID 라 한글 Windows 에서도 통한다)
+if not exist "%WWW%\agents"   mkdir "%WWW%\agents"   >nul 2>&1
+if not exist "%WWW%\requests" mkdir "%WWW%\requests" >nul 2>&1
+icacls "%WWW%\agents"   /grant "*S-1-5-32-568:(OI)(CI)M" >nul 2>&1
+icacls "%WWW%\requests" /grant "*S-1-5-32-568:(OI)(CI)M" >nul 2>&1
 echo   [4/6] 화면 %NV%개 + 자료 배포 ... OK
 
 rem ---------------- 5. 방화벽 ----------------
@@ -122,6 +139,9 @@ goto SHOWEND
 :NOIP
 echo        사내 IP 를 찾지 못했습니다 - 네트워크 연결을 확인하세요
 :SHOWEND
+echo.
+if defined ASPOK echo   업로드 받기  : 준비됨  ^(확인 http://localhost/!FIRST!/api/dash-request.ashx ^)
+if not defined ASPOK echo   업로드 받기  : 안 됨 - 등록요청은 "요청서 내려받기" 로 대신할 수 있습니다.
 echo --------------------------------------------------------------
 
 rem 주소 뒤의 ?v= 는 브라우저 캐시를 피하려는 것이다. 서버는 이 값을 무시한다.
