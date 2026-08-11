@@ -10,16 +10,20 @@ Windows 에 이미 들어 있는 **IIS** 를 배치 파일로 켜고 끈다.
 
 ```bash
 mkdir -p "MAPS-실험/data"
-cp releases/MAPS-V4-1/index.standalone.html "MAPS-실험/index-V4-1.html"
-cp releases/MAPS-V4-2/index.standalone.html "MAPS-실험/index-V4-2.html"
-cp tools/rehearsal/index-선택화면.html tools/rehearsal/*.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
+cp releases/MAPS-V4-1/index.standalone.html "MAPS-실험/index-v4-1.html"
+cp releases/MAPS-V4-2/index.standalone.html "MAPS-실험/index-v4-2.html"
+cp tools/rehearsal/선택화면.html tools/rehearsal/*.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
 cp -r tools/rehearsal/agents "MAPS-실험/"
 python3 tools/make_dashboards_json.py --out "MAPS-실험/data/dashboards.json" \
         --live "공정 조건 최적화 Agent" --addr "http://localhost/agents/sample-agent/"
 ```
 
-꾸러미에는 `index.html` 이 없다. 배치가 서버에서 만든다 — 선택 화면은 루트에,
-두 버전은 각각 `v4-1\index.html` · `v4-2\index.html` 로 들어간다.
+**파일 이름이 곧 주소다.** `index-<이름>.html` 하나가 `http://IP/<이름>/` 하나가 된다.
+사용자가 자기 PC 의 다른 버전을 넣고 배치를 다시 돌리면 주소가 늘어난다 — 배치를 고칠
+필요가 없다. 그래서 파일명을 **소문자**로 맞춰 두었다(슬러그가 그대로 URL 이 된다).
+
+선택 화면 이름에 `index-` 를 붙이지 않는 이유도 같다. 붙이면 저 규칙에 걸려
+선택 화면 자체가 주소로 만들어진다.
 
 압축할 때는 파일 이름에 **UTF-8 플래그(범용 비트 11)** 를 세워야 한다.
 안 그러면 Windows 탐색기에서 한글 파일명이 깨진다. `zip` 기본 동작은 플래그를
@@ -37,29 +41,37 @@ python3 tools/make_dashboards_json.py --out "MAPS-실험/data/dashboards.json" \
 | 단계 | 명령 |
 |---|---|
 | 1 | `net session` 으로 관리자 권한 확인 |
-| 2 | 꾸러미 파일 4종이 다 있는지 확인 (빠진 것을 이름으로 알려 준다) |
+| 2 | `선택화면.html` · `data\dashboards.json` 과 **`index-*.html` 이 최소 1개** 있는지 확인 |
 | 3 | `dism /online /enable-feature` 를 **기능마다 한 번씩** |
-| 4 | 선택 화면 → `wwwroot\index.html`, 두 버전 → `wwwroot\v4-1\` · `wwwroot\v4-2\`, `data/` 는 두 폴더 모두에, `agents/` 는 루트에 한 벌 |
+| 4 | 선택 화면 → `wwwroot\index.html`, **`index-*.html` 마다 폴더 하나**, `data/` 는 각 폴더에, `agents/` 는 루트에 한 벌, 선택 화면이 읽을 `versions.js` 생성 |
 | 5 | `netsh advfirewall` 로 인바운드 TCP 80 허용 (`MAPS-Rehearsal-HTTP-80`) |
 | 6 | `sc config` + `net start w3svc` |
-| 확인 | `curl` 로 **세 주소(`/` · `/v4-1/` · `/v4-2/`)** 를 호출해 각각 200 인지 찍고, `ipconfig` 에서 사내 IP 를 찍는다 |
+| 확인 | `curl` 로 선택 화면과 **각 버전 주소**를 호출해 200 인지 찍고, `ipconfig` 로 살아 있는 주소를 전부 찍는다 |
 
 `3_에이전트연결.bat` 은 남이 만든 HTML 을 `agents/<폴더>/index.html` 로 올리고
 붙여넣을 `"addr"` 한 줄을 실제 IP 로 찍어 준 뒤, `start /wait notepad` 로
-`dashboards.json` 을 열고 **메모장이 닫히면 두 버전 폴더 양쪽에 반영**한다.
+`dashboards.json` 을 열고 **메모장이 닫히면 올라가 있는 모든 화면 폴더에 반영**한다.
 편집 대상은 꾸러미 폴더의 원본이다 — `wwwroot` 쪽을 고치게 하면
 `1_서버켜기.bat` 을 다시 돌릴 때 덮여 사라진다.
 
 `2_서버끄기.bat` 는 4·5·6 을 되돌린다. **IIS 기능 자체는 끄지 않는다** —
 끄면 재부팅을 요구할 수 있어 오히려 번거롭다.
 
-## 주소 두 개 — 버전을 갈아 끼우지 않는다
+## 파일 이름이 곧 주소다
 
 ```
-http://10.x.x.x/          선택 화면
-http://10.x.x.x/v4-1/     별자리 히어로
-http://10.x.x.x/v4-2/     영상 히어로
+index-v4-1.html   →   http://10.x.x.x/v4-1/
+index-v4-2.html   →   http://10.x.x.x/v4-2/
+index-v5.html     →   http://10.x.x.x/v5/      (파일만 넣고 배치 재실행)
+http://10.x.x.x/  →   선택 화면
 ```
+
+배포하면서 `versions.js` 를 함께 써 두어 **선택 화면 카드도 자동으로 늘어난다.**
+`v4-1` · `v4-2` 는 제목·설명·썸네일을 아는 카드로, 처음 보는 이름은 일반 카드로 나온다.
+`versions.js` 가 없으면 두 장으로 폴백해 배치를 안 돌린 상태에서도 깨지지 않는다.
+
+> 설명문을 파일(`index-v5.txt` 같은)로 받아 카드에 넣는 방안은 일부러 뺐다.
+> 그 안의 `&`·`>`·`"` 하나에 `versions.js` 가 깨지면 **선택 화면이 통째로 죽는다.**
 
 **`agents/` 를 버전 폴더 안에 넣지 않는 것이 이 구조의 핵심이다.** `dashboards.json` 의
 `addr` 은 전체 URL 이라 버전과 무관하게 열린다. 자료 실물이 한 벌이면 두 버전이 같은 것을
@@ -149,8 +161,9 @@ window.origin          → null
 | `index-V4-2.html` | 헤드리스 Chromium 확인 — `#secHome` 1600×900 히어로 전용 / `#secDash` 3패널 분리, `#secDash` 링크 3개, JS 오류 0건. **영상 재생은 확인 못 함** — 이 환경에서 `lgensol.com` 이 차단되어 `fail()` 이 영상을 숨긴다(설계된 폴백). 외부 요청 1건이 바로 그 영상이다 |
 | **Agent 연결 경로** | `serve_local.py` 로 실제 서빙해 헤드리스 Chromium 으로 확인 — 대상 카드 `● 사용 가능`, `href` 정확, 클릭 시 올린 페이지가 200 으로 열림, JS 오류 0건 |
 | **Agent 팝업** | V4-1 · V4-2 각각 **28개 항목 전부 통과 · JS 오류 0건**. 샌드박스 격리는 공격 페이지를 실제로 올려 확인했다 — `parent.document` · 쿠키 · `localStorage` 모두 `SecurityError`, `window.origin` 은 `null` |
-| **주소 두 개 구조** | 새 폴더 구조 그대로 서빙해 **20개 항목 전부 통과** — 세 주소 200, 선택 화면 링크 이동, 두 버전이 서로 섞이지 않음(`#pxNet` / `#heroVideo`), 양쪽 모두 카드 LIVE·팝업·딥링크 정상, 두 버전이 같은 `/agents/` 한 벌을 가리킴 |
-| `index-선택화면.html` | 외부 참조 0건 · 링크 전부 상대 경로 (`localhost` 로 열든 `10.x.x.x` 로 열든 동작) |
+| **주소 분리 구조** | 새 폴더 구조 그대로 서빙해 **20개 항목 전부 통과** — 주소별 200, 선택 화면 링크 이동, 버전이 서로 섞이지 않음(`#pxNet` / `#heroVideo`), 모두 카드 LIVE·팝업·딥링크 정상, 같은 `/agents/` 한 벌을 가리킴 |
+| **버전 자동 추가** | V3 를 세 번째 화면으로 넣어 **15개 항목 전부 통과** — 선택 화면 카드 3장(V3 는 일반 카드), 각 카드 이동, `versions.js` 제거 시 2장 폴백·오류 0, 세 버전 모두 같은 자료를 가리킴. **팝업이 없는 옛 버전(V3)도 정상 동작**하며 카드는 새 탭으로 열린다 |
+| `선택화면.html` | 외부 참조 0건 · 링크 전부 상대 경로 (`localhost` 로 열든 `10.x.x.x` 로 열든 동작) |
 | **Windows 에서의 실제 실행** | **검증 못 함.** 이 저장소를 만든 환경은 Linux 다 |
 
 마지막 항목 때문에 로직을 발명하지 않고 표준 명령만 조합했고, 단계마다 OK/실패를 찍어

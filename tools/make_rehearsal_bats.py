@@ -4,16 +4,23 @@
 배치 파일은 반드시 CP949(한국어 Windows ANSI 코드페이지)로 저장한다.
 UTF-8 로 저장하면 cmd 창에서 한글이 전부 깨져 안내문 자체가 쓸모없어진다.
 
-구조 메모 — 왜 버전 폴더로 나눴나
-  예전에는 index.html 한 개를 wwwroot 에 복사해 한 번에 한 버전만 볼 수 있었다.
-  버전을 바꾸려면 파일을 갈아 끼우고 배치를 다시 돌려야 했고, 그 지점에서
-  "바꿨는데 화면이 그대로" 문제가 반복됐다. 이제 두 버전을 각각
-  wwwroot\\v4-1\\ · wwwroot\\v4-2\\ 에 두어 주소 두 개로 동시에 띄운다.
+## 배포 규칙 — 파일 이름이 곧 주소다
 
-  agents\\ 는 버전 폴더 안에 넣지 않는다. dashboards.json 의 addr 이 전체 URL
-  (http://IP/agents/foo/)이라 버전과 무관하게 열리기 때문이다. 자료 실물이
-  한 벌이면 두 버전이 같은 것을 가리키고 올릴 때도 한 번만 올리면 된다.
-  상대 경로로 읽는 것은 data/dashboards.json 하나뿐이라 그것만 양쪽에 복사한다.
+꾸러미 폴더의 `index-<이름>.html` 하나가 주소 하나가 된다.
+
+    index-v4-1.html  ->  http://IP/v4-1/
+    index-v5.html    ->  http://IP/v5/
+
+배치를 고치지 않고 파일만 넣으면 버전이 늘어난다. 선택 화면도 배치가 함께
+써 주는 `versions.js` 를 읽어 자동으로 카드를 늘린다 — 새 버전을 넣었는데
+선택 화면에 안 보이면 "올렸는데 안 뜬다" 로 시간을 버리기 때문이다.
+
+선택 화면 파일 이름이 `선택화면.html` 인 이유도 이 규칙 때문이다.
+`index-` 로 시작하면 위 글롭에 걸려 엉뚱한 주소가 생긴다.
+
+`agents\\` 는 버전 폴더 안에 넣지 않고 루트에 한 벌만 둔다. dashboards.json 의
+addr 이 전체 URL 이라 버전과 무관하게 열리기 때문이다. 상대 경로로 읽히는
+`data/dashboards.json` 만 버전 폴더마다 복사한다.
 """
 from pathlib import Path
 
@@ -40,12 +47,13 @@ if errorlevel 1 goto NOADMIN
 echo   [1/6] 관리자 권한 ............ OK
 
 rem ---------------- 2. 꾸러미 파일 확인 ----------------
-set "MISS="
-for %%F in ("index-V4-1.html" "index-V4-2.html" "index-선택화면.html" "data\dashboards.json") do (
-    if not exist "%~dp0%%~F" set "MISS=!MISS! %%~F"
-)
-if defined MISS goto NOFILE
-echo   [2/6] 꾸러미 파일 확인 ....... OK
+rem index-<이름>.html 하나가 주소 하나가 된다. 몇 개든 상관없다.
+if not exist "%~dp0선택화면.html" goto NOFILE
+if not exist "%~dp0data\dashboards.json" goto NOFILE
+set /a NV=0
+for %%F in ("%~dp0index-*.html") do set /a NV+=1
+if %NV%==0 goto NOVER
+echo   [2/6] 꾸러미 파일 확인 ....... OK  -  화면 %NV%개
 
 rem ---------------- 3. IIS 켜기 ----------------
 sc query w3svc >nul 2>&1
@@ -65,20 +73,30 @@ echo   [3/6] IIS .................... 이미 켜져 있음
 :IISDONE
 
 rem ---------------- 4. 배포 ----------------
-rem 버전마다 폴더를 따로 둔다. 갈아 끼우지 않으므로 "바꿨는데 그대로" 가 생기지 않는다.
 if exist "%WWW%\index.html" if not exist "%WWW%\index.html.maps-backup" copy /y "%WWW%\index.html" "%WWW%\index.html.maps-backup" >nul
-if not exist "%WWW%\v4-1\data" mkdir "%WWW%\v4-1\data" >nul 2>&1
-if not exist "%WWW%\v4-2\data" mkdir "%WWW%\v4-2\data" >nul 2>&1
-copy /y "%~dp0index-선택화면.html" "%WWW%\index.html" >nul
-copy /y "%~dp0index-V4-1.html"     "%WWW%\v4-1\index.html" >nul
-copy /y "%~dp0index-V4-2.html"     "%WWW%\v4-2\index.html" >nul
-rem 상대 경로로 읽히는 유일한 파일이라 두 폴더 모두에 넣는다. 원본은 꾸러미 폴더 한 곳뿐이라 어긋날 수 없다.
-copy /y "%~dp0data\dashboards.json" "%WWW%\v4-1\data\dashboards.json" >nul
-copy /y "%~dp0data\dashboards.json" "%WWW%\v4-2\data\dashboards.json" >nul
+copy /y "%~dp0선택화면.html" "%WWW%\index.html" >nul
 if errorlevel 1 goto NOCOPY
+
+rem 선택 화면이 읽을 목록. 배열 끝의 쉼표는 자바스크립트에서 허용된다.
+> "%WWW%\versions.js" echo window.MAPS_VERSIONS = [
+
+set "SLUGS="
+for %%F in ("%~dp0index-*.html") do (
+    set "FN=%%~nF"
+    set "SLUG=!FN:index-=!"
+    if not exist "%WWW%\!SLUG!\data" mkdir "%WWW%\!SLUG!\data" >nul 2>&1
+    copy /y "%%F" "%WWW%\!SLUG!\index.html" >nul
+    rem 상대 경로로 읽히는 유일한 파일이라 버전 폴더마다 넣는다.
+    copy /y "%~dp0data\dashboards.json" "%WWW%\!SLUG!\data\dashboards.json" >nul
+    >> "%WWW%\versions.js" echo   {"slug":"!SLUG!"},
+    set "SLUGS=!SLUGS! !SLUG!"
+    echo         /!SLUG!/
+)
+>> "%WWW%\versions.js" echo ];
+
 rem 올린 자료는 버전과 무관하게 한 벌만 둔다 (addr 이 전체 URL 이라 어디서든 열린다)
 if exist "%~dp0agents" xcopy "%~dp0agents" "%WWW%\agents" /e /i /y >nul 2>&1
-echo   [4/6] 화면 두 벌 + 자료 배포 . OK
+echo   [4/6] 화면 %NV%개 + 자료 배포 ... OK
 
 rem ---------------- 5. 방화벽 ----------------
 netsh advfirewall firewall delete rule name="%RULE%" >nul 2>&1
@@ -97,24 +115,22 @@ if exist "%windir%\system32\inetsrv\appcmd.exe" "%windir%\system32\inetsrv\appcm
 echo   [6/6] 웹 서비스 기동 ......... OK
 echo.
 
-rem ---------------- 세 주소가 실제로 뜨는지 확인 ----------------
+rem ---------------- 실제로 뜨는지 확인 ----------------
 set "C0="
-set "C1="
-set "C2="
 if exist "%SystemRoot%\System32\curl.exe" (
     for /f %%C in ('curl -s -o nul -m 10 -w "%%{http_code}" "http://localhost/?v=%RANDOM%" 2^>nul') do set "C0=%%C"
-    for /f %%C in ('curl -s -o nul -m 10 -w "%%{http_code}" "http://localhost/v4-1/?v=%RANDOM%" 2^>nul') do set "C1=%%C"
-    for /f %%C in ('curl -s -o nul -m 10 -w "%%{http_code}" "http://localhost/v4-2/?v=%RANDOM%" 2^>nul') do set "C2=%%C"
 )
-
 echo --------------------------------------------------------------
-if defined C0 echo   자체 확인 :  선택화면 !C0!    V4-1 !C1!    V4-2 !C2!    ^(200 이면 정상^)
-if not defined C0 echo   자체 확인 : 건너뜀 - 브라우저에서 직접 확인하세요.
+if defined C0 (
+    echo   자체 확인 : 선택 화면 !C0!    ^(200 이면 정상^)
+    for %%S in (!SLUGS!) do (
+        for /f %%C in ('curl -s -o nul -m 10 -w "%%{http_code}" "http://localhost/%%S/?v=%RANDOM%" 2^>nul') do echo               /%%S/ %%C
+    )
+) else (
+    echo   자체 확인 : 건너뜀 - 브라우저에서 직접 확인하세요.
+)
 echo.
-echo   내 PC 에서
-echo        선택 화면    http://localhost/
-echo        V4-1 별자리  http://localhost/v4-1/
-echo        V4-2 영상    http://localhost/v4-2/
+echo   내 PC 에서   http://localhost/
 echo.
 echo   동료에게 줄 주소
 set "MYIP="
@@ -127,9 +143,8 @@ for /f "tokens=2 delims=:" %%A in ('ipconfig ^| findstr /c:"IPv4"') do (
 if not defined MYIP goto NOIP
 echo.
 echo   여러 줄이면 보통 10. 으로 시작하는 것이 사내 주소입니다.
-echo   버전을 바로 열려면 뒤에 v4-1/ 또는 v4-2/ 를 붙이세요.
-echo        http://!MYIP!/v4-1/
-echo        http://!MYIP!/v4-2/
+echo   화면을 바로 열려면 뒤에 이름을 붙이세요.
+for %%S in (!SLUGS!) do echo        http://!MYIP!/%%S/
 goto SHOWEND
 :NOIP
 echo        사내 IP 를 찾지 못했습니다 - 네트워크 연결을 확인하세요
@@ -148,11 +163,19 @@ echo   그냥 더블클릭하면 아무것도 되지 않습니다.
 goto END
 
 :NOFILE
-echo   [중단] 꾸러미에서 빠진 파일이 있습니다 :!MISS!
+echo   [중단] 꾸러미에서 빠진 파일이 있습니다.
 echo.
-echo   압축을 통째로 풀었는지 확인하세요. 폴더 안에 아래가 모두 있어야 합니다.
-echo        index-V4-1.html  index-V4-2.html  index-선택화면.html
+echo   이 폴더에 아래가 있어야 합니다.
+echo        선택화면.html
 echo        data\dashboards.json
+echo   지금 폴더 : %~dp0
+goto END
+
+:NOVER
+echo   [중단] 보여줄 화면 파일이 없습니다.
+echo.
+echo   이 폴더에 index-이름.html 형태의 파일이 최소 하나 있어야 합니다.
+echo   예)  index-v4-1.html  ->  http://내IP/v4-1/
 echo   지금 폴더 : %~dp0
 goto END
 
@@ -175,7 +198,7 @@ pause
 """
 
 STOP = r"""@echo off
-setlocal
+setlocal enabledelayedexpansion
 title MAPS 실험 서버 끄기
 
 set "WWW=%SystemDrive%\inetpub\wwwroot"
@@ -197,9 +220,14 @@ net stop w3svc >nul 2>&1
 sc config w3svc start= demand >nul 2>&1
 echo   [2/4] 웹 서비스 중지 ......... OK
 
-if exist "%WWW%\index.html" del /f /q "%WWW%\index.html" >nul 2>&1
-if exist "%WWW%\v4-1"  rd /s /q "%WWW%\v4-1"  >nul 2>&1
-if exist "%WWW%\v4-2"  rd /s /q "%WWW%\v4-2"  >nul 2>&1
+rem 켤 때와 같은 목록을 훑어 자기가 만든 폴더만 지운다.
+if exist "%WWW%\index.html"   del /f /q "%WWW%\index.html"   >nul 2>&1
+if exist "%WWW%\versions.js"  del /f /q "%WWW%\versions.js"  >nul 2>&1
+for %%F in ("%~dp0index-*.html") do (
+    set "FN=%%~nF"
+    set "SLUG=!FN:index-=!"
+    if exist "%WWW%\!SLUG!" rd /s /q "%WWW%\!SLUG!" >nul 2>&1
+)
 if exist "%WWW%\agents" rd /s /q "%WWW%\agents" >nul 2>&1
 if exist "%WWW%\data"   rd /s /q "%WWW%\data"   >nul 2>&1
 echo   [3/4] 배치한 파일 삭제 ....... OK  (원본은 꾸러미 폴더에 그대로 있습니다)
@@ -231,7 +259,7 @@ pause
 """
 
 CONNECT = r"""@echo off
-setlocal
+setlocal enabledelayedexpansion
 title MAPS - AI Agent 연결
 
 set "WWW=%SystemDrive%\inetpub\wwwroot"
@@ -249,7 +277,7 @@ if not exist "%JSON%" goto NOJSON
 
 echo   동료에게 받은 HTML 을 이 서버에 올리고,
 echo   대시보드 카드에 붙일 주소 한 줄을 만들어 드립니다.
-echo   올린 자료는 V4-1 과 V4-2 양쪽에서 똑같이 열립니다.
+echo   올린 자료는 모든 화면 버전에서 똑같이 열립니다.
 echo.
 
 set "SLUG="
@@ -263,7 +291,7 @@ rem 끌어다 놓으면 경로에 따옴표가 함께 들어온다. 그대로 �
 set SRCF=%SRCF:"=%
 if not exist "%SRCF%" goto NOSRC
 
-rem 자료는 버전과 무관하게 한 벌만 둔다. addr 이 전체 URL 이라 어느 버전에서든 열린다.
+rem 자료는 버전과 무관하게 한 벌만 둔다. addr 이 전체 URL 이라 어느 화면에서든 열린다.
 if not exist "%~dp0agents\%SLUG%" mkdir "%~dp0agents\%SLUG%" >nul 2>&1
 if not exist "%WWW%\agents\%SLUG%" mkdir "%WWW%\agents\%SLUG%" >nul 2>&1
 copy /y "%SRCF%" "%~dp0agents\%SLUG%\index.html" >nul
@@ -294,15 +322,21 @@ pause
 
 start /wait notepad "%JSON%"
 
-rem 상대 경로로 읽히는 파일이라 두 버전 폴더 모두에 반영해야 한다.
-if not exist "%WWW%\v4-1\data" mkdir "%WWW%\v4-1\data" >nul 2>&1
-if not exist "%WWW%\v4-2\data" mkdir "%WWW%\v4-2\data" >nul 2>&1
-copy /y "%JSON%" "%WWW%\v4-1\data\dashboards.json" >nul
-copy /y "%JSON%" "%WWW%\v4-2\data\dashboards.json" >nul
+rem 상대 경로로 읽히는 파일이라 화면 버전 폴더 모두에 반영해야 한다.
+set "N=0"
+for %%F in ("%~dp0index-*.html") do (
+    set "FN=%%~nF"
+    set "VER=!FN:index-=!"
+    if exist "%WWW%\!VER!" (
+        if not exist "%WWW%\!VER!\data" mkdir "%WWW%\!VER!\data" >nul 2>&1
+        copy /y "%JSON%" "%WWW%\!VER!\data\dashboards.json" >nul
+        set /a N+=1
+    )
+)
 echo.
-echo   두 버전 모두에 반영했습니다.
+echo   화면 !N!개에 반영했습니다.
 echo   이미 열려 있던 창은 Ctrl+F5 로 새로고침하세요.
-start "" "http://localhost/v4-1/?v=%RANDOM%"
+start "" "http://localhost/?v=%RANDOM%"
 start "" "http://%MYIP%/agents/%SLUG%/"
 goto END
 
@@ -351,20 +385,36 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
   AI Agent 를 연결할 때는 3_에이전트연결.bat 을 씁니다.
 
 
-■ 주소가 세 개입니다  ★ 두 버전이 동시에 살아 있습니다
+■ 화면을 하나 더 올리려면  ★ 파일 이름이 곧 주소입니다
 
-     http://10.x.x.x/           선택 화면 (둘 중 고르기)
-     http://10.x.x.x/v4-1/      V4-1  별자리 히어로
-     http://10.x.x.x/v4-2/      V4-2  영상 히어로
+  1. 올리고 싶은 HTML 파일의 이름을   index-이름.html   로 바꿉니다.
+     이름은 영문/숫자/하이픈만 쓰세요.
 
-  버전을 갈아 끼울 필요가 없습니다. 링크 두 개를 그대로 동료에게 보내고
-  "어느 쪽이 나은지" 물어보면 됩니다.
+         index-v5.html      ->   http://10.x.x.x/v5/
+         index-test.html    ->   http://10.x.x.x/test/
 
-  예전에는 index.html 을 바꿔치기하는 방식이라 "바꿨는데 화면이 그대로"
-  라는 문제가 있었는데, 폴더를 나누면서 그 문제 자체가 없어졌습니다.
-  (그래서 3_화면바꾸기.bat 은 없앴습니다)
+  2. 그 파일을 이 폴더에 넣습니다.
 
-  화면을 고쳐서 다시 올릴 때만 1_서버켜기.bat 을 한 번 더 실행하면 되고,
+  3. 1_서버켜기.bat 을 우클릭 -> "관리자 권한으로 실행" 을 다시 합니다.
+
+  끝입니다. 새 주소가 생기고 선택 화면에도 카드가 자동으로 늘어납니다.
+  검은 창 마지막에 지금 살아 있는 주소가 전부 찍힙니다.
+
+  ※ 지우고 싶으면 그 index-이름.html 파일을 폴더에서 지우고
+     2_서버끄기.bat -> 1_서버켜기.bat 순서로 다시 실행하세요.
+
+  ※ 선택화면.html 은 이름에 index- 가 없습니다. 일부러 그렇게 두었습니다.
+     그래야 선택 화면 자체가 주소로 만들어지지 않습니다.
+
+
+■ 지금 들어 있는 화면
+
+     index-v4-1.html    별자리 히어로.  외부 통신 0건.
+     index-v4-2.html    영상 히어로.    첫 화면은 영상만, 대시보드는 아래 화면으로.
+                        영상은 사내 홈페이지에서 받아오므로 외부 통신이 있습니다.
+
+  두 주소는 동시에 살아 있습니다. 갈아 끼울 필요가 없습니다.
+  화면 파일을 고쳐서 다시 올릴 때만 1_서버켜기.bat 을 한 번 더 실행하고,
   브라우저는 Ctrl+F5 로 새로고침하세요.
 
 
@@ -375,7 +425,6 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
 
   (1) 3_에이전트연결.bat 을 우클릭 -> "관리자 권한으로 실행"
   (2) 폴더 이름을 영문/숫자로 입력 (예: yield-check)
-      한글 폴더는 주소가 깨질 수 있어 영문을 권합니다.
   (3) HTML 파일을 검은 창에 끌어다 놓고 Enter
   (4) 화면에 나온
           "addr":"http://10.x.x.x/agents/yield-check/"
@@ -383,10 +432,10 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
   (5) 아무 키나 누르면 메모장이 열립니다.
       연결할 Agent 를 찾아  "addr": ""  부분을 위 줄로 바꾸고
       저장한 다음 메모장을 닫으세요.
-  (6) 메모장을 닫으면 배치가 V4-1 과 V4-2 양쪽에 반영하고 브라우저를 엽니다.
+  (6) 메모장을 닫으면 배치가 모든 화면 버전에 반영하고 브라우저를 엽니다.
 
   카드가 "준비중" 에서 "● 사용 가능" 으로 바뀌고 누르면 그 페이지가 열립니다.
-  올린 자료는 한 벌만 저장되며 두 버전에서 똑같이 열립니다.
+  올린 자료는 한 벌만 저장되며 어느 화면에서든 똑같이 열립니다.
 
   미리 넣어 둔 예시가 하나 있습니다.
   서버를 켜면 "공정 조건 최적화 Agent" 가 이미 켜져 있습니다.
@@ -435,13 +484,6 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
   제약 없이 쓸 수 있습니다(새 PC 구성 때 반영 예정).
 
 
-■ 두 버전의 차이
-
-  index-V4-1.html   별자리 히어로.  외부 통신 0건.
-  index-V4-2.html   영상 히어로.    첫 화면은 영상만, 대시보드는 아래 화면으로 분리.
-                    영상은 사내 홈페이지에서 받아오므로 외부 통신이 있습니다.
-
-
 ■ 확인할 것은 딱 하나입니다
 
   "동료 자리에서 그 주소로 MAPS 화면이 뜨는가"
@@ -460,12 +502,13 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
       -> "인터넷 정보 서비스" 체크 -> 확인 -> 설치 대기
 
   (2) C:\\inetpub\\wwwroot\\ 안에 아래처럼 넣습니다.
-         index.html                 <- index-선택화면.html 의 이름을 바꾼 것
-         v4-1\\index.html            <- index-V4-1.html
+         index.html                 <- 선택화면.html 의 이름을 바꾼 것
+         v4-1\\index.html            <- index-v4-1.html
          v4-1\\data\\dashboards.json
-         v4-2\\index.html            <- index-V4-2.html
+         v4-2\\index.html            <- index-v4-2.html
          v4-2\\data\\dashboards.json
          agents\\                    <- 이 폴더의 agents 폴더를 통째로
+      (화면을 더 올렸다면 같은 방식으로 폴더를 하나 더 만들면 됩니다)
 
   (3) Windows Defender 방화벽 -> 고급 설정 -> 인바운드 규칙 -> 새 규칙
       -> 포트 -> TCP -> 특정 로컬 포트 80 -> 연결 허용 -> 이름 아무거나
@@ -494,8 +537,7 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
     b"\xef\xbb\xbf" + README_TXT.replace("\n", "\r\n").encode("utf-8")
 )
 
-# 버전 폴더 구조로 바뀌면서 필요 없어진 것들
-for stale in ("3_화면바꾸기.bat", "4_에이전트연결.bat"):
+for stale in ("3_화면바꾸기.bat", "4_에이전트연결.bat", "index-선택화면.html"):
     q = OUT / stale
     if q.exists():
         q.unlink()

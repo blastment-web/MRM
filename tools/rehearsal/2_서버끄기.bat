@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 title MAPS 실험 서버 끄기
 
 set "WWW=%SystemDrive%\inetpub\wwwroot"
@@ -21,9 +21,14 @@ net stop w3svc >nul 2>&1
 sc config w3svc start= demand >nul 2>&1
 echo   [2/4] 웹 서비스 중지 ......... OK
 
-if exist "%WWW%\index.html" del /f /q "%WWW%\index.html" >nul 2>&1
-if exist "%WWW%\v4-1"  rd /s /q "%WWW%\v4-1"  >nul 2>&1
-if exist "%WWW%\v4-2"  rd /s /q "%WWW%\v4-2"  >nul 2>&1
+rem 켤 때와 같은 목록을 훑어 자기가 만든 폴더만 지운다.
+if exist "%WWW%\index.html"   del /f /q "%WWW%\index.html"   >nul 2>&1
+if exist "%WWW%\versions.js"  del /f /q "%WWW%\versions.js"  >nul 2>&1
+for %%F in ("%~dp0index-*.html") do (
+    set "FN=%%~nF"
+    set "SLUG=!FN:index-=!"
+    if exist "%WWW%\!SLUG!" rd /s /q "%WWW%\!SLUG!" >nul 2>&1
+)
 if exist "%WWW%\agents" rd /s /q "%WWW%\agents" >nul 2>&1
 if exist "%WWW%\data"   rd /s /q "%WWW%\data"   >nul 2>&1
 echo   [3/4] 배치한 파일 삭제 ....... OK  (원본은 꾸러미 폴더에 그대로 있습니다)

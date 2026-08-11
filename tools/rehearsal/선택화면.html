@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MAPS · 버전 선택</title>
 <style>
-  /* 외부 참조 0건 · 단일 파일. 링크는 전부 상대 경로라
-     localhost 로 열든 http://10.x.x.x/ 로 열든 그대로 동작한다. */
+  /* 외부 참조 0건. 링크는 전부 상대 경로라 localhost 로 열든
+     http://10.x.x.x/ 로 열든 그대로 동작한다. */
   :root{
     --ink:#05070e; --ink-2:#0b1120; --line:rgba(120,150,200,.22);
     --txt:#eaf0fb; --dim:rgba(234,240,251,.62); --faint:rgba(234,240,251,.38);
@@ -22,13 +22,12 @@
       radial-gradient(80% 60% at 15% -10%, rgba(77,216,232,.10), transparent 60%),
       radial-gradient(70% 60% at 95% 105%, rgba(139,123,255,.10), transparent 60%)}
   header{text-align:center}
-  .brand{font-size:36px;font-weight:900;letter-spacing:.14em}
-  .brand{color:var(--txt)}
+  .brand{font-size:36px;font-weight:900;letter-spacing:.14em;color:var(--txt)}
   .tag{margin-top:8px;font-size:13px;font-weight:700;color:var(--dim);letter-spacing:.02em}
   .tag b{color:var(--accent);font-weight:800}
   .lead{margin-top:16px;font-size:15px;color:var(--dim)}
-  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;
-    width:100%;max-width:860px}
+  .cards{display:grid;gap:20px;width:100%;max-width:860px;
+    grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
   a.card{display:block;text-decoration:none;color:inherit;
     background:var(--ink-2);border:1px solid var(--line);border-radius:18px;
     padding:26px 26px 22px;transition:border-color .15s, transform .15s}
@@ -51,6 +50,10 @@
     border-left:22px solid rgba(255,255,255,.82);
     border-top:14px solid transparent;border-bottom:14px solid transparent;
     filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
+  .thumb.plain{background:linear-gradient(140deg,#0d1526,#131c33 60%,#0a1120);
+    display:grid;place-items:center}
+  .thumb.plain span{font-size:13px;font-weight:900;letter-spacing:.22em;
+    color:rgba(200,220,255,.45)}
   .name{font-size:19px;font-weight:800}
   .name em{font-style:normal;color:var(--accent)}
   .desc{margin-top:8px;font-size:13px;line-height:1.65;color:var(--dim)}
@@ -58,39 +61,66 @@
     font-size:13px;font-weight:800;color:var(--accent)}
   .path{margin-top:12px;font-size:11px;color:var(--faint)}
   footer{font-size:12px;color:var(--faint);text-align:center;line-height:1.8}
-  @media (max-width:720px){ .cards{grid-template-columns:1fr} .brand{font-size:30px} }
+  @media (max-width:720px){ .brand{font-size:30px} }
 </style>
 </head>
 <body>
   <header>
     <div class="brand">MAPS</div>
     <div class="tag"><b>M</b>anufacturing <b>A</b>I agent <b>P</b>latform &amp; <b>S</b>hared-dashboard</div>
-    <div class="lead">두 가지 첫 화면을 만들어 두었습니다. 눌러서 비교해 보세요.</div>
+    <div class="lead">보고 싶은 화면을 눌러 주세요.</div>
   </header>
 
-  <div class="cards">
-    <a class="card" href="v4-1/">
-      <div class="thumb stars" aria-hidden="true"></div>
-      <div class="name">V4-1 · <em>별자리 히어로</em></div>
-      <div class="desc">배경에 별자리가 움직입니다. 첫 화면에 현황·차트·공지 3패널이 함께 보입니다.
-        외부 통신이 전혀 없어 가장 가볍습니다.</div>
-      <div class="go">열기 →</div>
-      <div class="path">v4-1/</div>
-    </a>
-
-    <a class="card" href="v4-2/">
-      <div class="thumb video" aria-hidden="true"></div>
-      <div class="name">V4-2 · <em>영상 히어로</em></div>
-      <div class="desc">첫 화면은 배경 영상만 크게 보이고, 대시보드 3패널은 아래 화면으로 분리됩니다.
-        영상은 사내 홈페이지에서 받아옵니다.</div>
-      <div class="go">열기 →</div>
-      <div class="path">v4-2/</div>
-    </a>
-  </div>
+  <div class="cards" id="cards"></div>
 
   <footer>
-    두 주소는 동시에 살아 있습니다. 링크를 그대로 동료에게 전달해도 됩니다.<br>
+    아래 주소는 모두 동시에 살아 있습니다. 링크를 그대로 동료에게 전달해도 됩니다.<br>
     생산기술혁신센터 · 사내 시험 운영 중
   </footer>
+
+<!-- 배포할 때 1_서버켜기.bat 이 만들어 둔다. 없어도 아래 기본값으로 동작한다. -->
+<script src="versions.js" onerror="void 0"></script>
+<script>
+(function(){
+  /* 이름이 알려진 버전은 설명과 썸네일을 붙여 준다.
+     처음 보는 이름(사용자가 직접 넣은 index-무엇.html)은 일반 카드로 나온다. */
+  var META = {
+    "v4-1": { title: "V4-1 · <em>별자리 히어로</em>", thumb: "stars",
+      desc: "배경에 별자리가 움직입니다. 첫 화면에 현황·차트·공지 3패널이 함께 보입니다. 외부 통신이 전혀 없어 가장 가볍습니다." },
+    "v4-2": { title: "V4-2 · <em>영상 히어로</em>", thumb: "video",
+      desc: "첫 화면은 배경 영상만 크게 보이고, 대시보드 3패널은 아래 화면으로 분리됩니다. 영상은 사내 홈페이지에서 받아옵니다." }
+  };
+
+  var list = (window.MAPS_VERSIONS && window.MAPS_VERSIONS.length)
+    ? window.MAPS_VERSIONS
+    : [{ slug: "v4-1" }, { slug: "v4-2" }];   /* 배치를 안 돌린 상태에서도 깨지지 않게 */
+
+  var box = document.getElementById("cards");
+  var html = list.map(function(v){
+    var slug = String(v.slug || "").trim();
+    if(!slug) return "";
+    var m = META[slug.toLowerCase()] || {
+      title: esc(slug), thumb: "plain",
+      desc: "이 서버에 올려 둔 화면입니다."
+    };
+    var badge = m.thumb === "plain" ? '<span>HTML</span>' : '';
+    return '<a class="card" href="' + encodeURIComponent(slug) + '/">' +
+             '<div class="thumb ' + m.thumb + '" aria-hidden="true">' + badge + '</div>' +
+             '<div class="name">' + m.title + '</div>' +
+             '<div class="desc">' + m.desc + '</div>' +
+             '<div class="go">열기 →</div>' +
+             '<div class="path">' + esc(slug) + '/</div>' +
+           '</a>';
+  }).join("");
+
+  box.innerHTML = html || '<div class="desc">표시할 화면이 없습니다.</div>';
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+})();
+</script>
 </body>
 </html>

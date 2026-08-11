@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 title MAPS - AI Agent 연결
 
 set "WWW=%SystemDrive%\inetpub\wwwroot"
@@ -17,7 +17,7 @@ if not exist "%JSON%" goto NOJSON
 
 echo   동료에게 받은 HTML 을 이 서버에 올리고,
 echo   대시보드 카드에 붙일 주소 한 줄을 만들어 드립니다.
-echo   올린 자료는 V4-1 과 V4-2 양쪽에서 똑같이 열립니다.
+echo   올린 자료는 모든 화면 버전에서 똑같이 열립니다.
 echo.
 
 set "SLUG="
@@ -31,7 +31,7 @@ rem 끌어다 놓으면 경로에 따옴표가 함께 들어온다. 그대로 두면 따옴표가 겹친다.
 set SRCF=%SRCF:"=%
 if not exist "%SRCF%" goto NOSRC
 
-rem 자료는 버전과 무관하게 한 벌만 둔다. addr 이 전체 URL 이라 어느 버전에서든 열린다.
+rem 자료는 버전과 무관하게 한 벌만 둔다. addr 이 전체 URL 이라 어느 화면에서든 열린다.
 if not exist "%~dp0agents\%SLUG%" mkdir "%~dp0agents\%SLUG%" >nul 2>&1
 if not exist "%WWW%\agents\%SLUG%" mkdir "%WWW%\agents\%SLUG%" >nul 2>&1
 copy /y "%SRCF%" "%~dp0agents\%SLUG%\index.html" >nul
@@ -62,15 +62,21 @@ pause
 
 start /wait notepad "%JSON%"
 
-rem 상대 경로로 읽히는 파일이라 두 버전 폴더 모두에 반영해야 한다.
-if not exist "%WWW%\v4-1\data" mkdir "%WWW%\v4-1\data" >nul 2>&1
-if not exist "%WWW%\v4-2\data" mkdir "%WWW%\v4-2\data" >nul 2>&1
-copy /y "%JSON%" "%WWW%\v4-1\data\dashboards.json" >nul
-copy /y "%JSON%" "%WWW%\v4-2\data\dashboards.json" >nul
+rem 상대 경로로 읽히는 파일이라 화면 버전 폴더 모두에 반영해야 한다.
+set "N=0"
+for %%F in ("%~dp0index-*.html") do (
+    set "FN=%%~nF"
+    set "VER=!FN:index-=!"
+    if exist "%WWW%\!VER!" (
+        if not exist "%WWW%\!VER!\data" mkdir "%WWW%\!VER!\data" >nul 2>&1
+        copy /y "%JSON%" "%WWW%\!VER!\data\dashboards.json" >nul
+        set /a N+=1
+    )
+)
 echo.
-echo   두 버전 모두에 반영했습니다.
+echo   화면 !N!개에 반영했습니다.
 echo   이미 열려 있던 창은 Ctrl+F5 로 새로고침하세요.
-start "" "http://localhost/v4-1/?v=%RANDOM%"
+start "" "http://localhost/?v=%RANDOM%"
 start "" "http://%MYIP%/agents/%SLUG%/"
 goto END
 
