@@ -293,6 +293,7 @@ POPUP_HTML = '''
         <div class="ag-chips" id="agChips"></div>
       </div>
       <div class="ag-acts">
+        <button class="minibtn" id="agDel" title="이 브라우저에서 지웁니다" style="display:none">삭제</button>
         <button class="minibtn" id="agNewWin" title="별도 창으로 엽니다">새 창</button>
         <button class="minibtn" id="agFull" title="전체화면">전체화면</button>
         <button class="xbtn" id="agClose" aria-label="닫기" title="닫기 (ESC)">&times;</button>
@@ -401,6 +402,16 @@ POPUP_JS = r'''
       });
     }
 
+    /* 로컬 자료는 그 주소로 열리지 않는다. 새 창·주소 복사를 감추고 삭제를 보여준다. */
+    function localActs(on){
+      var d = document.getElementById("agDel");
+      var w = document.getElementById("agNewWin");
+      var c = document.getElementById("agCopy");
+      if(d) d.style.display = on ? "" : "none";
+      if(w) w.style.display = on ? "none" : "";
+      if(c) c.style.display = on ? "none" : "";
+    }
+
     function openAgent(url, name, chips, push){
       curUrl = abs(url);
       if(!curUrl) return;
@@ -409,7 +420,23 @@ POPUP_JS = r'''
       elUrl.textContent = curUrl;
       elLoad.hidden = false;
       elLoad.classList.remove("slow");
-      frame.setAttribute("src", curUrl);
+      /* 이 브라우저에 저장한 자료는 서버에 그 주소가 없다. srcdoc 으로 직접 띄운다.
+         blob: URL 을 쓰지 않는 이유 — sandbox 에 allow-same-origin 이 없어 iframe 이
+         불투명 출처이고, 그 상태에서 부모가 만든 blob: URL 은 브라우저가 막는다. */
+      var mySlug = slugOf(curUrl);
+      var mine = (typeof localHas === "function") && localHas(mySlug);
+      localActs(mine);
+      frame.removeAttribute("srcdoc");
+      if(mine){
+        frame.removeAttribute("src");           /* 남아 있으면 load 핸들러가 about:blank 로 본다 */
+        elUrl.textContent = "이 브라우저에 저장됨";
+        localGet(mySlug).then(function(r){
+          if(!opened || slugOf(curUrl) !== mySlug) return;   /* 그 사이 다른 것을 열었으면 버린다 */
+          frame.srcdoc = (r && r.html) || "<!doctype html><meta charset=utf-8><p>내용을 찾지 못했습니다.</p>";
+        });
+      }else{
+        frame.setAttribute("src", curUrl);
+      }
       ov.classList.add("open");
       document.body.classList.add("modal-open");
       opened = true;
@@ -444,6 +471,7 @@ POPUP_JS = r'''
       ov.classList.remove("open");
       document.body.classList.remove("modal-open");
       /* 남겨 두면 숨겨진 채 계속 돈다. 원격 데스크톱에서는 그 비용이 그대로 보인다. */
+      frame.removeAttribute("srcdoc");
       frame.setAttribute("src", "about:blank");
       if(document.fullscreenElement){ try{ document.exitFullscreen(); }catch(e){} }
       if(!fromHistory){
@@ -509,6 +537,14 @@ POPUP_JS = r'''
     });
 
     /* ---- 보조 동작 ---- */
+    document.getElementById("agDel").addEventListener("click", function(){
+      var sl = slugOf(curUrl);
+      if(!sl || !confirm("이 브라우저에서 지웁니다. 계속할까요?")) return;
+      localDel(sl).then(function(){
+        closeAgent(false);
+        if(typeof loadData === "function") loadData();
+      });
+    });
     document.getElementById("agNewWin").addEventListener("click", function(){
       var u = curUrl;
       window.open(u, "_blank", "noopener,width=1440,height=900");
@@ -752,12 +788,9 @@ async function reqPreflight(){
   setReqStatus("서버 확인 중…" + tail);
   try{
     const r = await fetch("api/me", {method:"GET"});
-    if(r.ok){ setReqStatus("업로드 준비됨" + tail); return; }
-    setReqStatus("서버가 업로드를 받지 못하는 상태입니다 (api/me " + r.status + "). "
-      + "보내면 요청서 파일로 받게 됩니다." + tail, "err");
-  }catch(e){
-    setReqStatus("서버에 닿지 않습니다. 보내면 요청서 파일로 받게 됩니다." + tail, "err");
-  }
+    if(r.ok){ setReqStatus("서버에 올립니다 - 승인되면 모두에게 보입니다." + tail); return; }
+  }catch(e){}
+  setReqStatus("서버가 꺼져 있어 이 브라우저에 저장됩니다 - 카드는 바로 생기고 나에게만 보입니다." + tail);
 }'''
 
 UPLOAD_CHECK = '''  if(!name){setReqStatus("대시보드명을 입력하세요.","err");return;}
@@ -793,6 +826,25 @@ UPLOAD_BODY = '''  setReqStatus("전송 중…");
       }
       if(j&&j.error){ setReqStatus(j.error,"err"); return; }   /* 서버가 이유를 말해 준 경우 */
     }catch(e){ tried.push(label+" 연결실패"); }
+  }
+  /* 서버가 없다. 그래도 올라가야 한다 - 이 브라우저에 저장하고 카드를 바로 만든다.
+     (첨부가 없으면 보여 줄 것이 없으므로 요청서 파일로 내려받게 둔다) */
+  if(html){
+    setReqStatus("이 브라우저에 저장하는 중…");
+    const slug=localSlug(name);
+    const d=new Date(), z=n=>(n<10?"0":"")+n;
+    const rec={slug,name,author,org,team,desc,features,etc,fname,html,
+               cat:localCat(features), addr:localAddr(slug),
+               date:d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())};
+    if(await localPut(rec)){
+      mergeLocal([rec]);
+      renderGrid();
+      close("reqOv");
+      alert("카드를 만들었습니다.\\n\\n지금은 이 브라우저에서만 보입니다.\\n"
+        + "동료에게도 보이게 하려면 서버(ASP.NET)를 켜고 다시 올리면 됩니다.");
+      return;
+    }
+    setReqStatus("이 브라우저에 저장하지 못했습니다(저장 공간 부족). 요청서로 받아 주세요.","err");
   }
   offerRequestDownload(payload, tried);'''
 
@@ -878,6 +930,141 @@ def api(s: str) -> str:
                   'return fetch("api/maps.ashx?a=" + name + rest, opts);')
     print(f"  ✓ 11-c api 호출 {n}곳을 apiFetch 로 교체")
     return s
+
+# ===========================================================================
+# 공통 13) 서버가 없어도 HTML 이 올라가게 한다
+#
+# 지금까지 업로드는 api/dash-request 를 반드시 거쳤다. ASP.NET 이 안 켜졌거나
+# 파일을 그냥 열었으면 무슨 짓을 해도 실패였고, 카드는 서버가 dashboards.json 을
+# 써 줘야만 생겼다. 사용자가 원하는 것은 하나다 - HTML 을 붙이면 카드가 생기고
+# 그 카드를 누르면 그 HTML 이 열린다.
+#
+#   서버가 받아 준다  -> 지금 그대로. 요청 접수 → 1차·2차 승인 → 모두에게 보인다
+#   서버가 없다        -> 이 브라우저에 저장하고 카드를 바로 만든다. 나에게만 보인다
+#
+# 어느 쪽이든 "실패" 로 끝나지 않는다.
+#
+# 저장은 IndexedDB 다. localStorage 는 5MB 안팎이라 3MB HTML 하나로 꽉 찬다.
+# IndexedDB 가 막힌 환경에서만 localStorage 로 떨어진다.
+#
+# 카드를 누르면 iframe 에 srcdoc 으로 넣는다. blob: URL 을 쓰지 않는 이유는
+# sandbox 에 allow-same-origin 이 없어 iframe 이 불투명 출처이고, 그 상태에서
+# 부모가 만든 blob: URL 은 브라우저가 막기 때문이다.
+# ===========================================================================
+LOCAL_STORE = r"""/* ---------- 이 브라우저에 저장한 Agent ----------
+   서버(api/dash-request)가 없어도 HTML 을 올릴 수 있어야 한다. 서버가 받아 주면
+   지금처럼 승인 흐름을 타고 모두에게 보이고, 못 받으면 여기에 넣어 이 브라우저에서
+   바로 카드가 생긴다. 카드 규칙(카테고리 매칭·맨 앞 배치·NEW 배지)은 서버 구현과 같다. */
+const LOCAL_DB="maps-agents", LOCAL_ST="files", LOCAL_LS="maps.localAgents";
+let LOCAL_META=[];                 /* 카드용 메타(html 제외). 팝업이 동기로 판별할 때 쓴다 */
+
+function idbOpen(){
+  return new Promise(function(res,rej){
+    var q; try{ q=indexedDB.open(LOCAL_DB,1); }catch(e){ rej(e); return; }
+    q.onupgradeneeded=function(){ if(!q.result.objectStoreNames.contains(LOCAL_ST)) q.result.createObjectStore(LOCAL_ST,{keyPath:"slug"}); };
+    q.onsuccess=function(){ res(q.result); };
+    q.onerror=function(){ rej(q.error); };
+    q.onblocked=function(){ rej(new Error("blocked")); };
+  });
+}
+function idbRun(mode,fn){
+  return idbOpen().then(function(db){
+    return new Promise(function(res,rej){
+      var rq=fn(db.transaction(LOCAL_ST,mode).objectStore(LOCAL_ST));
+      rq.onsuccess=function(){ res(rq.result); };
+      rq.onerror=function(){ rej(rq.error); };
+    });
+  });
+}
+/* IndexedDB 가 막힌 환경(파일을 그냥 열었을 때 등)의 대비책 */
+function lsAll(){ try{ return JSON.parse(localStorage.getItem(LOCAL_LS)||"[]"); }catch(e){ return []; } }
+function lsWrite(a){ localStorage.setItem(LOCAL_LS, JSON.stringify(a)); }
+
+async function localAll(){
+  try{ const r=await idbRun("readonly",st=>st.getAll()); if(r&&r.length) return r; }catch(e){}
+  return lsAll();
+}
+async function localGet(slug){
+  try{ const r=await idbRun("readonly",st=>st.get(slug)); if(r) return r; }catch(e){}
+  return lsAll().filter(r=>r.slug===slug)[0]||null;
+}
+async function localPut(rec){
+  try{ await idbRun("readwrite",st=>st.put(rec)); return true; }catch(e){}
+  try{ const a=lsAll().filter(r=>r.slug!==rec.slug); a.push(rec); lsWrite(a); return true; }catch(e){ return false; }
+}
+async function localDel(slug){
+  try{ await idbRun("readwrite",st=>st.delete(slug)); }catch(e){}
+  try{ lsWrite(lsAll().filter(r=>r.slug!==slug)); }catch(e){}
+  LOCAL_META=LOCAL_META.filter(m=>m.slug!==slug);
+}
+function localHas(slug){ return LOCAL_META.some(m=>m.slug===slug); }
+/* 서버가 만드는 id 와 같은 모양 - 날짜-시각 + 이름의 아스키화 */
+function localSlug(name){
+  const t=String(name||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,30);
+  const d=new Date(), z=n=>(n<10?"0":"")+n;
+  return ""+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+"-"+z(d.getHours())+z(d.getMinutes())+z(d.getSeconds())+"-"+(t||"agent");
+}
+/* 이 화면이 있는 폴더 기준의 전체 URL.
+   normAddr() 이 상대경로 앞에 http:// 를 붙여 깨뜨리므로 전체 URL 이어야 하고,
+   팝업이 가로채려면 같은 출처 + 경로에 /agents/ 가 들어가야 한다.
+   서버에 이 주소가 실제로 없어도 된다 - 팝업이 srcdoc 으로 대신 띄운다. */
+function localAddr(slug){ return new URL("agents/"+encodeURIComponent(slug)+"/", location.href).href; }
+function normCat(x){ return String(x||"").replace(/\s+/g,""); }
+/* 체크한 기능 중 카테고리 4종에 해당하는 첫 항목. 서버 publish() 와 같은 규칙이다. */
+function localCat(features){
+  const f=features||[];
+  for(let i=0;i<f.length;i++) for(let j=0;j<ORG_ORDER.length;j++)
+    if(normCat(f[i])===normCat(ORG_ORDER[j])) return ORG_ORDER[j];
+  return ORG_ORDER[3];
+}
+/* 로컬 레코드를 STATE 에 카드로 끼워 넣는다. 렌더러·검색·TOP5 는 손대지 않는다. */
+function mergeLocal(recs){
+  (recs||[]).forEach(function(r){
+    if(!LOCAL_META.some(m=>m.slug===r.slug)) LOCAL_META.push({slug:r.slug,name:r.name});
+    const cols=STATE.columns||[];
+    const col=cols.filter(c=>normCat(c.team)===normCat(r.cat))[0]
+           || cols.filter(c=>normCat(c.team).indexOf(normCat(r.cat))===0)[0]
+           || cols.filter(c=>orgRank(c.team)===3)[0] || cols[0];
+    if(!col) return;
+    col.items=col.items||[];
+    if(col.items.some(it=>it.addr===r.addr)) return;
+    /* 뒤에 붙이면 기본 표시 개수 밖으로 밀려 "올렸는데 카드가 안 보인다" 가 된다 */
+    const orders=col.items.map(it=>parseInt(it.order||0,10)||0);
+    col.items.push({name:r.name, desc:r.desc||"", owner:r.author||"", org:r.org||"",
+                    addr:r.addr, order:(orders.length?Math.min.apply(null,orders):1)-1,
+                    likes:0, linkedAt:r.date, local:true});
+  });
+}
+async function loadData(){"""
+
+
+def local(s: str) -> str:
+    s = sub1(s, "async function loadData(){", LOCAL_STORE, "13-a 로컬 저장소")
+    # 로컬 카드를 STATE 에 합친 뒤 그린다. 목록을 매번 새로 읽으므로 삭제도 그대로 반영된다.
+    s = sub1(
+        s,
+        """  catch(e){STATE=JSON.parse(JSON.stringify(FALLBACK));}
+  renderGrid();""",
+        """  catch(e){STATE=JSON.parse(JSON.stringify(FALLBACK));}
+  LOCAL_META=[];
+  try{ mergeLocal(await localAll()); }catch(e){}
+  renderGrid();""",
+        "13-b 로컬 카드 합치기",
+    )
+    # normAddr 은 스킴이 없는 값에 http:// 를 붙인다. 그 판정이 http/https 만 통과시켜서
+    # 파일을 그냥 열었을 때(file://) 로컬 카드 주소가 "http://file:///…" 로 깨졌다.
+    # "스킴://" 형태면 무엇이든 그대로 둔다. 맨 주소(10.31.24.11:8080)는 // 가 없어 영향이 없다.
+    s = sub1(
+        s,
+        'function normAddr(a){a=(a||"").trim();if(!a)return"";return /^https?:\/\//i.test(a)?a:"http://"+a}',
+        'function normAddr(a){a=(a||"").trim();if(!a)return"";return /^[a-z][a-z0-9+.-]*:\/\//i.test(a)?a:"http://"+a}',
+        "13-c 절대 주소는 스킴을 건드리지 않는다",
+    )
+    print("  ✓ 13-a 로컬 저장소")
+    print("  ✓ 13-b 로컬 카드 합치기")
+    print("  ✓ 13-c 절대 주소는 스킴을 건드리지 않는다")
+    return s
+
 
 # ===========================================================================
 # 공통 12) "무엇이 실패했는지" 를 화면 문구만 보고 구분할 수 있게
@@ -1201,6 +1388,8 @@ def main() -> None:
     v1 = api(v1)
     print("\n[공통 12) 실패 문구 구분 + 등록 사전 점검]")
     v1 = notice(v1)
+    print("\n[공통 13) 서버 없이도 업로드]")
+    v1 = local(v1)
 
     print("\n[V4-2 추가]")
     v2 = v4_2(v1)
