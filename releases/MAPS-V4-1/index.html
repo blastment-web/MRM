@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="maps-build" content="4351066a"><!--maps-build-stamp-->
 <title>MAPS · 생산기술혁신센터 AI 플랫폼</title>
 <style>
 
@@ -2151,7 +2152,7 @@
     </div>
   </div>
   <div class="foot-legal">
-    <span>생산기술혁신센터 AI 플랫폼 v1.0 · 사내 전용</span>
+    <span>생산기술혁신센터 AI 플랫폼 v1.0 · build 4351066a · 사내 전용</span>
     <span class="footer-credit">Made by 생산기술혁신센터</span>
     <span id="updated"></span>
   </div>
@@ -2810,7 +2811,7 @@ async function doLogin(){
       else alert("관리자 계정이 아닙니다.");
     }
     else setLoginStatus(j.error||"로그인 실패","err");
-  }catch(e){setLoginStatus("서버에 연결할 수 없습니다.","err");}
+  }catch(e){setLoginStatus("로그인 서버에 연결할 수 없습니다.","err");}
 }
 document.getElementById("loginBtn").addEventListener("click",doLogin);
 document.getElementById("loginLink").addEventListener("click",()=>{openLoginModal("관리자 로그인");});
@@ -2838,7 +2839,7 @@ async function doSignup(){
     const j=await r.json();
     if(r.ok&&j.ok){close("signupOv");alert("가입 신청이 접수되었습니다. 관리자 승인 후 로그인할 수 있습니다.");}
     else setSignupStatus(j.error||"가입 실패","err");
-  }catch(e){setSignupStatus("서버에 연결할 수 없습니다.","err");}
+  }catch(e){setSignupStatus("가입 서버에 연결할 수 없습니다.","err");}
 }
 document.getElementById("signupBtn").addEventListener("click",doSignup);
 document.getElementById("suEmpno").addEventListener("keydown",e=>{if(e.key==="Enter")doSignup();});
@@ -4112,10 +4113,12 @@ function buildRequestDoc(p){
     '<div style="font-family:sans-serif;padding:36px;line-height:1.8;background:#0b1120;color:#eaf0fb;min-height:100vh">' +
     '<h1>' + esc(p.name || "") + '</h1><p>첨부 HTML 이 없는 등록요청입니다. 위 주석의 내용을 확인해 주세요.</p></div>';
 }
-function offerRequestDownload(p){
+function offerRequestDownload(p, tried){
   var el = document.getElementById("reqStatus");
   el.className = "status err";
-  el.innerHTML = '서버가 업로드를 받지 못했습니다. ' +
+  /* 무엇을 시도해 무슨 답을 받았는지 남긴다. 화면만 보고 원인을 짚을 수 있어야 한다. */
+  var why = (tried && tried.length) ? " (" + tried.join(" · ") + ")" : "";
+  el.innerHTML = '서버가 업로드를 받지 못했습니다' + esc(why) + '. ' +
     '<button class="minibtn" type="button" id="rqDlBtn" style="margin-left:6px">요청서 내려받기</button>';
   var btn = document.getElementById("rqDlBtn");
   btn.addEventListener("click", function(){
@@ -4135,6 +4138,23 @@ function offerRequestDownload(p){
     setReqStatus("내려받았습니다. 이 파일을 관리자에게 전달해 주세요.", "ok");
   });
 }
+/* 이 화면이 어느 빌드인지. 배치가 찍는 값·서버 응답의 값과 같아야 한다. */
+function mapsBuild(){var m=document.querySelector('meta[name="maps-build"]');return m?m.getAttribute("content"):"";}
+/* 등록 모달을 열 때 서버가 업로드를 받을 수 있는 상태인지 미리 찔러 본다.
+   다 적고 보낸 뒤에 실패를 아는 것보다, 열자마자 아는 편이 낫다.
+   (fetch → 빌드 시 apiFetch 로 바뀐다. 여기서 apiFetch 라고 쓰면 두 번 치환된다.) */
+async function reqPreflight(){
+  var b = mapsBuild(), tail = b ? "  ·  build " + b : "";
+  setReqStatus("서버 확인 중…" + tail);
+  try{
+    const r = await apiFetch("api/me", {method:"GET"});
+    if(r.ok){ setReqStatus("업로드 준비됨" + tail); return; }
+    setReqStatus("서버가 업로드를 받지 못하는 상태입니다 (api/me " + r.status + "). "
+      + "보내면 요청서 파일로 받게 됩니다." + tail, "err");
+  }catch(e){
+    setReqStatus("서버에 닿지 않습니다. 보내면 요청서 파일로 받게 됩니다." + tail, "err");
+  }
+}
 (function(){var e=document.getElementById("rqFeatEtc");if(e)e.addEventListener("change",function(){document.getElementById("rqFeatEtcText").style.display=this.checked?"":"none";});})();
 document.getElementById("dashReqBtn").addEventListener("click",async()=>{
   await checkMe();
@@ -4142,7 +4162,7 @@ document.getElementById("dashReqBtn").addEventListener("click",async()=>{
   document.getElementById("rqFile").value="";
   document.querySelectorAll(".rqFeat").forEach(c=>c.checked=false);
   document.getElementById("rqFeatEtc").checked=false;document.getElementById("rqFeatEtcText").value="";document.getElementById("rqFeatEtcText").style.display="none";
-  open("reqOv");document.getElementById("rqName").focus();
+  open("reqOv");document.getElementById("rqName").focus();reqPreflight();
 });
 document.getElementById("reqSubmit").addEventListener("click",async()=>{
   const name=document.getElementById("rqName").value.trim();
@@ -4170,10 +4190,14 @@ document.getElementById("reqSubmit").addEventListener("click",async()=>{
   }
   const payload={name,author,org,team,desc,features,etc,html,fname};
   const body=JSON.stringify(payload);
-  /* 1) 진짜 백엔드 → 2) IIS 핸들러 → 3) 파일로 받아 전달 */
+  /* 1) 진짜 백엔드 → 2) IIS 핸들러 → 3) 파일로 받아 전달.
+     실패해도 조용히 넘기지 않고 무엇이 어떻게 실패했는지 모아 둔다. */
+  const tried=[];
   for(const url of ["api/dash-request","api/maps.ashx?a=dash-request"]){
+    const label=url.split("?")[0];
     try{
       const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body});
+      tried.push(label+" "+r.status);
       if(!r.ok) continue;                       /* 404·405 면 다음 후보로 */
       const j=await r.json().catch(()=>null);
       if(j&&j.ok){
@@ -4182,9 +4206,9 @@ document.getElementById("reqSubmit").addEventListener("click",async()=>{
         return;
       }
       if(j&&j.error){ setReqStatus(j.error,"err"); return; }   /* 서버가 이유를 말해 준 경우 */
-    }catch(e){}
+    }catch(e){ tried.push(label+" 연결실패"); }
   }
-  offerRequestDownload(payload);
+  offerRequestDownload(payload, tried);
 });
 
 /* 요청자 표시: 이름 (소속) + ID (이름 없으면 ID만) */

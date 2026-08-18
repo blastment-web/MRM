@@ -77,6 +77,8 @@ import json
 import sys
 from pathlib import Path
 
+import build_stamp
+
 from demo_data import BOARD, LOUNGE, SHARE
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -545,9 +547,11 @@ def main() -> None:
     text = src.read_text(encoding="utf-8")
     print(f"입력: {show(src)}  ({len(text):,} bytes)")
     result = patch(text)
+    # 서버에 올라가는 것은 이 사본이다. 입력과 내용이 다르니 스탬프도 새로 계산한다.
+    result, build = build_stamp.apply(result)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(result, encoding="utf-8")
-    print(f"출력: {show(out)}  ({len(result):,} bytes)")
+    print(f"출력: {show(out)}  ({len(result):,} bytes)  build {build}")
 
 
 if __name__ == "__main__":

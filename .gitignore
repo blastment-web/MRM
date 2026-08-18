@@ -1,6 +1,9 @@
 # 빌드 산출물 — tools/build_preview.py 로 언제든 재생성됨
 preview/
 
+# 리허설 꾸러미 zip — tools/make_rehearsal_zip.py 로 언제든 재생성됨
+dist/
+
 # OS / 편집기
 .DS_Store
 Thumbs.db

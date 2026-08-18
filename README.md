@@ -26,11 +26,13 @@ index.html                포털 화면 전체 (HTML + CSS + JS 단일 파일)
 tools/build_preview.py    디자인 미리보기 생성 스크립트
 tools/build_v4.py         V3 → V4-1 / V4-2 생성 스크립트
 tools/build_standalone.py 단독 실행용 사본 생성 스크립트
+tools/build_stamp.py      산출물에 빌드 스탬프(내용 해시 8자)를 박는다 — 위 두 빌더가 공유
 tools/serve_local.py      리허설용 로컬 서버 (Range 지원 — 영상 구간 반복에 필수)
 tools/maps_backend.py     등록요청 백엔드 참조 구현 (요청→1차·2차 승인→카드 생성)
 tools/rehearsal/api/maps.ashx  같은 계약의 IIS(ASP.NET) 판 — 설치 없이 동작
 tools/rehearsal/          Windows 배치 3종 — IIS 켜기/끄기·화면 전환·AI Agent 연결
 tools/make_rehearsal_bats.py  위 배치 파일 생성 (CP949 + CRLF 로 저장한다)
+tools/make_rehearsal_zip.py   전달용 꾸러미 zip 생성 (이름에 빌드 스탬프가 들어간다)
 tools/make_dashboards_json.py 코드의 FALLBACK 을 뽑아 data/dashboards.json 생성
 data/dashboards.json      카드 목록의 원본. addr 을 채우면 그 카드가 LIVE 가 된다
 tools/demo_data.py        위 두 빌더가 공유하는 데모 데이터 (공지·공유·Q&A·게시판)
@@ -60,6 +62,37 @@ python3 tools/build_standalone.py <입력> <출력>            # 단독 실행�
 
 **로컬에서 켠 것과 화면·기능이 같아지는 것이 목표**다. 두 빌더 모두 입력 원본은 읽기만 한다.
 고치는 항목과 Chromium 실측 비교는 각 릴리스의 `README.md` 참고.
+
+## 지금 보고 있는 것이 어느 빌드인가 — 빌드 스탬프
+
+같은 증상("고쳤는데 화면은 그대로")이 세 번 반복됐고 원인은 매번 달랐다.
+IIS 가 복사본을 서빙하고 있었고, 브라우저 캐시였고, 새 꾸러미를 안 풀었다.
+증상이 하나라 매번 추측으로 좁혀야 했다. 그래서 산출물에 **내용 해시 8자**를 박는다.
+
+- `<head>` 의 `<meta name="maps-build" content="…">`
+- 푸터의 `… v1.0 · build … · 사내 전용`
+- 꾸러미의 `빌드.txt`, zip 파일명 `MAPS-실험-<스탬프>.zip`
+- `1_서버켜기.bat` 이 **꾸러미 파일**과 **서버가 실제로 내보낸 응답**에서 각각 뽑아 나란히 출력
+
+```
+/v4-1/  200   꾸러미 645e2148   서버 645e2148   같음
+```
+
+두 값이 **다르면** 배포(복사)가 안 된 것이고, **같은데 화면이 옛날이면** 브라우저 캐시다.
+원인이 두 갈래로 갈리므로 더 추측하지 않아도 된다.
+
+시각이 아니라 해시이므로 **내용이 같으면 다시 빌드해도 값이 같다.**
+값이 달라졌다는 것은 내용이 실제로 달라졌다는 뜻이다.
+계산은 스탬프를 **뺀** 본문으로 하기 때문에 이미 박힌 파일에 다시 적용해도 값이 흔들리지 않는다.
+
+## 전달용 꾸러미 만들기
+
+```bash
+python3 tools/make_rehearsal_zip.py --rebuild      # → dist/MAPS-실험-<스탬프>.zip
+```
+
+릴리스 → standalone → 배치 생성까지 다시 돌린 뒤 압축한다. 풀린 폴더 이름에도
+같은 스탬프가 들어가므로, 예전 폴더를 열고 있는지 이름만 봐도 알 수 있다.
 
 ## 화면을 보면서 직접 조정하기
 

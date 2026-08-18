@@ -17,6 +17,8 @@ import re
 import sys
 from pathlib import Path
 
+import build_stamp
+
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "releases" / "MAPS-V3" / "index.html"
 OUT1 = ROOT / "releases" / "MAPS-V4-1" / "index.html"
@@ -715,10 +717,12 @@ function buildRequestDoc(p){
     '<div style="font-family:sans-serif;padding:36px;line-height:1.8;background:#0b1120;color:#eaf0fb;min-height:100vh">' +
     '<h1>' + esc(p.name || "") + '</h1><p>첨부 HTML 이 없는 등록요청입니다. 위 주석의 내용을 확인해 주세요.</p></div>';
 }
-function offerRequestDownload(p){
+function offerRequestDownload(p, tried){
   var el = document.getElementById("reqStatus");
   el.className = "status err";
-  el.innerHTML = '서버가 업로드를 받지 못했습니다. ' +
+  /* 무엇을 시도해 무슨 답을 받았는지 남긴다. 화면만 보고 원인을 짚을 수 있어야 한다. */
+  var why = (tried && tried.length) ? " (" + tried.join(" · ") + ")" : "";
+  el.innerHTML = '서버가 업로드를 받지 못했습니다' + esc(why) + '. ' +
     '<button class="minibtn" type="button" id="rqDlBtn" style="margin-left:6px">요청서 내려받기</button>';
   var btn = document.getElementById("rqDlBtn");
   btn.addEventListener("click", function(){
@@ -737,6 +741,23 @@ function offerRequestDownload(p){
     setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
     setReqStatus("내려받았습니다. 이 파일을 관리자에게 전달해 주세요.", "ok");
   });
+}
+/* 이 화면이 어느 빌드인지. 배치가 찍는 값·서버 응답의 값과 같아야 한다. */
+function mapsBuild(){var m=document.querySelector('meta[name="maps-build"]');return m?m.getAttribute("content"):"";}
+/* 등록 모달을 열 때 서버가 업로드를 받을 수 있는 상태인지 미리 찔러 본다.
+   다 적고 보낸 뒤에 실패를 아는 것보다, 열자마자 아는 편이 낫다.
+   (fetch → 빌드 시 apiFetch 로 바뀐다. 여기서 apiFetch 라고 쓰면 두 번 치환된다.) */
+async function reqPreflight(){
+  var b = mapsBuild(), tail = b ? "  ·  build " + b : "";
+  setReqStatus("서버 확인 중…" + tail);
+  try{
+    const r = await fetch("api/me", {method:"GET"});
+    if(r.ok){ setReqStatus("업로드 준비됨" + tail); return; }
+    setReqStatus("서버가 업로드를 받지 못하는 상태입니다 (api/me " + r.status + "). "
+      + "보내면 요청서 파일로 받게 됩니다." + tail, "err");
+  }catch(e){
+    setReqStatus("서버에 닿지 않습니다. 보내면 요청서 파일로 받게 됩니다." + tail, "err");
+  }
 }'''
 
 UPLOAD_CHECK = '''  if(!name){setReqStatus("대시보드명을 입력하세요.","err");return;}
@@ -755,10 +776,14 @@ UPLOAD_BODY = '''  setReqStatus("전송 중…");
   }
   const payload={name,author,org,team,desc,features,etc,html,fname};
   const body=JSON.stringify(payload);
-  /* 1) 진짜 백엔드 → 2) IIS 핸들러 → 3) 파일로 받아 전달 */
+  /* 1) 진짜 백엔드 → 2) IIS 핸들러 → 3) 파일로 받아 전달.
+     실패해도 조용히 넘기지 않고 무엇이 어떻게 실패했는지 모아 둔다. */
+  const tried=[];
   for(const url of ["api/dash-request","api/maps.ashx?a=dash-request"]){
+    const label=url.split("?")[0];
     try{
       const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body});
+      tried.push(label+" "+r.status);
       if(!r.ok) continue;                       /* 404·405 면 다음 후보로 */
       const j=await r.json().catch(()=>null);
       if(j&&j.ok){
@@ -767,9 +792,9 @@ UPLOAD_BODY = '''  setReqStatus("전송 중…");
         return;
       }
       if(j&&j.error){ setReqStatus(j.error,"err"); return; }   /* 서버가 이유를 말해 준 경우 */
-    }catch(e){}
+    }catch(e){ tried.push(label+" 연결실패"); }
   }
-  offerRequestDownload(payload);'''
+  offerRequestDownload(payload, tried);'''
 
 
 def upload(s: str) -> str:
@@ -853,6 +878,45 @@ def api(s: str) -> str:
                   'return fetch("api/maps.ashx?a=" + name + rest, opts);')
     print(f"  ✓ 11-c api 호출 {n}곳을 apiFetch 로 교체")
     return s
+
+# ===========================================================================
+# 공통 12) "무엇이 실패했는지" 를 화면 문구만 보고 구분할 수 있게
+#
+# `서버에 연결할 수 없습니다` 가 로그인·가입·등록 세 곳에 똑같이 있었다. 사용자가
+# 이 문구를 전해 와도 어느 흐름에서 난 것인지 알 수 없어 매번 추측해야 했다.
+# 등록 쪽은 10-c 에서 요청서 내려받기로 바뀌었으니, 남은 두 곳에 주어를 붙인다.
+#
+# 아울러 등록 모달을 열 때 사전 점검을 돌린다 — 다 적고 보낸 뒤가 아니라
+# 열자마자 서버 상태를 알려 준다.
+# ===========================================================================
+def notice(s: str) -> str:
+    s = sub1(
+        s,
+        '}catch(e){setLoginStatus("서버에 연결할 수 없습니다.","err");}',
+        '}catch(e){setLoginStatus("로그인 서버에 연결할 수 없습니다.","err");}',
+        "12-a 로그인 실패 문구",
+    )
+    s = sub1(
+        s,
+        '}catch(e){setSignupStatus("서버에 연결할 수 없습니다.","err");}',
+        '}catch(e){setSignupStatus("가입 서버에 연결할 수 없습니다.","err");}',
+        "12-b 가입 실패 문구",
+    )
+    s = sub1(
+        s,
+        'open("reqOv");document.getElementById("rqName").focus();',
+        'open("reqOv");document.getElementById("rqName").focus();reqPreflight();',
+        "12-c 등록 모달 사전 점검",
+    )
+    # 세 곳을 다 손봤으니 주어 없는 문구가 더 남아 있으면 안 된다.
+    # 앞의 따옴표까지 세어야 한다 — "로그인 서버에…" 도 부분 문자열로는 걸린다.
+    left = s.count('"서버에 연결할 수 없습니다')
+    if left:
+        raise SystemExit(f"[중단] 12-d 구분되지 않는 '서버에 연결할 수 없습니다' 가 {left}곳 남았습니다.")
+    for label in ("12-a 로그인 실패 문구", "12-b 가입 실패 문구", "12-c 등록 모달 사전 점검"):
+        print(f"  \u2713 {label}")
+    return s
+
 
 # ===========================================================================
 # V4-2 — 히어로 영상 + 첫 화면 / 대시보드 화면 분리
@@ -1135,15 +1199,21 @@ def main() -> None:
     v1 = upload(v1)
     print("\n[공통 11) api 창구]")
     v1 = api(v1)
-    OUT1.parent.mkdir(parents=True, exist_ok=True)
-    OUT1.write_text(v1, encoding="utf-8")
-    print(f"\n출력: {OUT1.relative_to(ROOT)}  ({len(v1):,} bytes)")
+    print("\n[공통 12) 실패 문구 구분 + 등록 사전 점검]")
+    v1 = notice(v1)
 
     print("\n[V4-2 추가]")
     v2 = v4_2(v1)
+
+    # 스탬프는 마지막에 박는다. 내용 해시라서 v1·v2 는 서로 다른 값이 된다.
+    v1, b1 = build_stamp.apply(v1)
+    v2, b2 = build_stamp.apply(v2)
+    OUT1.parent.mkdir(parents=True, exist_ok=True)
+    OUT1.write_text(v1, encoding="utf-8")
+    print(f"\n출력: {OUT1.relative_to(ROOT)}  ({len(v1):,} bytes)  build {b1}")
     OUT2.parent.mkdir(parents=True, exist_ok=True)
     OUT2.write_text(v2, encoding="utf-8")
-    print(f"\n출력: {OUT2.relative_to(ROOT)}  ({len(v2):,} bytes)")
+    print(f"출력: {OUT2.relative_to(ROOT)}  ({len(v2):,} bytes)  build {b2}")
 
     # 주석 속 이력 표기는 남겨 두므로, 실제로 살아 있는 참조만 잡는다
     for tag in ('id="pxNet"', 'getElementById("pxNet")', "#pxNet{", "particleNet"):

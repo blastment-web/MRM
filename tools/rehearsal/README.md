@@ -4,18 +4,23 @@
 확인하기 위한 최소 도구다. Python 도, 새로 설치할 프로그램도 없다.
 Windows 에 이미 들어 있는 **IIS** 를 배치 파일로 켜고 끈다.
 
-## 전달할 폴더 만들기
-
-이 폴더의 배치·안내 5개 + `api/` + 화면 파일 3개(+ 선택 사항 `hero.mp4`) + `data/` + `agents/` 를 한 폴더에 모아 압축해서 건넨다.
+## 전달할 꾸러미 만들기
 
 ```bash
-mkdir -p "MAPS-실험/data"
-cp releases/MAPS-V4-1/index.standalone.html "MAPS-실험/index-v4-1.html"
-cp releases/MAPS-V4-2/index.standalone.html "MAPS-실험/index-v4-2.html"
-cp tools/rehearsal/선택화면.html tools/rehearsal/*.bat tools/rehearsal/읽어보세요.txt "MAPS-실험/"
-cp -r tools/rehearsal/agents tools/rehearsal/api "MAPS-실험/"
-python3 tools/make_dashboards_json.py --out "MAPS-실험/data/dashboards.json" \
-        --live "공정 조건 최적화 Agent" --addr "http://localhost/agents/sample-agent/"
+python3 tools/make_rehearsal_zip.py --rebuild      # → dist/MAPS-실험-<스탬프>.zip
+```
+
+릴리스 → standalone → 배치 생성까지 다시 돌린 뒤, 이 폴더의 배치·안내 5개 +
+`api/` + `agents/` + 화면 파일 + `data/dashboards.json` + `빌드.txt` 를 묶는다.
+손으로 모으던 시절에는 **옛 산출물이 섞여 들어가는 사고**가 반복됐다. 그래서
+스크립트가 화면 파일의 스탬프를 내용과 대조해, 빌드 뒤에 손댄 파일이면 중단한다.
+
+zip 이름·폴더 이름·`빌드.txt`·화면 푸터에 **같은 스탬프**가 들어간다.
+`1_서버켜기.bat` 이 꾸러미 파일과 서버 응답에서 각각 뽑아 나란히 찍으므로,
+"고쳤는데 화면은 그대로" 가 배포 실패인지 브라우저 캐시인지 한 줄로 갈린다.
+
+```
+/v4-1/  200   꾸러미 645e2148   서버 645e2148   같음
 ```
 
 **파일 이름이 곧 주소다.** `index-<이름>.html` 하나가 `http://IP/<이름>/` 하나가 된다.
@@ -46,7 +51,12 @@ python3 tools/make_dashboards_json.py --out "MAPS-실험/data/dashboards.json" \
 | 4 | 선택 화면 → `wwwroot\index.html`, **`index-*.html` 마다 폴더 하나**, `data/` 는 각 폴더에, `agents/` 는 루트에 한 벌, 선택 화면이 읽을 `versions.js` 생성 |
 | 5 | `netsh advfirewall` 로 인바운드 TCP 80 허용 (`MAPS-Rehearsal-HTTP-80`) |
 | 6 | `sc config` + `net start w3svc` |
-| 확인 | `curl` 로 선택 화면과 **각 버전 주소**를 호출해 200 인지 찍고, `ipconfig` 로 살아 있는 주소를 전부 찍는다 |
+| 확인 | `curl` 로 선택 화면과 **각 버전 주소**를 호출해 200 인지 찍고, 꾸러미 파일과 **서버 응답**에서 빌드 스탬프를 뽑아 대조하고, `ipconfig` 로 살아 있는 주소를 전부 찍는다 |
+
+스탬프 추출은 `:BUILDOF` 서브루틴이 한다. `findstr /c:"maps-build-stamp"` 로 한 줄을 잡고
+`!BL:*content=!` · `~2,8` 로 8자를 떼어 낸다. `maps-build` 라는 낱말만 찾으면 그 값을 읽는
+자바스크립트 줄까지 걸려 `for /f` 가 **마지막** 줄을 집으므로, 메타 줄 끝에 꼬리 주석을
+붙여 그 한 줄만 매치되게 해 두었다.
 
 `3_에이전트연결.bat` 은 남이 만든 HTML 을 `agents/<폴더>/index.html` 로 올리고
 붙여넣을 `"addr"` 한 줄을 실제 IP 로 찍어 준 뒤, `start /wait notepad` 로

@@ -146,9 +146,23 @@ if exist "%SystemRoot%\System32\curl.exe" (
 echo --------------------------------------------------------------
 if defined C0 (
     echo   자체 확인 : 선택 화면 !C0!    ^(200 이면 정상^)
+    echo.
+    echo   화면별 상태와 빌드 대조
+    echo   ^(꾸러미와 서버의 빌드가 다르면 이 배치가 복사를 못 한 것입니다^)
     for %%S in (!SLUGS!) do (
-        for /f %%C in ('curl -s -o nul -m 10 -w "%%{http_code}" "http://localhost/%%S/?v=%RANDOM%" 2^>nul') do echo               /%%S/ %%C
+        set "CODE=---"
+        for /f %%C in ('curl -s -o nul -m 10 -w "%%{http_code}" "http://localhost/%%S/?v=%RANDOM%" 2^>nul') do set "CODE=%%C"
+        call :BUILDOF "%~dp0index-%%S.html" BPKG
+        curl -s -m 20 "http://localhost/%%S/?v=%RANDOM%" > "%TEMP%\maps-build-check.html" 2>nul
+        call :BUILDOF "%TEMP%\maps-build-check.html" BSRV
+        set "SAME=다름 - 배포 실패"
+        if "!BPKG!"=="!BSRV!" set "SAME=같음"
+        echo        /%%S/  !CODE!   꾸러미 !BPKG!   서버 !BSRV!   !SAME!
     )
+    del /q "%TEMP%\maps-build-check.html" >nul 2>&1
+    echo.
+    echo   빌드가 "같음" 인데도 화면이 예전 그대로면 브라우저 캐시입니다.
+    echo   그 화면에서 Ctrl+F5 를 누르세요. 화면 맨 아래에도 같은 값이 찍혀 있습니다.
 ) else (
     echo   자체 확인 : 건너뜀 - 브라우저에서 직접 확인하세요.
 )
@@ -188,6 +202,21 @@ echo --------------------------------------------------------------
 rem 주소 뒤의 ?v= 는 브라우저 캐시를 피하려는 것이다. 서버는 이 값을 무시한다.
 start "" "http://localhost/?v=%RANDOM%"
 goto END
+
+rem ---------------- 빌드 스탬프 읽기 ----------------
+rem %1 = HTML 파일, %2 = 결과를 담을 변수 이름.
+rem 파일 안의  <meta name="maps-build" content="xxxxxxxx"><!--maps-build-stamp-->
+rem 한 줄에서 8자리를 뽑는다. 꼬리 주석으로 그 한 줄만 걸리게 해 두었다
+rem (maps-build 라는 낱말만 찾으면 이 값을 읽는 자바스크립트 줄까지 걸린다).
+:BUILDOF
+set "%~2=--------"
+if not exist "%~1" goto :eof
+set "BL="
+for /f "delims=" %%L in ('findstr /c:"maps-build-stamp" "%~1" 2^>nul') do set "BL=%%L"
+if not defined BL goto :eof
+set "BL=!BL:*content=!"
+set "%~2=!BL:~2,8!"
+goto :eof
 
 :NOADMIN
 echo   [중단] 관리자 권한이 없습니다.
@@ -524,7 +553,7 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
      같은 사람이 1차와 2차를 다 할 수 없습니다. admin 으로는 2차 버튼이 아예 안 보이고,
      manager 로는 1차 버튼이 안 보입니다. 서버에서도 같은 규칙을 막고 있습니다.
 
-     비밀번호를 바꾸려면 C:\inetpub\maps-data\accounts.json 을 지우고
+     비밀번호를 바꾸려면 C:\inetpub\maps-data\\accounts.json 을 지우고
      1_서버켜기.bat 을 다시 실행하세요. 새로 만들어집니다.
 
   승인하는 곳
@@ -579,6 +608,29 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
 
   위 제약이 걸리는 자료라면 알려 주세요. 업로드 영역을 별도 주소로 분리하면
   제약 없이 쓸 수 있습니다(새 PC 구성 때 반영 예정).
+
+
+■ 고쳤는데 화면이 예전 그대로일 때  ★
+
+  화면마다 "빌드" 라는 8자리 표시가 붙어 있습니다. 같은 값이 세 군데 찍힙니다.
+
+     (1) 이 폴더의 빌드.txt
+     (2) 1_서버켜기.bat 을 실행하면 나오는 "화면별 상태와 빌드 대조" 줄
+     (3) 화면 맨 아래 푸터의  build xxxxxxxx
+
+  1_서버켜기.bat 이 이렇게 찍습니다.
+
+     /v4-1/  200   꾸러미 645e2148   서버 645e2148   같음
+
+  - "다름" 이면  -> 배치가 파일을 복사하지 못한 것입니다.
+                   관리자 권한으로 1_서버켜기.bat 을 다시 실행하세요.
+  - "같음" 인데 화면이 예전 그대로면  -> 브라우저가 옛 화면을 기억하고 있는 것입니다.
+                   그 화면에서 Ctrl+F5 를 누르세요.
+  - 푸터의 값이 빌드.txt 와 다르면  -> 새로 받은 꾸러미가 아니라 예전 폴더를 열고
+                   있는 것입니다. 폴더 이름 뒤의 8자리와 zip 이름을 맞춰 보세요.
+
+  ※ 이 값은 시각이 아니라 내용을 요약한 값입니다. 내용이 같으면 언제 만들어도
+     같은 값이 나옵니다. 값이 달라졌다면 내용이 진짜로 달라진 것입니다.
 
 
 ■ 확인할 것은 딱 하나입니다
