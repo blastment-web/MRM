@@ -32,6 +32,7 @@ setlocal enabledelayedexpansion
 title MAPS 실험 서버 켜기
 
 set "WWW=%SystemDrive%\inetpub\wwwroot"
+set "MDATA=%SystemDrive%\inetpub\maps-data"
 set "LOG=%TEMP%\maps-iis-setup.log"
 set "RULE=MAPS-Rehearsal-HTTP-80"
 
@@ -112,9 +113,12 @@ if exist "%~dp0agents" xcopy "%~dp0agents" "%WWW%\agents" /e /i /y >nul 2>&1
 rem 업로드가 파일을 쓰는 곳은 이 두 폴더뿐이다. 나머지는 읽기 전용으로 남겨 둔다.
 rem S-1-5-32-568 = IIS_IUSRS (언어팩과 무관하게 같은 SID 라 한글 Windows 에서도 통한다)
 if not exist "%WWW%\agents"   mkdir "%WWW%\agents"   >nul 2>&1
-if not exist "%WWW%\requests" mkdir "%WWW%\requests" >nul 2>&1
 icacls "%WWW%\agents"   /grant "*S-1-5-32-568:(OI)(CI)M" >nul 2>&1
-icacls "%WWW%\requests" /grant "*S-1-5-32-568:(OI)(CI)M" >nul 2>&1
+rem 계정·세션·요청·승인 전 업로드 파일은 웹 루트 **밖**에 둔다.
+rem wwwroot 안에 두면 http://IP/data/accounts.json 로 계정이 그대로 읽히고,
+rem 승인 전 업로드 파일도 주소만 알면 열린다.
+if not exist "%MDATA%\pending" mkdir "%MDATA%\pending" >nul 2>&1
+icacls "%MDATA%" /grant "*S-1-5-32-568:(OI)(CI)M" >nul 2>&1
 echo   [4/6] 화면 %NV%개 + 자료 배포 ... OK
 
 rem ---------------- 5. 방화벽 ----------------
@@ -169,8 +173,16 @@ goto SHOWEND
 echo        사내 IP 를 찾지 못했습니다 - 네트워크 연결을 확인하세요
 :SHOWEND
 echo.
-if defined ASPOK echo   업로드 받기  : 준비됨  ^(확인 http://localhost/!FIRST!/api/dash-request.ashx ^)
-if not defined ASPOK echo   업로드 받기  : 안 됨 - 등록요청은 "요청서 내려받기" 로 대신할 수 있습니다.
+if defined ASPOK (
+    echo   등록요청 받기 : 준비됨
+    echo      관리자 1차 : admin   / maps2026!
+    echo      관리자 2차 : manager / maps2026!
+    echo      ^(오른쪽 위 "관리자 로그인" -^> 승인 관리 탭에서 1차·2차 승인^)
+    echo      비밀번호를 바꾸려면 %MDATA%\accounts.json 을 지우고 이 배치를 다시 실행하세요.
+) else (
+    echo   등록요청 받기 : 안 됨 - ASP.NET 이 켜지지 않았습니다.
+    echo                   화면에서는 "요청서 내려받기" 로 대신할 수 있습니다.
+)
 echo --------------------------------------------------------------
 
 rem 주소 뒤의 ?v= 는 브라우저 캐시를 피하려는 것이다. 서버는 이 값을 무시한다.
@@ -251,9 +263,10 @@ for %%F in ("%~dp0index-*.html") do (
     if exist "%WWW%\!SLUG!" rd /s /q "%WWW%\!SLUG!" >nul 2>&1
 )
 if exist "%WWW%\agents" rd /s /q "%WWW%\agents" >nul 2>&1
-if exist "%WWW%\requests" rd /s /q "%WWW%\requests" >nul 2>&1
 if exist "%WWW%\data"   rd /s /q "%WWW%\data"   >nul 2>&1
 echo   [3/4] 배치한 파일 삭제 ....... OK  (원본은 꾸러미 폴더에 그대로 있습니다)
+rem %SystemDrive%\inetpub\maps-data 는 지우지 않는다 - 올라온 요청과 승인 이력이 들어 있다.
+rem 완전히 지우려면 그 폴더를 직접 삭제하면 된다.
 
 if exist "%WWW%\index.html.maps-backup" goto RESTORE
 echo   [4/4] 복원할 원본 없음 ....... OK
@@ -393,93 +406,6 @@ echo.
 pause
 """
 
-REVIEW = r"""@echo off
-setlocal enabledelayedexpansion
-title MAPS - 올라온 등록요청 확인
-
-set "WWW=%SystemDrive%\inetpub\wwwroot"
-set "JSON=%~dp0data\dashboards.json"
-
-echo.
-echo ==============================================================
-echo    올라온 등록요청 확인
-echo ==============================================================
-echo.
-
-net session >nul 2>&1
-if errorlevel 1 goto NOADMIN
-
-if not exist "%WWW%\requests" goto NONE
-
-set "MYIP="
-for /f "tokens=2 delims=:" %%A in ('ipconfig ^| findstr /c:"IPv4"') do (
-    for /f "tokens=*" %%B in ("%%A") do if not defined MYIP set "MYIP=%%B"
-)
-if not defined MYIP set "MYIP=localhost"
-
-set /a N=0
-for %%F in ("%WWW%\requests\*.txt") do (
-    set /a N+=1
-    echo --------------------------------------------------------------
-    echo   [!N!]  폴더 이름 : %%~nF
-    type "%%F"
-    if exist "%WWW%\agents\%%~nF\index.html" (
-        echo   미리 보기   : http://%MYIP%/agents/%%~nF/
-        echo.
-        echo   dashboards.json 에 붙여 넣을 줄:
-        echo       "addr":"http://%MYIP%/agents/%%~nF/"
-    ) else (
-        echo   첨부 파일이 없는 요청입니다 ^(메타만 접수^)
-    )
-    echo.
-)
-if %N%==0 goto NONE
-
-echo --------------------------------------------------------------
-echo   위에서 공개할 것을 골라, 그 줄을 dashboards.json 의 해당 Agent
-echo   "addr": "" 자리에 붙여 넣고 저장한 뒤 메모장을 닫으세요.
-echo.
-echo   ※ 붙여 넣기 전까지는 아무에게도 보이지 않습니다.
-echo      올라와 있다고 공개된 것이 아닙니다.
-echo.
-pause
-
-start /wait notepad "%JSON%"
-
-set /a M=0
-for %%F in ("%~dp0index-*.html") do (
-    set "FN=%%~nF"
-    set "VER=!FN:index-=!"
-    if exist "%WWW%\!VER!" (
-        if not exist "%WWW%\!VER!\data" mkdir "%WWW%\!VER!\data" >nul 2>&1
-        copy /y "%JSON%" "%WWW%\!VER!\data\dashboards.json" >nul
-        set /a M+=1
-    )
-)
-echo.
-echo   화면 !M!개에 반영했습니다. 브라우저에서 Ctrl+F5 로 새로고침하세요.
-start "" "http://localhost/?v=%RANDOM%"
-goto END
-
-:NONE
-echo   아직 올라온 등록요청이 없습니다.
-echo.
-echo   구성원이 화면에서 [＋ AI Agent 등록] 으로 HTML 을 올리면
-echo   여기에 나타납니다.
-echo.
-echo   ※ 업로드가 안 되고 "요청서 내려받기" 만 뜬다면 ASP.NET 이 꺼져 있는 것입니다.
-echo      1_서버켜기.bat 을 관리자 권한으로 다시 실행해 보세요.
-goto END
-
-:NOADMIN
-echo   [중단] 관리자 권한이 없습니다.
-echo   이 파일을 마우스 우클릭 하고 "관리자 권한으로 실행" 을 눌러 주세요.
-
-:END
-echo.
-pause
-"""
-
 README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 보기
 ====================================================
 
@@ -492,8 +418,8 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
 
   3. 실험이 끝나면  2_서버끄기.bat  을 같은 방식으로 실행
 
-  AI Agent 를 직접 연결할 때는 3_에이전트연결.bat,
-  구성원이 올린 요청을 확인할 때는 4_요청확인.bat 을 씁니다.
+  관리자가 HTML 을 직접 연결할 때는 3_에이전트연결.bat 을 씁니다.
+  구성원이 올린 요청은 화면의 관리자 콘솔에서 승인합니다 (아래 참고).
 
 
 ■ 화면을 하나 더 올리려면  ★ 파일 이름이 곧 주소입니다
@@ -579,27 +505,42 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
      바꿔 주세요.
 
 
-■ 구성원이 직접 HTML 을 올리게 하기  ★
+■ 구성원이 HTML 을 올리고, 관리자가 1차·2차 승인하면 카드가 생깁니다  ★
 
-  화면에서 [＋ AI Agent 등록] 을 누르고 HTML 을 넣으면 서버에 바로 올라갑니다.
-  1_서버켜기.bat 이 그 준비까지 해 줍니다 (추가로 설치할 프로그램 없음).
+  전체 흐름
+     구성원  화면의 [＋ AI Agent 등록] -> 항목 기입 + HTML 첨부 -> 요청 보내기
+     관리자  1차 승인 (admin 계정)
+     관리자  2차 승인 (manager 계정)   <- 여기서 카드가 생깁니다
+     누구나  생긴 카드를 누르면 올린 HTML 이 팝업으로 열립니다
 
   ★ 올린다고 바로 공개되지 않습니다.
-     올라온 파일은 관리자가 dashboards.json 에 주소를 넣기 전까지
-     아무 카드에도 나타나지 않습니다. 즉 아무나 올릴 수는 있어도
-     아무나 게시할 수는 없습니다.
+     2차 승인 전까지 그 파일은 웹에 아예 존재하지 않습니다. 주소를 알아도 못 엽니다.
+     (C:\inetpub\maps-data 라는 웹 밖 폴더에 보관됩니다)
 
-  관리자가 할 일 :
-     4_요청확인.bat 을 우클릭 -> "관리자 권한으로 실행"
-     올라온 요청이 요청자·설명·미리보기 주소와 함께 나열됩니다.
-     공개할 것만 골라 "addr" 줄을 dashboards.json 에 붙여 넣고 저장하면 끝입니다.
+  관리자 계정 — 1_서버켜기.bat 이 처음 실행될 때 만들어집니다
+     1차 : admin   / maps2026!
+     2차 : manager / maps2026!
 
-  검은 창 맨 아래에 "업로드 받기 : 준비됨" 이라고 나오면 준비된 것입니다.
-  "안 됨" 이라고 나오면 회사 정책으로 ASP.NET 기능이 막힌 경우인데,
-  그때는 화면에 [요청서 내려받기] 버튼이 대신 나옵니다. 구성원이 그 파일을
-  받아서 관리자에게 전달하면 같은 일을 할 수 있습니다. 어느 쪽이든 막히지 않습니다.
+     같은 사람이 1차와 2차를 다 할 수 없습니다. admin 으로는 2차 버튼이 아예 안 보이고,
+     manager 로는 1차 버튼이 안 보입니다. 서버에서도 같은 규칙을 막고 있습니다.
+
+     비밀번호를 바꾸려면 C:\inetpub\maps-data\accounts.json 을 지우고
+     1_서버켜기.bat 을 다시 실행하세요. 새로 만들어집니다.
+
+  승인하는 곳
+     화면 오른쪽 위 [관리자 로그인] -> 관리자 콘솔이 열립니다
+     -> "승인 관리" 탭 -> 올라온 요청 목록
+     -> [1차 승인] / [1차 반려]  (admin 으로 로그인했을 때)
+     -> [2차 승인] / [2차 반려]  (manager 로 로그인했을 때)
+     반려하려면 사유를 적어야 하고, 1차·2차 처리 이력이 목록에 남습니다.
+     ⬇ HTML 을 누르면 승인 전에도 첨부 파일을 받아 볼 수 있습니다.
+
+  카드는 신청할 때 고른 카테고리에 생기고, 목록 맨 앞에 3일간 NEW 표시가 붙습니다.
 
   ※ 올릴 수 있는 것 : HTML 파일 1개, 3MB 까지.
+  ※ "업로드 받기 : 안 됨" 이 뜨면 회사 정책으로 ASP.NET 기능이 막힌 경우입니다.
+     그때는 화면에 [요청서 내려받기] 버튼이 대신 나옵니다. 그 파일을 관리자에게
+     전달하면 3_에이전트연결.bat 으로 같은 결과를 만들 수 있습니다.
 
 
 ■ 카드를 누르면 팝업으로 열립니다
@@ -686,15 +627,24 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
     우선 옆자리 1~2명에게만 보여주고, 부서 전체 공지는 IT 승인 후에 하세요.
 """
 
-(OUT / "1_서버켜기.bat").write_bytes(START.replace("\n", "\r\n").encode("cp949"))
-(OUT / "2_서버끄기.bat").write_bytes(STOP.replace("\n", "\r\n").encode("cp949"))
-(OUT / "3_에이전트연결.bat").write_bytes(CONNECT.replace("\n", "\r\n").encode("cp949"))
-(OUT / "4_요청확인.bat").write_bytes(REVIEW.replace("\n", "\r\n").encode("cp949"))
+def write_bat(name: str, text: str) -> None:
+    """CP949 로 못 쓰는 글자(— … 등)가 섞이면 어느 줄인지 알려 준다."""
+    try:
+        (OUT / name).write_bytes(text.replace("\n", "\r\n").encode("cp949"))
+    except UnicodeEncodeError as e:
+        ln = text[:e.start].count("\n") + 1
+        raise SystemExit(f"[중단] {name} {ln}행: CP949 로 쓸 수 없는 글자 "
+                         f"{text[e.start:e.end]!r} — 보통 - 이나 ... 로 바꾸면 된다.")
+
+
+write_bat("1_서버켜기.bat", START)
+write_bat("2_서버끄기.bat", STOP)
+write_bat("3_에이전트연결.bat", CONNECT)
 (OUT / "읽어보세요.txt").write_bytes(
     b"\xef\xbb\xbf" + README_TXT.replace("\n", "\r\n").encode("utf-8")
 )
 
-for stale in ("3_화면바꾸기.bat", "4_에이전트연결.bat", "index-선택화면.html"):
+for stale in ("3_화면바꾸기.bat", "4_에이전트연결.bat", "4_요청확인.bat", "index-선택화면.html"):
     q = OUT / stale
     if q.exists():
         q.unlink()

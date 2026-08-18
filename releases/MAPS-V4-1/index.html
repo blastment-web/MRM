@@ -2233,7 +2233,7 @@
       <div class="field"><label>설명</label><textarea id="rqDesc" rows="3" placeholder="AI Agent에 대한 부연설명 기입"></textarea></div>
       <div class="field"><label>카테고리</label>
         <div class="feat-checks">
-          <label class="feat-item"><input type="checkbox" class="rqFeat" value="新공정/공법 개발"> 新공정/공법 개발</label>
+          <label class="feat-item"><input type="checkbox" class="rqFeat" value="新 공정/공법 개발"> 新 공정/공법 개발</label>
           <label class="feat-item"><input type="checkbox" class="rqFeat" value="해외법인 양산 지원"> 해외법인 양산 지원</label>
           <label class="feat-item"><input type="checkbox" class="rqFeat" value="제품 개발 대응"> 제품 개발 대응</label>
           <label class="feat-item"><input type="checkbox" class="rqFeat" value="공통 및 루틴 업무"> 공통 및 루틴 업무</label>
@@ -2541,6 +2541,20 @@
 /* ---------- 히트맵/유틸 ---------- */
 const LIVE_COLOR="var(--cell-live)", SOON_COLOR="var(--cell-soon)";
 function esc(t){const d=document.createElement("div");d.textContent=t==null?"":t;return d.innerHTML}
+/* api/* 호출 창구. 아래 두 곳을 차례로 시도한다.
+     1) 있는 그대로            — 진짜 백엔드(예: maps_backend.py)가 있으면 여기서 끝
+     2) api/maps.ashx?a=...    — IIS 에 올린 ASP.NET 핸들러
+   404·405 만 다음 후보로 넘긴다. 401·403·500 은 서버가 판단해 답한 것이라 그대로 돌려준다. */
+async function apiFetch(path, opts){
+  try{
+    const r = await fetch(path, opts);
+    if(r.status !== 404 && r.status !== 405) return r;
+  }catch(e){ /* 연결 자체가 안 되면 아래에서 한 번 더 시도한다 */ }
+  const i = path.indexOf("?");
+  const name = (i < 0 ? path.slice(4) : path.slice(4, i));
+  const rest = (i < 0 ? "" : "&" + path.slice(i + 1));
+  return fetch("api/maps.ashx?a=" + name + rest, opts);
+}
 function isLive(it){return it.addr&&it.addr.trim()!==""&&!it.prep}
 function hasAddr(it){return it.addr&&it.addr.trim()!==""}
 function normAddr(a){a=(a||"").trim();if(!a)return"";return /^https?:\/\//i.test(a)?a:"http://"+a}
@@ -2588,12 +2602,12 @@ let STATE={columns:[]}, DRAFT=null, ME={auth:false}, FAVORITES=[];
 function isFav(team,name){return FAVORITES.includes(team+"::"+name);}
 async function loadFavorites(){
   if(!ME.auth){FAVORITES=[];renderGrid();return;}
-  try{const r=await fetch("api/favorites",{cache:"no-store"});const j=await r.json();FAVORITES=j.favorites||[];}catch(e){FAVORITES=[];}
+  try{const r=await apiFetch("api/favorites",{cache:"no-store"});const j=await r.json();FAVORITES=j.favorites||[];}catch(e){FAVORITES=[];}
   renderGrid();
 }
 async function toggleFav(team,name){
   const key=team+"::"+name, on=!isFav(team,name);
-  try{const r=await fetch("api/favorites",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key,on})});const j=await r.json();if(j.ok){FAVORITES=j.favorites;renderGrid();}}catch(e){}
+  try{const r=await apiFetch("api/favorites",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key,on})});const j=await r.json();if(j.ok){FAVORITES=j.favorites;renderGrid();}}catch(e){}
 }
 
 /* ---------- 데이터 로드/렌더 ---------- */
@@ -2606,7 +2620,7 @@ async function loadData(){
 }
 let RANK7={};
 async function loadRank(){
-  try{const r=await fetch("api/dash-rank",{cache:"no-store"});if(r.ok){const j=await r.json();if(j.ok&&j.items)RANK7=j.items;}}catch(e){}
+  try{const r=await apiFetch("api/dash-rank",{cache:"no-store"});if(r.ok){const j=await r.json();if(j.ok&&j.items)RANK7=j.items;}}catch(e){}
   renderGrid();
 }
 const ORG_ORDER=["新 공정/공법 개발","해외법인 양산 지원","제품 개발 대응","공통 및 루틴 업무"];
@@ -2681,7 +2695,7 @@ async function waiveHealth(key,flag){
     if(!confirm("유예를 해제할까요? 장애 상태면 다시 장애로 표시됩니다."))return;
   }
   try{
-    const r=await fetch("api/health-waive",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:key,waive:flag,until:until})});
+    const r=await apiFetch("api/health-waive",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:key,waive:flag,until:until})});
     const j=await r.json();
     if(r.ok&&j.ok)loadHealth();
     else alert("처리 실패: "+(j.error||r.status));
@@ -2730,7 +2744,7 @@ function renderGrid(){
 
 /* ---------- 세션 ---------- */
 async function checkMe(){
-  try{const r=await fetch("api/me",{cache:"no-store"});ME=await r.json();}catch(e){ME={auth:false};}
+  try{const r=await apiFetch("api/me",{cache:"no-store"});ME=await r.json();}catch(e){ME={auth:false};}
   updateHeader();
   if(typeof refreshBoardDot==="function")refreshBoardDot();
   if(typeof refreshNotice==="function")refreshNotice();
@@ -2769,7 +2783,7 @@ document.getElementById("gear").addEventListener("click",async()=>{
   else openConsole();
 });
 document.getElementById("logoutBtn").addEventListener("click",async()=>{
-  await fetch("api/logout",{method:"POST"});ME={auth:false};updateHeader();loadData();
+  await apiFetch("api/logout",{method:"POST"});ME={auth:false};updateHeader();loadData();
   showHome();refreshBoardDot();refreshNotice();FAVORITES=[];renderGrid();
 });
 /* 타이틀 클릭 → 홈 화면으로 */
@@ -2788,7 +2802,7 @@ async function doLogin(){
   if(!id||!pw){setLoginStatus("아이디와 비밀번호를 입력하세요.","err");return;}
   setLoginStatus("확인 중…");
   try{
-    const r=await fetch("api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,pw})});
+    const r=await apiFetch("api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,pw})});
     const j=await r.json();
     if(r.ok&&j.ok){ME={auth:true,id:j.id,role:j.role};updateHeader();loadData();loadFavorites();refreshNotice();close("loginOv");
       try{loadShare();}catch(e){}
@@ -2820,7 +2834,7 @@ async function doSignup(){
   if(!/^\d+$/.test(empno)){setSignupStatus("사번은 숫자만 입력하세요.","err");return;}
   setSignupStatus("신청 중…");
   try{
-    const r=await fetch("api/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,pw,org,name,empno})});
+    const r=await apiFetch("api/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,pw,org,name,empno})});
     const j=await r.json();
     if(r.ok&&j.ok){close("signupOv");alert("가입 신청이 접수되었습니다. 관리자 승인 후 로그인할 수 있습니다.");}
     else setSignupStatus(j.error||"가입 실패","err");
@@ -2858,7 +2872,7 @@ function switchTab(name){
 }
 async function loadSiteStats(){
   try{
-    const r=await fetch("api/site-stats",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/site-stats",{cache:"no-store"});const j=await r.json();
     if(!j||!j.ok)return;
     const f=n=>(n==null?'-':Number(n).toLocaleString());
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=f(v);};
@@ -2867,7 +2881,7 @@ async function loadSiteStats(){
 }
 async function loadDashStats(){
   try{
-    const r=await fetch("api/dash-stats",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/dash-stats",{cache:"no-store"});const j=await r.json();
     const tb=document.querySelector("#accessTable tbody");tb.innerHTML="";
     if(!j.ok){setConsoleStatus(j.error||"불러오기 실패","err");return;}
     if(!j.items.length){tb.innerHTML='<tr><td colspan="8" class="b-meta">접속 기록이 없습니다.</td></tr>';return;}
@@ -2945,7 +2959,7 @@ document.getElementById("saveDashBtn").addEventListener("click",async()=>{
   });
   setConsoleStatus("저장 중…");
   try{
-    const r=await fetch("api/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(DRAFT)});
+    const r=await apiFetch("api/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(DRAFT)});
     const j=await r.json().catch(()=>({}));
     if(r.ok&&j.ok){STATE=JSON.parse(JSON.stringify(DRAFT));renderGrid();renderForm();setConsoleStatus("저장되었습니다.","ok");}
     else setConsoleStatus("저장 실패: "+(j.error||r.status),"err");
@@ -2966,7 +2980,7 @@ function downloadAccountsCsv(){
 (function(){const b=document.getElementById("accCsvBtn");if(b)b.addEventListener("click",downloadAccountsCsv);})();
 async function loadAccounts(){
   try{
-    const r=await fetch("api/accounts",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/accounts",{cache:"no-store"});const j=await r.json();
     ACC_CACHE=j.accounts||[];
     const tb=document.querySelector("#accTable tbody");tb.innerHTML="";
     (j.accounts||[]).forEach(a=>{
@@ -3007,7 +3021,7 @@ document.getElementById("addAccBtn").addEventListener("click",async()=>{
 });
 async function accAction(payload,okmsg){
   try{
-    const r=await fetch("api/accounts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    const r=await apiFetch("api/accounts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     const j=await r.json();
     if(r.ok&&j.ok){setConsoleStatus(okmsg,"ok");loadAccounts();}
     else setConsoleStatus("실패: "+(j.error||r.status),"err");
@@ -3018,7 +3032,7 @@ async function accAction(payload,okmsg){
 let HIST_CACHE=[];
 async function loadHistory(){
   try{
-    const r=await fetch("api/history",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/history",{cache:"no-store"});const j=await r.json();
     HIST_CACHE=j.events||[];
     const tb=document.querySelector("#histTable tbody");tb.innerHTML="";
     HIST_CACHE.forEach(ev=>{
@@ -3050,7 +3064,7 @@ document.getElementById("uploadHtmlBtn").addEventListener("click",async()=>{
   setConsoleStatus("업로드 중…");
   try{
     const text=await f.text();
-    const r=await fetch("api/upload-html",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({version,html:text,note})});
+    const r=await apiFetch("api/upload-html",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({version,html:text,note})});
     const j=await r.json();
     if(r.ok&&j.ok){setConsoleStatus("교체 완료('"+j.version+"'). 새로고침하면 반영됩니다.","ok");document.getElementById("htmlFile").value="";document.getElementById("htmlVersion").value="";if(document.getElementById("htmlNote"))document.getElementById("htmlNote").value="";loadHtmlHistory();}
     else setConsoleStatus("교체 실패: "+(j.error||r.status),"err");
@@ -3058,7 +3072,7 @@ document.getElementById("uploadHtmlBtn").addEventListener("click",async()=>{
 });
 async function loadHtmlHistory(){
   try{
-    const r=await fetch("api/html-history",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/html-history",{cache:"no-store"});const j=await r.json();
     const tb=document.querySelector("#htmlHistTable tbody");tb.innerHTML="";
     if(!j.ok){return;}
     if(!j.items.length){tb.innerHTML='<tr><td colspan="6" class="b-meta">업데이트 이력이 없습니다.</td></tr>';return;}
@@ -3154,7 +3168,7 @@ function showHome(){var _ih=document.getElementById("infoHub");if(_ih)_ih.style.
 async function refreshBoardDot(){
   const dot=document.getElementById("boardNewDot");
   if(!ME.auth){dot.style.display="none";return;}
-  try{const r=await fetch("api/posts",{cache:"no-store"});const j=await r.json();
+  try{const r=await apiFetch("api/posts",{cache:"no-store"});const j=await r.json();
     dot.style.display=((j.posts||[]).some(p=>isFresh(p.ts)&&!p.read))?"":"none";
   }catch(e){dot.style.display="none";}
 }
@@ -3192,7 +3206,7 @@ function renderBoardRows(){
 let CUR_POST=null;
 async function openPost(id){
   try{
-    const r=await fetch("api/post?id="+encodeURIComponent(id),{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/post?id="+encodeURIComponent(id),{cache:"no-store"});const j=await r.json();
     if(!j.ok){setBoardStatus(j.error||"불러오기 실패","err");return;}
     CUR_POST=j.post;renderPost(j.post);boardView("post");refreshBoardDot();
   }catch(e){setBoardStatus("서버 연결 불가","err");}
@@ -3220,7 +3234,7 @@ function renderPost(p){
 }
 async function toggleLike(pid){
   try{
-    const r=await fetch("api/post-like",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:pid})});
+    const r=await apiFetch("api/post-like",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:pid})});
     const j=await r.json();
     if(r.status===401){setBoardStatus("로그인이 필요합니다.","err");return;}
     if(!r.ok||!j.ok){setBoardStatus("좋아요 처리 실패: "+(j.error||r.status),"err");return;}
@@ -3332,7 +3346,7 @@ async function addComment(pid){
   if(ME.role!=="admin"&&!cpw){setBoardStatus("댓글 비밀번호를 입력하세요 (삭제 시 필요).","err");return;}
   if(cpw&&cpw.length<4){setBoardStatus("비밀번호는 4자 이상이어야 합니다.","err");return;}
   try{
-    const r=await fetch("api/comment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postId:pid,body,author:nick,pw:cpw})});
+    const r=await apiFetch("api/comment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postId:pid,body,author:nick,pw:cpw})});
     const j=await r.json();
     if(r.ok&&j.ok)openPost(pid);else setBoardStatus("댓글 실패: "+(j.error||r.status),"err");
   }catch(e){setBoardStatus("서버 연결 불가","err");}
@@ -3343,7 +3357,7 @@ async function deleteCurrentPost(){
   if(ME.role!=="admin"){_pw=prompt("글 비밀번호를 입력하세요");if(_pw===null)return;}
   if(!confirm("이 글을 삭제할까요? (첨부도 함께 삭제됩니다)"))return;
   try{
-    const r=await fetch("api/post-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:CUR_POST.id,pw:_pw})});
+    const r=await apiFetch("api/post-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:CUR_POST.id,pw:_pw})});
     const j=await r.json();
     if(r.ok&&j.ok){boardView("list");loadPosts();refreshNotice();refreshBoardDot();}else setBoardStatus("삭제 실패: "+(j.error||r.status),"err");
   }catch(e){setBoardStatus("서버 연결 불가","err");}
@@ -3353,7 +3367,7 @@ async function deleteComment(pid,cid){
   if(ME.role!=="admin"){_pw=prompt("댓글 비밀번호를 입력하세요");if(_pw===null)return;}
   if(!confirm("이 댓글을 삭제할까요?"))return;
   try{
-    const r=await fetch("api/comment-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postId:pid,commentId:cid,pw:_pw})});
+    const r=await apiFetch("api/comment-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postId:pid,commentId:cid,pw:_pw})});
     const j=await r.json();
     if(r.ok&&j.ok)openPost(pid);else setBoardStatus("삭제 실패: "+(j.error||r.status),"err");
   }catch(e){setBoardStatus("서버 연결 불가","err");}
@@ -3399,7 +3413,7 @@ function lgRenderFileChips(){
 }
 async function loadLounge(){
   try{
-    const r=await fetch("api/lounge-list",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/lounge-list",{cache:"no-store"});const j=await r.json();
     if(!j.ok){lgStatus(j.error||"불러오기 실패","err");return;}
     LG_POSTS=j.posts||[];lgRenderFeed();
   }catch(e){lgStatus("서버 연결 불가","err");}
@@ -3508,7 +3522,7 @@ async function lgEditSave(pid){
   const p=LG_POSTS.find(x=>x.id===pid);
   const tag=LG_EDITTAG||(p&&p.tag)||"잡담";
   try{
-    const r=await fetch("api/lounge-edit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:pid,text,tag,pw:LG_EDIT_PW})});
+    const r=await apiFetch("api/lounge-edit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:pid,text,tag,pw:LG_EDIT_PW})});
     const j=await r.json();
     if(r.ok&&j.ok){LG_EDIT=null;LG_EDITTAG=null;LG_EDITTEXT=null;lgStatus("");loadLounge();}
     else lgStatus("수정 실패: "+(j.error||r.status),"err");
@@ -3518,7 +3532,7 @@ async function lgReplyEditSave(pid,rid){
   const inp=document.getElementById("lgredi-"+rid);if(!inp)return;
   const text=inp.value.trim();if(!text){lgStatus("내용을 입력하세요.","err");return;}
   try{
-    const r=await fetch("api/lounge-reply-edit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postId:pid,replyId:rid,text,pw:LG_REDIT_PW})});
+    const r=await apiFetch("api/lounge-reply-edit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postId:pid,replyId:rid,text,pw:LG_REDIT_PW})});
     const j=await r.json();
     if(r.ok&&j.ok){LG_REDIT=null;LG_EXPAND[pid]=true;lgStatus("");loadLounge();}
     else lgStatus("수정 실패: "+(j.error||r.status),"err");
@@ -3534,7 +3548,7 @@ async function lgSubmit(){
   lgStatus("게시 중…");
   document.getElementById("lgPostBtn").disabled=true;
   try{
-    const r=await fetch("api/lounge-post",{method:"POST",headers:{"Content-Type":"application/json"},
+    const r=await apiFetch("api/lounge-post",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({text,tag:LG_TAG,author:(document.getElementById("lgAuthor")?document.getElementById("lgAuthor").value.trim():""),pw:lgpw,attachments:LG_FILES})});
     const j=await r.json();
     if(r.ok&&j.ok){ta.value="";const _lp=document.getElementById("lgPw");if(_lp)_lp.value="";LG_FILES=[];lgRenderFileChips();lgStatus("");loadLounge();}
@@ -3550,7 +3564,7 @@ async function lgReply(pid){
   if(ME.role!=="admin"&&!rpw){lgStatus("답글 비밀번호를 입력하세요 (수정·삭제 시 필요).","err");return;}
   if(rpw&&rpw.length<4){lgStatus("비밀번호는 4자 이상이어야 합니다.","err");return;}
   try{
-    const r=await fetch("api/lounge-reply",{method:"POST",headers:{"Content-Type":"application/json"},
+    const r=await apiFetch("api/lounge-reply",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({postId:pid,text,author,pw:rpw})});
     const j=await r.json();
     if(r.ok&&j.ok){LG_EXPAND[pid]=true;LG_OPENREPLY=null;loadLounge();}
@@ -3559,7 +3573,7 @@ async function lgReply(pid){
 }
 async function lgLike(pid){
   try{
-    const r=await fetch("api/lounge-like",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:pid})});
+    const r=await apiFetch("api/lounge-like",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:pid})});
     const j=await r.json();
     if(r.ok&&j.ok){const p=LG_POSTS.find(x=>x.id===pid);if(p){p.liked=j.liked;p.likes=j.count;}lgRenderFeed();}
   }catch(e){lgStatus("서버 연결 불가","err");}
@@ -3569,7 +3583,7 @@ async function lgDelete(pid){
   if(ME.role!=="admin"){_pw=prompt("스레드 비밀번호를 입력하세요");if(_pw===null)return;}
   if(!confirm("이 스레드를 삭제할까요? (답글·첨부 포함)"))return;
   try{
-    const r=await fetch("api/lounge-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:pid,pw:_pw})});
+    const r=await apiFetch("api/lounge-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:pid,pw:_pw})});
     const j=await r.json();
     if(r.ok&&j.ok)loadLounge();else lgStatus("삭제 실패: "+(j.error||r.status),"err");
   }catch(e){lgStatus("서버 연결 불가","err");}
@@ -3579,7 +3593,7 @@ async function lgDeleteReply(pid,rid){
   if(ME.role!=="admin"){_pw=prompt("답글 비밀번호를 입력하세요");if(_pw===null)return;}
   if(!confirm("이 답글을 삭제할까요?"))return;
   try{
-    const r=await fetch("api/lounge-reply-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postId:pid,replyId:rid,pw:_pw})});
+    const r=await apiFetch("api/lounge-reply-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postId:pid,replyId:rid,pw:_pw})});
     const j=await r.json();
     if(r.ok&&j.ok)loadLounge();else lgStatus("삭제 실패: "+(j.error||r.status),"err");
   }catch(e){lgStatus("서버 연결 불가","err");}
@@ -3622,7 +3636,7 @@ function shIcon(fn){
 function shShortUrl(u){const s=(u||"").replace(/^https?:\/\//,"");return s.length>30?s.slice(0,30)+"…":s;}
 async function loadShare(){
   try{
-    const r=await fetch("api/share-list",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/share-list",{cache:"no-store"});const j=await r.json();
     if(j.ok){SHARE_ITEMS=j.items||[];renderShare();}
   }catch(e){}
 }
@@ -3763,7 +3777,7 @@ async function shareDelete(id){
   if(ME.role!=="admin"){_pw=prompt("게시 비밀번호를 입력하세요");if(_pw===null)return;}
   if(!confirm("이 공유 자료를 삭제할까요?"))return;
   try{
-    const r=await fetch("api/share-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:id,pw:_pw})});
+    const r=await apiFetch("api/share-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:id,pw:_pw})});
     const j=await r.json();
     if(r.ok&&j.ok)loadShare();else shStatus("삭제 실패: "+(j.error||r.status),"err");
   }catch(e){shStatus("서버 연결 불가","err");}
@@ -3779,7 +3793,7 @@ function openNoticePost(id){
   })();
 }
 async function refreshNotice(){
-  try{const r=await fetch("api/notice",{cache:"no-store"});const j=await r.json();
+  try{const r=await apiFetch("api/notice",{cache:"no-store"});const j=await r.json();
     NOTICE=(j.ok&&j.notice)?j.notice:null;
     NOTICELIST=(j.ok&&Array.isArray(j.notices))?j.notices:[];
   }catch(e){NOTICE=null;NOTICELIST=[];}
@@ -3805,9 +3819,9 @@ let POPLIST=[], POP_SHOWN=3;
 async function refreshPopularHub(){
   const box=document.getElementById("ihPopList");if(!box)return;
   let items=[];
-  try{const r=await fetch("api/popular",{cache:"no-store"});if(r.ok){const j=await r.json();if(j.ok&&Array.isArray(j.items))items=j.items;}}catch(e){}
+  try{const r=await apiFetch("api/popular",{cache:"no-store"});if(r.ok){const j=await r.json();if(j.ok&&Array.isArray(j.items))items=j.items;}}catch(e){}
   if(!items.length){
-    try{const r2=await fetch("api/dash-stats",{cache:"no-store"});if(r2.ok){const j2=await r2.json();if(j2.ok&&Array.isArray(j2.items))items=j2.items;}}catch(e){}
+    try{const r2=await apiFetch("api/dash-stats",{cache:"no-store"});if(r2.ok){const j2=await r2.json();if(j2.ok&&Array.isArray(j2.items))items=j2.items;}}catch(e){}
   }
   const have=new Set(items.map(x=>(x.team||"")+"::"+x.name));
   for(const f of fallbackPopular(30)){const k=(f.team||"")+"::"+f.name;if(!have.has(k)){items.push(f);have.add(k);}if(items.length>=10)break;}
@@ -3930,7 +3944,7 @@ function renderAC(){
 
 /* 자동 헬스체크 상태 반영(주기적 폴링) */
 async function loadHealth(){
-  try{const r=await fetch("api/health",{cache:"no-store"});const j=await r.json();if(j.ok){HEALTH=j.items||{};renderGrid();}}catch(e){}
+  try{const r=await apiFetch("api/health",{cache:"no-store"});const j=await r.json();if(j.ok){HEALTH=j.items||{};renderGrid();}}catch(e){}
 }
 setInterval(loadHealth,60000);
 
@@ -3952,7 +3966,7 @@ function renderSystems(){
   if(note)note.style.display=SYSTEMS.length?"":"none";
 }
 async function loadSystems(){
-  try{const r=await fetch("api/systems",{cache:"no-store"});const j=await r.json();if(j.ok){SYSTEMS=j.items||[];renderSystems();}}catch(e){}
+  try{const r=await apiFetch("api/systems",{cache:"no-store"});const j=await r.json();if(j.ok){SYSTEMS=j.items||[];renderSystems();}}catch(e){}
 }
 
 /* ---------- 기존 시스템 관리(콘솔) ---------- */
@@ -3989,7 +4003,7 @@ document.getElementById("sysSaveBtn").addEventListener("click",async()=>{
   const items=SYS_DRAFT.filter(s=>(s.name||"").trim());
   setSysStatus("저장 중…");
   try{
-    const r=await fetch("api/systems",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items})});
+    const r=await apiFetch("api/systems",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items})});
     const j=await r.json();
     if(r.ok&&j.ok){SYSTEMS=j.items||[];renderSystems();setSysStatus("저장되었습니다.","ok");}
     else setSysStatus("저장 실패: "+(j.error||r.status),"err");
@@ -3999,7 +4013,7 @@ document.getElementById("sysSaveBtn").addEventListener("click",async()=>{
 /* ---------- 관리자 알림(느낌표) ---------- */
 async function loadNotifications(){
   try{
-    const r=await fetch("api/admin-notifications",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/admin-notifications",{cache:"no-store"});const j=await r.json();
     if(!j.ok)return;
     const n=(j.accounts||0)+(j.requests||0);
     const b=document.getElementById("bellBadge");
@@ -4013,7 +4027,7 @@ document.getElementById("bellBtn").addEventListener("click",()=>{
 /* ---------- 승인 관리 ---------- */
 async function loadApprovals(){
   try{
-    const r=await fetch("api/pending-accounts",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/pending-accounts",{cache:"no-store"});const j=await r.json();
     const tb=document.querySelector("#pendAccTable tbody");tb.innerHTML="";
     if(j.ok&&j.items.length){
       j.items.forEach(a=>{
@@ -4027,13 +4041,13 @@ async function loadApprovals(){
     }else tb.innerHTML='<tr><td colspan="6" class="b-meta">승인 대기 중인 가입 신청이 없습니다.</td></tr>';
   }catch(e){}
   try{
-    const r=await fetch("api/dash-requests",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/dash-requests",{cache:"no-store"});const j=await r.json();
     const tb=document.querySelector("#dashReqTable tbody");tb.innerHTML="";
     if(j.ok&&j.items.length){
       const isSuper=ME.id==="admin";
       j.items.forEach(q=>{
         const tr=document.createElement("tr");
-        const dl=q.file?`<a class="minibtn" href="api/req-file?id=${encodeURIComponent(q.id)}" style="text-decoration:none">⬇ HTML</a>`:'<span class="b-meta">없음</span>';
+        const dl=q.file?`<a class="minibtn" href="api/maps.ashx?a=req-file&id=${encodeURIComponent(q.id)}" style="text-decoration:none">⬇ HTML</a>`:'<span class="b-meta">없음</span>';
         tr.innerHTML=`<td><b>${esc(q.name)}</b>${q.desc?`<div class="b-meta">📝 설명: ${esc(q.desc)}</div>`:""}${(q.features&&q.features.length)?`<div class="b-meta">🧩 기능추가: ${q.features.map(esc).join(", ")}</div>`:""}</td><td class="b-meta">${esc(q.org||"")}</td><td class="b-meta">${reqUserHtml(q)}</td><td class="b-meta">${esc(q.ts)}</td><td>${dl}</td>`;
         const td=document.createElement("td");
         const ctrl=document.createElement("div");
@@ -4061,14 +4075,14 @@ async function loadApprovals(){
 }
 async function approveAccount(id,approve){
   if(!approve&&!confirm("이 가입 신청을 거절(삭제)할까요?"))return;
-  try{const r=await fetch("api/approve-account",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,approve})});
+  try{const r=await apiFetch("api/approve-account",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,approve})});
     const j=await r.json();if(j.ok){loadApprovals();loadNotifications();if(typeof loadAccounts==="function")loadAccounts();}else alert(j.error||"처리 실패");}catch(e){alert("서버 연결 불가");}
 }
 async function approveReq(id,approve){
   let reason="";
   if(!approve){reason=(prompt("반려 사유를 입력하세요:")||"").trim();if(!reason){alert("반려 사유가 필요합니다.");return;}}
   else{reason=(prompt("승인 메모/사유 (선택):")||"").trim();}
-  try{const r=await fetch("api/approve-dash-request",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,approve,reason})});
+  try{const r=await apiFetch("api/approve-dash-request",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,approve,reason})});
     const j=await r.json();if(j.ok){loadApprovals();loadNotifications();}else alert(j.error||"처리 실패");}catch(e){alert("서버 연결 불가");}
 }
 
@@ -4157,7 +4171,7 @@ document.getElementById("reqSubmit").addEventListener("click",async()=>{
   const payload={name,author,org,team,desc,features,etc,html,fname};
   const body=JSON.stringify(payload);
   /* 1) 진짜 백엔드 → 2) IIS 핸들러 → 3) 파일로 받아 전달 */
-  for(const url of ["api/dash-request","api/dash-request.ashx"]){
+  for(const url of ["api/dash-request","api/maps.ashx?a=dash-request"]){
     try{
       const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body});
       if(!r.ok) continue;                       /* 404·405 면 다음 후보로 */
@@ -4198,14 +4212,14 @@ document.getElementById("reqStatusBtn").addEventListener("click",async()=>{
 document.getElementById("reqStatusTable").addEventListener("click",async e=>{
   const b=e.target.closest("[data-cancel]");if(!b)return;
   if(!confirm("이 추가요청을 취소할까요?"))return;
-  try{const r=await fetch("api/dash-request-cancel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:b.dataset.cancel})});
+  try{const r=await apiFetch("api/dash-request-cancel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:b.dataset.cancel})});
     const j=await r.json();
     if(r.ok&&j.ok)loadRequestStatus();else alert("취소 실패: "+(j.error||r.status));
   }catch(e){alert("서버 연결 불가");}
 });
 async function loadRequestStatus(){
   try{
-    const r=await fetch("api/request-status",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/request-status",{cache:"no-store"});const j=await r.json();
     const tb=document.querySelector("#reqStatusTable tbody");tb.innerHTML="";
     if(!j.ok){return;}
     if(!j.items.length){tb.innerHTML='<tr><td colspan="5" class="b-meta">신청 내역이 없습니다.</td></tr>';return;}
@@ -4224,7 +4238,7 @@ async function loadRequestStatus(){
 let POPUP_QUEUE=[],POPUP_CUR=null,PP_IMG=null,PP_EDIT=null,PP_LIST=[];
 async function checkPopup(){
   try{
-    const r=await fetch("api/popup",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/popup",{cache:"no-store"});const j=await r.json();
     if(!j.ok)return;
     POPUP_QUEUE=Array.isArray(j.popups)?j.popups.slice():((j.show&&j.id)?[{id:j.id,title:j.title}]:[]);
     showNextPopup();
@@ -4240,7 +4254,7 @@ function showNextPopup(){
 }
 async function closePopup(){
   const dont=document.getElementById("popupDontShow").checked;
-  if(dont&&POPUP_CUR){try{await fetch("api/popup-dismiss",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:POPUP_CUR.id})});}catch(e){}}
+  if(dont&&POPUP_CUR){try{await apiFetch("api/popup-dismiss",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:POPUP_CUR.id})});}catch(e){}}
   showNextPopup();
 }
 document.getElementById("popupClose").addEventListener("click",closePopup);
@@ -4295,7 +4309,7 @@ function renderPpList(){
 async function loadPopupAdmin(){
   const st=document.getElementById("ppStatus");if(st){st.textContent="";st.className="status";}
   try{
-    const r=await fetch("api/popup-admin",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/popup-admin",{cache:"no-store"});const j=await r.json();
     if(!j.ok){setConsoleStatus(j.error||"불러오기 실패","err");return;}
     PP_LIST=j.popups||[];
     ppResetForm();
@@ -4305,7 +4319,7 @@ async function ppDelete(p){
   if(!confirm("팝업 '"+(p.title||p.imageName||p.id)+"'을(를) 삭제할까요? (이미지 파일도 삭제됩니다)"))return;
   const st=document.getElementById("ppStatus");
   try{
-    const r=await fetch("api/popup-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:p.id})});
+    const r=await apiFetch("api/popup-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:p.id})});
     const j=await r.json();
     if(r.ok&&j.ok){st.className="status ok";st.textContent="삭제되었습니다.";loadPopupAdmin();}
     else{st.className="status err";st.textContent="삭제 실패: "+(j.error||r.status);}
@@ -4326,7 +4340,7 @@ document.getElementById("ppSaveBtn").addEventListener("click",async()=>{
   if(PP_EDIT)payload.id=PP_EDIT;
   if(PP_IMG)payload.image=PP_IMG;
   try{
-    const r=await fetch("api/popup-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    const r=await apiFetch("api/popup-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     const j=await r.json();
     if(r.ok&&j.ok){st.className="status ok";st.textContent="저장되었습니다.";loadPopupAdmin();}
     else{st.className="status err";st.textContent="저장 실패: "+(j.error||r.status);}
@@ -4340,7 +4354,7 @@ async function openManualModal(){
   const box=document.getElementById("manualList");box.innerHTML='<div class="b-meta">불러오는 중…</div>';
   open("manualOv");
   try{
-    const r=await fetch("api/manuals",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/manuals",{cache:"no-store"});const j=await r.json();
     if(!j.ok||!j.manuals.length){box.innerHTML='<div class="b-meta">등록된 매뉴얼이 없습니다.</div>';return;}
     box.innerHTML=j.manuals.map(m=>`<a class="manual-item" href="api/manual?id=${encodeURIComponent(m.id)}"><span class="mi-title">${esc(m.title)}</span><span class="mi-line2"><span class="mi-meta">${esc(m.filename)} · ${(m.size/1024).toFixed(0)} KB</span><span class="mi-dl">⬇ 다운로드</span></span></a>`).join("");
   }catch(e){box.innerHTML='<div class="b-meta">불러오기 실패</div>';}
@@ -4351,7 +4365,7 @@ async function loadManualsAdmin(){
   MAN_REP={};const st=document.getElementById("manStatus");if(st){st.textContent="";st.className="status";}
   const box=document.getElementById("manualAdminList");box.innerHTML='<div class="b-meta">불러오는 중…</div>';
   try{
-    const r=await fetch("api/manuals",{cache:"no-store"});const j=await r.json();
+    const r=await apiFetch("api/manuals",{cache:"no-store"});const j=await r.json();
     if(!j.ok){box.innerHTML="";setConsoleStatus(j.error||"불러오기 실패","err");return;}
     if(!j.manuals.length){box.innerHTML='<div class="b-meta">등록된 매뉴얼이 없습니다. 아래에서 추가하세요.</div>';return;}
     box.innerHTML=j.manuals.map(m=>`<div class="man-row"><input data-title="${esc(m.id)}" value="${esc(m.title)}"><span class="b-meta man-fn">${esc(m.filename)} · ${(m.size/1024).toFixed(0)} KB</span><input type="file" data-rep="${esc(m.id)}"><button class="minibtn" data-save="${esc(m.id)}">저장</button><button class="minibtn" data-del="${esc(m.id)}">삭제</button></div>`).join("");
@@ -4368,13 +4382,13 @@ document.getElementById("manualAdminList").addEventListener("click",async e=>{
     if(!title){st.className="status err";st.textContent="제목을 입력하세요.";return;}
     const payload={id,title};if(MAN_REP[id])payload.file=MAN_REP[id];
     st.className="status";st.textContent="저장 중…";
-    try{const r=await fetch("api/manual-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const j=await r.json();
+    try{const r=await apiFetch("api/manual-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const j=await r.json();
       if(r.ok&&j.ok){st.className="status ok";st.textContent="저장되었습니다.";loadManualsAdmin();}else{st.className="status err";st.textContent="저장 실패: "+(j.error||r.status);}
     }catch(err){st.className="status err";st.textContent="서버 연결 불가";}
   }else if(b.dataset.del!==undefined){
     if(!confirm("이 매뉴얼을 삭제할까요?"))return;
     st.className="status";st.textContent="삭제 중…";
-    try{const r=await fetch("api/manual-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:b.dataset.del})});const j=await r.json();
+    try{const r=await apiFetch("api/manual-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:b.dataset.del})});const j=await r.json();
       if(r.ok&&j.ok){st.className="status ok";st.textContent="삭제되었습니다.";loadManualsAdmin();}else{st.className="status err";st.textContent="삭제 실패: "+(j.error||r.status);}
     }catch(err){st.className="status err";st.textContent="서버 연결 불가";}
   }
@@ -4388,7 +4402,7 @@ document.getElementById("manAddBtn").addEventListener("click",async()=>{
   st.className="status";st.textContent="추가 중…";
   try{
     const payload={title,file:{name:f.name,data:await fileToB64(f),size:f.size}};
-    const r=await fetch("api/manual-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const j=await r.json();
+    const r=await apiFetch("api/manual-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const j=await r.json();
     if(r.ok&&j.ok){st.className="status ok";st.textContent="추가되었습니다.";document.getElementById("manNewTitle").value="";document.getElementById("manNewFile").value="";loadManualsAdmin();}
     else{st.className="status err";st.textContent="추가 실패: "+(j.error||r.status);}
   }catch(e){st.className="status err";st.textContent="서버 연결 불가";}

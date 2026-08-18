@@ -71,11 +71,12 @@ def common(s: str) -> str:
         '<label class="feat-item"><input type="checkbox" class="rqFeat" value="데이터 서버저장"> 데이터 서버저장</label>\n'
         '          <label class="feat-item"><input type="checkbox" class="rqFeat" value="공개(비로그인 화면)"> 공개(비로그인 화면)</label>\n'
         '          <label class="feat-item"><input type="checkbox" class="rqFeat" value="비공개(로그인 화면)"> 비공개(로그인 화면)</label>',
-        '<label class="feat-item"><input type="checkbox" class="rqFeat" value="新공정/공법 개발"> 新공정/공법 개발</label>\n'
+        '<label class="feat-item"><input type="checkbox" class="rqFeat" value="新 공정/공법 개발"> 新 공정/공법 개발</label>\n'
         '          <label class="feat-item"><input type="checkbox" class="rqFeat" value="해외법인 양산 지원"> 해외법인 양산 지원</label>\n'
         '          <label class="feat-item"><input type="checkbox" class="rqFeat" value="제품 개발 대응"> 제품 개발 대응</label>\n'
         '          <label class="feat-item"><input type="checkbox" class="rqFeat" value="공통 및 루틴 업무"> 공통 및 루틴 업무</label>',
-        "1-d 기능추가 → 카테고리 4종",
+        "1-d 기능추가 → 카테고리 4종",   # 값은 ORG_ORDER 와 글자까지 같아야 한다
+                                        # (승인 시 이 값으로 들어갈 카테고리를 고른다)
     )
     # 새로 생긴 rqTeam 을 초기화·전송에 연결한다(빠뜨리면 입력해도 안 넘어간다)
     s = sub1(
@@ -755,7 +756,7 @@ UPLOAD_BODY = '''  setReqStatus("전송 중…");
   const payload={name,author,org,team,desc,features,etc,html,fname};
   const body=JSON.stringify(payload);
   /* 1) 진짜 백엔드 → 2) IIS 핸들러 → 3) 파일로 받아 전달 */
-  for(const url of ["api/dash-request","api/dash-request.ashx"]){
+  for(const url of ["api/dash-request","api/maps.ashx?a=dash-request"]){
     try{
       const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body});
       if(!r.ok) continue;                       /* 404·405 면 다음 후보로 */
@@ -799,6 +800,58 @@ def upload(s: str) -> str:
         UPLOAD_BODY,
         "10-c 3단 폴백 제출",
     )
+    return s
+
+# ===========================================================================
+# 공통 11) api/* 호출을 apiFetch 로 바꿔 두 종류의 서버를 모두 받아들인다
+#
+#   1) 있는 그대로 (api/me …)        — 진짜 백엔드가 붙으면 여기서 끝난다
+#   2) api/maps.ashx?a=me            — IIS + ASP.NET 로 올린 핸들러
+#
+# 404/405 일 때만 2번으로 넘어간다. 500 이나 401 은 서버가 응답한 것이므로 그대로 쓴다.
+# 화면 전체가 이 한 함수를 지나가므로, 나중에 백엔드가 바뀌어도 여기만 손보면 된다.
+# ===========================================================================
+API_HELPER = '''function esc(t){const d=document.createElement("div");d.textContent=t==null?"":t;return d.innerHTML}
+/* api/* 호출 창구. 아래 두 곳을 차례로 시도한다.
+     1) 있는 그대로            — 진짜 백엔드(예: maps_backend.py)가 있으면 여기서 끝
+     2) api/maps.ashx?a=...    — IIS 에 올린 ASP.NET 핸들러
+   404·405 만 다음 후보로 넘긴다. 401·403·500 은 서버가 판단해 답한 것이라 그대로 돌려준다. */
+async function apiFetch(path, opts){
+  try{
+    const r = await fetch(path, opts);
+    if(r.status !== 404 && r.status !== 405) return r;
+  }catch(e){ /* 연결 자체가 안 되면 아래에서 한 번 더 시도한다 */ }
+  const i = path.indexOf("?");
+  const name = (i < 0 ? path.slice(4) : path.slice(4, i));
+  const rest = (i < 0 ? "" : "&" + path.slice(i + 1));
+  return fetch("api/maps.ashx?a=" + name + rest, opts);
+}'''
+
+
+def api(s: str) -> str:
+    s = sub1(
+        s,
+        'function esc(t){const d=document.createElement("div");d.textContent=t==null?"":t;return d.innerHTML}',
+        API_HELPER,
+        "11-a apiFetch 창구",
+    )
+    # 링크는 폴백을 걸 수 없다. 두 서버가 모두 알아듣는 형태 하나로 고정한다
+    # (maps_backend.py 도 api/maps.ashx?a= 형태를 함께 받는다).
+    s = sub1(
+        s,
+        'href="api/req-file?id=${encodeURIComponent(q.id)}"',
+        'href="api/maps.ashx?a=req-file&id=${encodeURIComponent(q.id)}"',
+        "11-b 첨부 내려받기 링크",
+    )
+    n = s.count('fetch("api/')
+    if n < 40:
+        raise SystemExit(f"[중단] 11-c api 호출이 {n}곳뿐입니다 — 원본 구조가 바뀌었습니다.")
+    s = s.replace('fetch("api/', 'apiFetch("api/')
+    # 방금 만든 apiFetch 안의 두 줄은 원래대로 되돌린다(자기 자신을 부르면 무한 재귀다)
+    s = s.replace('const r = await apiFetch(path, opts);', 'const r = await fetch(path, opts);')
+    s = s.replace('return apiFetch("api/maps.ashx?a=" + name + rest, opts);',
+                  'return fetch("api/maps.ashx?a=" + name + rest, opts);')
+    print(f"  ✓ 11-c api 호출 {n}곳을 apiFetch 로 교체")
     return s
 
 # ===========================================================================
@@ -1080,6 +1133,8 @@ def main() -> None:
     v1 = lite(v1)
     print("\n[공통 10) 등록요청 업로드]")
     v1 = upload(v1)
+    print("\n[공통 11) api 창구]")
+    v1 = api(v1)
     OUT1.parent.mkdir(parents=True, exist_ok=True)
     OUT1.write_text(v1, encoding="utf-8")
     print(f"\n출력: {OUT1.relative_to(ROOT)}  ({len(v1):,} bytes)")

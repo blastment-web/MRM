@@ -27,7 +27,9 @@ tools/build_preview.py    디자인 미리보기 생성 스크립트
 tools/build_v4.py         V3 → V4-1 / V4-2 생성 스크립트
 tools/build_standalone.py 단독 실행용 사본 생성 스크립트
 tools/serve_local.py      리허설용 로컬 서버 (Range 지원 — 영상 구간 반복에 필수)
-tools/rehearsal/          Windows 배치 4종 — IIS 켜기/끄기·화면 전환·AI Agent 연결
+tools/maps_backend.py     등록요청 백엔드 참조 구현 (요청→1차·2차 승인→카드 생성)
+tools/rehearsal/api/maps.ashx  같은 계약의 IIS(ASP.NET) 판 — 설치 없이 동작
+tools/rehearsal/          Windows 배치 3종 — IIS 켜기/끄기·화면 전환·AI Agent 연결
 tools/make_rehearsal_bats.py  위 배치 파일 생성 (CP949 + CRLF 로 저장한다)
 tools/make_dashboards_json.py 코드의 FALLBACK 을 뽑아 data/dashboards.json 생성
 data/dashboards.json      카드 목록의 원본. addr 을 채우면 그 카드가 LIVE 가 된다
@@ -131,7 +133,10 @@ Agent 링크를 만드는 렌더러는 카탈로그 카드·TOP5·인기 모듈 
 **이 저장소에는 백엔드가 포함되어 있지 않습니다.**
 
 - `data/dashboards.json` — 대시보드 목록. 없으면 `FALLBACK` 상수로 대체되어 화면은 정상 렌더링됩니다.
-- `api/*` — 세션(`me`/`login`/`logout`/`register`), 대시보드(`save`/`dash-stats`/`dash-rank`/`dash-access`/`health`), 게시판(`posts`/`post`/`comment`/`attach`), Q&A(`lounge-*`), 공유(`share-*`), 승인(`approve-*`), 팝업(`popup-*`), 매뉴얼(`manual*`) 등
+- `api/*` — **등록요청 8종은 `tools/maps_backend.py` · `api/maps.ashx` 로 구현되어 있습니다**
+  (`me`/`login`/`logout`/`dash-request`/`dash-requests`/`approve-dash-request`/`dash-request-cancel`/`req-file`).
+  화면은 `apiFetch` 를 통해 나가며, 원래 경로가 404/405 면 `api/maps.ashx?a=…` 로 재시도합니다.
+- 나머지 `api/*` — 세션(`register`), 대시보드(`save`/`dash-stats`/`dash-rank`/`dash-access`/`health`), 게시판(`posts`/`post`/`comment`/`attach`), Q&A(`lounge-*`), 공유(`share-*`), 승인(`approve-*`), 팝업(`popup-*`), 매뉴얼(`manual*`) 등
 
 브라우저에서 `index.html`을 직접 열면 API 호출은 모두 실패하지만, `FALLBACK` 데이터로 **레이아웃과 인터랙션은 확인 가능**합니다.
 

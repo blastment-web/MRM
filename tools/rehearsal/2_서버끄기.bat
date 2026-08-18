@@ -30,9 +30,10 @@ for %%F in ("%~dp0index-*.html") do (
     if exist "%WWW%\!SLUG!" rd /s /q "%WWW%\!SLUG!" >nul 2>&1
 )
 if exist "%WWW%\agents" rd /s /q "%WWW%\agents" >nul 2>&1
-if exist "%WWW%\requests" rd /s /q "%WWW%\requests" >nul 2>&1
 if exist "%WWW%\data"   rd /s /q "%WWW%\data"   >nul 2>&1
 echo   [3/4] 배치한 파일 삭제 ....... OK  (원본은 꾸러미 폴더에 그대로 있습니다)
+rem %SystemDrive%\inetpub\maps-data 는 지우지 않는다 - 올라온 요청과 승인 이력이 들어 있다.
+rem 완전히 지우려면 그 폴더를 직접 삭제하면 된다.
 
 if exist "%WWW%\index.html.maps-backup" goto RESTORE
 echo   [4/4] 복원할 원본 없음 ....... OK

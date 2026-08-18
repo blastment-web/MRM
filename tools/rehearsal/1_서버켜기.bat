@@ -3,6 +3,7 @@ setlocal enabledelayedexpansion
 title MAPS 실험 서버 켜기
 
 set "WWW=%SystemDrive%\inetpub\wwwroot"
+set "MDATA=%SystemDrive%\inetpub\maps-data"
 set "LOG=%TEMP%\maps-iis-setup.log"
 set "RULE=MAPS-Rehearsal-HTTP-80"
 
@@ -83,9 +84,12 @@ if exist "%~dp0agents" xcopy "%~dp0agents" "%WWW%\agents" /e /i /y >nul 2>&1
 rem 업로드가 파일을 쓰는 곳은 이 두 폴더뿐이다. 나머지는 읽기 전용으로 남겨 둔다.
 rem S-1-5-32-568 = IIS_IUSRS (언어팩과 무관하게 같은 SID 라 한글 Windows 에서도 통한다)
 if not exist "%WWW%\agents"   mkdir "%WWW%\agents"   >nul 2>&1
-if not exist "%WWW%\requests" mkdir "%WWW%\requests" >nul 2>&1
 icacls "%WWW%\agents"   /grant "*S-1-5-32-568:(OI)(CI)M" >nul 2>&1
-icacls "%WWW%\requests" /grant "*S-1-5-32-568:(OI)(CI)M" >nul 2>&1
+rem 계정·세션·요청·승인 전 업로드 파일은 웹 루트 **밖**에 둔다.
+rem wwwroot 안에 두면 http://IP/data/accounts.json 로 계정이 그대로 읽히고,
+rem 승인 전 업로드 파일도 주소만 알면 열린다.
+if not exist "%MDATA%\pending" mkdir "%MDATA%\pending" >nul 2>&1
+icacls "%MDATA%" /grant "*S-1-5-32-568:(OI)(CI)M" >nul 2>&1
 echo   [4/6] 화면 %NV%개 + 자료 배포 ... OK
 
 rem ---------------- 5. 방화벽 ----------------
@@ -140,8 +144,16 @@ goto SHOWEND
 echo        사내 IP 를 찾지 못했습니다 - 네트워크 연결을 확인하세요
 :SHOWEND
 echo.
-if defined ASPOK echo   업로드 받기  : 준비됨  ^(확인 http://localhost/!FIRST!/api/dash-request.ashx ^)
-if not defined ASPOK echo   업로드 받기  : 안 됨 - 등록요청은 "요청서 내려받기" 로 대신할 수 있습니다.
+if defined ASPOK (
+    echo   등록요청 받기 : 준비됨
+    echo      관리자 1차 : admin   / maps2026!
+    echo      관리자 2차 : manager / maps2026!
+    echo      ^(오른쪽 위 "관리자 로그인" -^> 승인 관리 탭에서 1차·2차 승인^)
+    echo      비밀번호를 바꾸려면 %MDATA%\accounts.json 을 지우고 이 배치를 다시 실행하세요.
+) else (
+    echo   등록요청 받기 : 안 됨 - ASP.NET 이 켜지지 않았습니다.
+    echo                   화면에서는 "요청서 내려받기" 로 대신할 수 있습니다.
+)
 echo --------------------------------------------------------------
 
 rem 주소 뒤의 ?v= 는 브라우저 캐시를 피하려는 것이다. 서버는 이 값을 무시한다.
