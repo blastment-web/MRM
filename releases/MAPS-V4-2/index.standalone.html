@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="maps-build" content="fc0b4f7b"><!--maps-build-stamp-->
+<meta name="maps-build" content="dfdbfff6"><!--maps-build-stamp-->
 <title>MAPS · 생산기술혁신센터 AI 플랫폼</title>
 <style>
 
@@ -718,6 +718,7 @@
   .hero{
     min-height:100vh;padding:calc(var(--nav-h) + 60px) 0 90px;
     display:flex;align-items:center;overflow:hidden}
+  #pxNet{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;pointer-events:none}
   /* ===================== V4-2) 히어로 배경 영상 =====================
      첫 화면은 메인 타이틀과 영상만 보인다. 3패널은 아래 #secDash 로 내려갔으므로
      영상을 자를 이유가 없다 — 섹션(메뉴 아래~화면 끝) 전체를 그대로 채운다.
@@ -732,10 +733,12 @@
      연산이라 GPU 없는 VM 에서 오히려 손해다. 단색 레이어 합성이 싸다. */
   #heroVideo{position:absolute;top:var(--nav-h);left:0;right:0;
     width:100%;height:calc(100% - var(--nav-h));object-fit:cover;
-    display:block;z-index:0;pointer-events:none;border:0;background:var(--ink);
+    display:block;z-index:1;pointer-events:none;border:0;background:transparent;
     transform:translateZ(0);backface-visibility:hidden;contain:paint}
   #heroVeil{position:absolute;top:var(--nav-h);left:0;right:0;height:calc(100% - var(--nav-h));
-    z-index:0;pointer-events:none;background:rgba(0,0,0,.4);transform:translateZ(0)}
+    z-index:1;pointer-events:none;background:rgba(0,0,0,.4);transform:translateZ(0)}
+  /* 영상이 실제로 재생될 때만 별자리를 접는다. 그 전에는 별자리가 히어로다. */
+  body.herovid #pxNet{display:none}
   #heroVideo[hidden],#heroVeil[hidden]{display:none}
   /* 첫 화면은 히어로만 있으므로 세로 가운데로 모은다 */
   #secHome{justify-content:center}
@@ -1531,7 +1534,8 @@
 
   /* ---------- fitScreens 측정 보정 ----------
      배경 레이어가 .measuring 중 scrollHeight 를 부풀리면 대시보드가 늘 .tighter 로
-     눌린 채 여백만 남는다. 측정 동안만 빼 둔다. (V3 의 #pxNet 자리) */
+     눌린 채 여백만 남는다. 측정 동안만 빼 둔다. */
+  .sec.screen.measuring #pxNet,
   .sec.screen.measuring #heroVideo,
   .sec.screen.measuring #heroVeil{display:none}
 
@@ -2018,6 +2022,7 @@
 
   <!-- ===================== §1 대시보드 ===================== -->
   <section class="sec screen" id="secHome">
+    <canvas id="pxNet" aria-hidden="true"></canvas>
     <!-- V4-2) 히어로 배경 영상. loop 속성 대신 JS 로 3~8초 구간만 반복한다.
          막힌 망에서는 스스로 감춰지고 아래 그라디언트만 남는다.
 
@@ -2028,11 +2033,11 @@
 
          preload 는 metadata 가 아니라 auto 다. metadata 는 머리말만 받아 두고
          본체는 재생 시점에 받기 시작해서 초반이 끊긴다. -->
-    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="auto">
+    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="auto" hidden>
       <source src="hero.mp4#t=3,8" type="video/mp4">
       <source src="https://www.lgensol.com/inc/video/video_main01.mp4#t=3,8" type="video/mp4">
     </video>
-    <div id="heroVeil" aria-hidden="true"></div>
+    <div id="heroVeil" aria-hidden="true" hidden></div>
     <div class="home-inner">
 
       <div class="hero">
@@ -2263,7 +2268,7 @@
     </div>
   </div>
   <div class="foot-legal">
-    <span>생산기술혁신센터 AI 플랫폼 v1.0 · build fc0b4f7b · 사내 전용</span>
+    <span>생산기술혁신센터 AI 플랫폼 v1.0 · build dfdbfff6 · 사내 전용</span>
     <span class="footer-credit">Made by 생산기술혁신센터</span>
     <span id="updated"></span>
   </div>
@@ -4346,7 +4351,12 @@ async function reqPreflight(){
   setReqStatus("서버 확인 중…" + tail);
   try{
     const r = await apiFetch("api/me", {method:"GET"});
-    if(r.ok){ setReqStatus("서버에 올립니다 - 승인되면 모두에게 보입니다." + tail); return; }
+    /* 200 만으로는 부족하다. ASP.NET 이 꺼진 IIS 는 api/maps.ashx 를 실행하지 않고
+       파일 그대로 200 으로 내보낸다. JSON 이 오는지까지 봐야 진짜 백엔드다. */
+    const j = r.ok ? await r.json().catch(()=>null) : null;
+    if(j && typeof j.auth !== "undefined"){
+      setReqStatus("서버에 올립니다 - 승인되면 모두에게 보입니다." + tail); return;
+    }
   }catch(e){}
   setReqStatus("서버가 꺼져 있어 이 브라우저에 저장됩니다 - 카드는 바로 생기고 나에게만 보입니다." + tail);
 }
@@ -4740,6 +4750,192 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
   REDUCED = false;   /* standalone: 로컬과 동일한 화면이 목적이라 OS 설정을 따르지 않는다 */
 
   /* ---------------------------------------------------------------
+     1) 히어로 파티클 네트워크
+     --------------------------------------------------------------- */
+  (function particleNet(){
+    var cv = document.getElementById("pxNet");
+    var hero = document.getElementById("secHome");
+    if(!cv || !hero || !cv.getContext) return;
+    var ctx = cv.getContext("2d");
+    var pts = [], w = 0, h = 0, dpr = 1, raf = null, visible = true;
+    var mouse = { x:-9999, y:-9999 };
+
+    /* 저부하 프로파일 — prefers-reduced-motion 을 "정지"가 아니라 "가볍게" 로 해석한다.
+       회사 PC·VDI 는 이 설정이 기본으로 켜져 있어, 정지시키면 배경이 통째로 죽는다.
+       (원본 ARIA script #2 도 같은 이유로 VDI 에서 인트로를 강제 재생했다) */
+    var TIER = 0;                          /* 0 기본 · 1 저부하 · 2 최소 */
+    var LINK = 150, SPEED = 0.30, CAP = 120, FRAME_MS = 0;
+    /* standalone: 등급을 항상 TIER 0(로컬 기본)으로 고정한다. 어느 등급이든
+       원본은 강등 시 seed() 로 점을 새 난수 위치에 다시 뿌려 별자리가 깜빡이며
+       자리를 옮겼고, 강등 후에는 18~24fps 스로틀에 갇혀 배경이 뚝뚝 끊겼다.
+       그리기 비용은 아래 P9 일괄화가 줄이므로 60fps · 풀 밀도를 유지한다. */
+    var DENS = 17000, LALPHA = 0.42;
+    /* 연결선을 투명도 단계별로 모아 두는 버퍼. 매 프레임 length=0 으로 비우고
+       재사용한다 — 프레임마다 배열을 새로 만들면 GC 가 스크롤 중에 튄다. */
+    var BK = 8, LBUF = [[],[],[],[],[],[],[],[]];
+    function applyTier(){
+      LINK = 150; SPEED = 0.30; CAP = 120; FRAME_MS = 0;
+    }
+    var LITE = REDUCED;
+    if(LITE) TIER = 1;
+    applyTier();
+
+    var pw = -1, ph = -1;   /* standalone: 마지막으로 seed 한 크기 */
+    function resize(){
+      var r = hero.getBoundingClientRect();
+      w = Math.max(1, Math.round(r.width));
+      h = Math.max(1, Math.round(r.height));
+      /* standalone: 크기가 그대로면 재배치하지 않는다 — 별자리 자리 이동 방지 */
+      if(cv.width > 0 && Math.abs(w - pw) < 3 && Math.abs(h - ph) < 3) return;
+      pw = w; ph = h;
+      dpr = (TIER >= 1) ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+      cv.width = Math.round(w * dpr);
+      cv.height = Math.round(h * dpr);
+      cv.style.width = w + "px";
+      cv.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      seed();
+    }
+    function seed(){
+      var target = Math.round(Math.min(CAP, Math.max(16, (w * h) / DENS)));   /* standalone: TIER0 고정 밀도 */
+      pts = [];
+      for(var i=0;i<target;i++){
+        pts.push({
+          x: Math.random()*w,
+          y: Math.random()*h,
+          vx:(Math.random()-0.5)*SPEED,
+          vy:(Math.random()-0.5)*SPEED,
+          r: 0.7 + Math.random()*1.5
+        });
+      }
+    }
+    function step(){
+      ctx.clearRect(0,0,w,h);
+      var i,j,a,b,dx,dy,d2,al;
+      for(i=0;i<pts.length;i++){
+        a = pts[i];
+        a.x += a.vx; a.y += a.vy;
+        if(a.x < -20) a.x = w+20; else if(a.x > w+20) a.x = -20;
+        if(a.y < -20) a.y = h+20; else if(a.y > h+20) a.y = -20;
+      }
+      /* 연결선 — standalone: 투명도를 BK 단계로 양자화해 단계마다 한 번씩만 stroke 한다.
+         원본은 선 하나마다 상태 변경 + stroke 를 반복해 프레임당 드로우 콜이
+         선 개수만큼 나갔다. 좌표·색·굵기는 그대로다. */
+      var bi, bx, seg;
+      for(bi=0;bi<BK;bi++) LBUF[bi].length = 0;
+      for(i=0;i<pts.length;i++){
+        a = pts[i];
+        for(j=i+1;j<pts.length;j++){
+          b = pts[j];
+          dx = a.x-b.x; dy = a.y-b.y; d2 = dx*dx + dy*dy;
+          if(d2 < LINK*LINK){
+            al = 1 - Math.sqrt(d2)/LINK;
+            bx = (al * BK) | 0; if(bx >= BK) bx = BK - 1; else if(bx < 0) bx = 0;
+            LBUF[bx].push(a.x,a.y,b.x,b.y);
+          }
+        }
+      }
+      ctx.lineWidth = 1;
+      for(bi=0;bi<BK;bi++){
+        seg = LBUF[bi];
+        if(!seg.length) continue;
+        ctx.strokeStyle = "rgba(120,190,255," + (((bi + 0.5) / BK) * LALPHA).toFixed(3) + ")";
+        ctx.beginPath();
+        for(j=0;j<seg.length;j+=4){ ctx.moveTo(seg[j],seg[j+1]); ctx.lineTo(seg[j+2],seg[j+3]); }
+        ctx.stroke();
+      }
+      /* 마우스 근처 강조 — 커서가 히어로 밖이면(-9999) 계산 자체를 건너뛴다 */
+      if(mouse.x > -9000){
+        for(bi=0;bi<BK;bi++) LBUF[bi].length = 0;
+        for(i=0;i<pts.length;i++){
+          a = pts[i];
+          dx = a.x-mouse.x; dy = a.y-mouse.y; d2 = dx*dx + dy*dy;
+          if(d2 < 28900){
+            al = 1 - Math.sqrt(d2)/170;
+            bx = (al * BK) | 0; if(bx >= BK) bx = BK - 1; else if(bx < 0) bx = 0;
+            LBUF[bx].push(a.x,a.y);
+          }
+        }
+        for(bi=0;bi<BK;bi++){
+          seg = LBUF[bi];
+          if(!seg.length) continue;
+          ctx.strokeStyle = "rgba(77,216,232," + (((bi + 0.5) / BK) * 0.42).toFixed(3) + ")";
+          ctx.beginPath();
+          for(j=0;j<seg.length;j+=2){ ctx.moveTo(seg[j],seg[j+1]); ctx.lineTo(mouse.x,mouse.y); }
+          ctx.stroke();
+        }
+      }
+      /* 점 — standalone: 색이 전부 같으므로 한 경로에 모아 한 번만 fill 한다 */
+      ctx.fillStyle = "rgba(190,225,255,.78)";
+      ctx.beginPath();
+      for(i=0;i<pts.length;i++){
+        a = pts[i];
+        ctx.moveTo(a.x + a.r, a.y);
+        ctx.arc(a.x,a.y,a.r,0,Math.PI*2);
+      }
+      ctx.fill();
+    }
+    /* 적응형 강등 — Citrix/VDI 는 JS 로 감지할 수 없으므로 실측 프레임 시간으로 판단한다.
+       한 번 내려간 등급은 다시 올리지 않는다(진동 방지). */
+    var acc = 0, cnt = 0, last = 0, nextAt = 0, liteWas = null;
+    function degrade(now){
+      /* 원격 화면 최적화 스위치를 켜면 곧바로 20fps 로 내려간다. 점은 그대로다. */
+      var lite = document.body.classList.contains("lite");
+      if(lite !== liteWas){
+        liteWas = lite;
+        FRAME_MS = lite ? 50 : 0;
+      }
+      if(last){ acc += (now - last); cnt++; }
+      last = now;
+      if(cnt >= 60){
+        var avg = acc / cnt; acc = 0; cnt = 0;
+        /* standalone: 등급(점 밀도)은 절대 내리지 않는다 — applyTier()+resize() 가
+           점을 다시 뿌려 깜빡임을 만든다. 프레임 수만 낮춘다. */
+        if(avg > 45)      FRAME_MS = Math.max(FRAME_MS, 50);   /* 20fps */
+        else if(avg > 28) FRAME_MS = Math.max(FRAME_MS, 33);   /* 30fps */
+      }
+    }
+    function loop(now){
+      if(!FRAME_MS || now >= nextAt){
+        if(FRAME_MS) nextAt = now + FRAME_MS;
+        step();
+      }
+      degrade(now);
+      raf = (visible && !document.hidden) ? requestAnimationFrame(loop) : null;
+    }
+    function start(){ if(raf === null){ last = 0; nextAt = 0; raf = requestAnimationFrame(loop); } }
+    function stop(){ if(raf !== null){ cancelAnimationFrame(raf); raf = null; } }
+
+    if(LITE) document.body.classList.add("lite");
+    resize();
+    start();
+
+    var rt = null;
+    window.addEventListener("resize", function(){
+      if(rt) clearTimeout(rt);
+      rt = setTimeout(function(){ resize(); }, 160);
+    });
+    hero.addEventListener("mousemove", function(e){
+      var r = hero.getBoundingClientRect();
+      mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top;
+    });
+    hero.addEventListener("mouseleave", function(){ mouse.x = -9999; mouse.y = -9999; });
+    document.addEventListener("visibilitychange", function(){
+      if(document.hidden) stop(); else start();
+    });
+    /* 히어로가 화면 밖이면 정지해 스크롤 성능을 지킨다 */
+    if("IntersectionObserver" in window){
+      new IntersectionObserver(function(es){
+        visible = es[0].isIntersecting;
+        if(visible){
+          if(cv.width === 0 || Math.abs(hero.getBoundingClientRect().width - w) > 2) resize();
+          start();   /* standalone: 감속모션이어도 재시작한다 — 배경이 정지한 채 남지 않게 */
+        }else stop();
+      }, { threshold: 0 }).observe(hero);
+    }
+  })();
+
+  /* ---------------------------------------------------------------
      1) 히어로 배경 영상 (V4-2 — 별자리 파티클 네트워크를 대체)
         · loop 속성 대신 3~8초 구간만 되돌려 반복한다.
         · 화면 밖 · 탭 비활성일 때는 세워 둔다 — 배경 영상이 계속 디코딩되면
@@ -4752,7 +4948,18 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     if(!v || !hero) return;
 
     var START = 3.0, END = 8.0;
-    var visible = true, dead = false;
+    var visible = true, dead = false, shown = false;
+    var veil = document.getElementById("heroVeil");
+
+    /* 영상은 "정말 재생 가능해졌을 때" 만 드러낸다.
+       처음부터 보이게 두면 못 받아 오는 망에서 검은 판이 별자리를 덮은 채로 남는다. */
+    function reveal(){
+      if(shown || dead) return;
+      shown = true;
+      v.hidden = false;
+      if(veil) veil.hidden = false;
+      document.body.classList.add("herovid");   /* 이때만 별자리를 접는다 */
+    }
 
     function seekStart(){
       try{ if(v.currentTime < START || v.currentTime >= END) v.currentTime = START; }catch(e){}
@@ -4765,6 +4972,8 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     function pause(){ try{ v.pause(); }catch(e){} }
 
     v.addEventListener("loadedmetadata", function(){ seekStart(); play(); });
+    v.addEventListener("canplay", reveal);
+    v.addEventListener("playing", reveal);
     /* 구간 반복 — timeupdate 는 초당 4~5회라 종료 지점을 살짝 넘길 수 있다.
        되돌린 뒤 다시 재생시켜 루프 순간 멈추는 것을 막는다. */
     v.addEventListener("timeupdate", function(){
@@ -4772,18 +4981,22 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     });
     v.addEventListener("ended", function(){ v.currentTime = START; play(); });
 
+    /* 영상을 못 쓰게 됐다. 숨긴 채로 두면 별자리가 그대로 히어로가 된다.
+       V4-1 과 같은 화면이 되는 것이라 "빈 첫 화면" 이 생기지 않는다. */
     function fail(){
       if(dead) return;
-      dead = true;
+      dead = true; shown = false;
       v.hidden = true;
-      var veil = document.getElementById("heroVeil");
-      if(veil) veil.hidden = true;               /* 영상 없이 딤만 남으면 더 어색하다 */
+      if(veil) veil.hidden = true;
+      document.body.classList.remove("herovid");
       pause();
     }
     v.addEventListener("error", fail, true);
     var srcEl = v.querySelector("source");
     if(srcEl) srcEl.addEventListener("error", fail);
-    setTimeout(function(){ if(!dead && v.readyState < 2) fail(); }, 8000);
+    /* 사내망·원격 데스크톱에서는 8초를 넘기는 일이 흔하다. 20초까지 기다리고,
+       그동안에도 별자리가 히어로로 떠 있으므로 사용자는 기다림을 느끼지 않는다. */
+    setTimeout(function(){ if(!shown && v.readyState < 2) fail(); }, 20000);
 
     document.addEventListener("visibilitychange", function(){
       if(document.hidden) pause(); else play();

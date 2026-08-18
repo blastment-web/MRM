@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="maps-build" content="6888eb54"><!--maps-build-stamp-->
+<meta name="maps-build" content="9d59440a"><!--maps-build-stamp-->
 <title>MAPS · 생산기술혁신센터 AI 플랫폼</title>
 <style>
 
@@ -2184,7 +2184,7 @@
     </div>
   </div>
   <div class="foot-legal">
-    <span>생산기술혁신센터 AI 플랫폼 v1.0 · build 6888eb54 · 사내 전용</span>
+    <span>생산기술혁신센터 AI 플랫폼 v1.0 · build 9d59440a · 사내 전용</span>
     <span class="footer-credit">Made by 생산기술혁신센터</span>
     <span id="updated"></span>
   </div>
@@ -4267,7 +4267,12 @@ async function reqPreflight(){
   setReqStatus("서버 확인 중…" + tail);
   try{
     const r = await apiFetch("api/me", {method:"GET"});
-    if(r.ok){ setReqStatus("서버에 올립니다 - 승인되면 모두에게 보입니다." + tail); return; }
+    /* 200 만으로는 부족하다. ASP.NET 이 꺼진 IIS 는 api/maps.ashx 를 실행하지 않고
+       파일 그대로 200 으로 내보낸다. JSON 이 오는지까지 봐야 진짜 백엔드다. */
+    const j = r.ok ? await r.json().catch(()=>null) : null;
+    if(j && typeof j.auth !== "undefined"){
+      setReqStatus("서버에 올립니다 - 승인되면 모두에게 보입니다." + tail); return;
+    }
   }catch(e){}
   setReqStatus("서버가 꺼져 있어 이 브라우저에 저장됩니다 - 카드는 바로 생기고 나에게만 보입니다." + tail);
 }

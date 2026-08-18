@@ -788,7 +788,12 @@ async function reqPreflight(){
   setReqStatus("서버 확인 중…" + tail);
   try{
     const r = await fetch("api/me", {method:"GET"});
-    if(r.ok){ setReqStatus("서버에 올립니다 - 승인되면 모두에게 보입니다." + tail); return; }
+    /* 200 만으로는 부족하다. ASP.NET 이 꺼진 IIS 는 api/maps.ashx 를 실행하지 않고
+       파일 그대로 200 으로 내보낸다. JSON 이 오는지까지 봐야 진짜 백엔드다. */
+    const j = r.ok ? await r.json().catch(()=>null) : null;
+    if(j && typeof j.auth !== "undefined"){
+      setReqStatus("서버에 올립니다 - 승인되면 모두에게 보입니다." + tail); return;
+    }
   }catch(e){}
   setReqStatus("서버가 꺼져 있어 이 브라우저에 저장됩니다 - 카드는 바로 생기고 나에게만 보입니다." + tail);
 }'''
@@ -1118,11 +1123,11 @@ HERO_MEDIA = f'''    <!-- V4-2) 히어로 배경 영상. loop 속성 대신 JS �
 
          preload 는 metadata 가 아니라 auto 다. metadata 는 머리말만 받아 두고
          본체는 재생 시점에 받기 시작해서 초반이 끊긴다. -->
-    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="auto">
+    <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="auto" hidden>
       <source src="hero.mp4#t=3,8" type="video/mp4">
       <source src="{VIDEO_URL}" type="video/mp4">
     </video>
-    <div id="heroVeil" aria-hidden="true"></div>
+    <div id="heroVeil" aria-hidden="true" hidden></div>
 '''
 
 HERO_CSS = '''  /* ===================== V4-2) 히어로 배경 영상 =====================
@@ -1139,10 +1144,12 @@ HERO_CSS = '''  /* ===================== V4-2) 히어로 배경 영상 =========
      연산이라 GPU 없는 VM 에서 오히려 손해다. 단색 레이어 합성이 싸다. */
   #heroVideo{position:absolute;top:var(--nav-h);left:0;right:0;
     width:100%;height:calc(100% - var(--nav-h));object-fit:cover;
-    display:block;z-index:0;pointer-events:none;border:0;background:var(--ink);
+    display:block;z-index:1;pointer-events:none;border:0;background:transparent;
     transform:translateZ(0);backface-visibility:hidden;contain:paint}
   #heroVeil{position:absolute;top:var(--nav-h);left:0;right:0;height:calc(100% - var(--nav-h));
-    z-index:0;pointer-events:none;background:rgba(0,0,0,.4);transform:translateZ(0)}
+    z-index:1;pointer-events:none;background:rgba(0,0,0,.4);transform:translateZ(0)}
+  /* 영상이 실제로 재생될 때만 별자리를 접는다. 그 전에는 별자리가 히어로다. */
+  body.herovid #pxNet{display:none}
   #heroVideo[hidden],#heroVeil[hidden]{display:none}
   /* 첫 화면은 히어로만 있으므로 세로 가운데로 모은다 */
   #secHome{justify-content:center}
@@ -1188,7 +1195,18 @@ HERO_JS = '''  /* --------------------------------------------------------------
     if(!v || !hero) return;
 
     var START = 3.0, END = 8.0;
-    var visible = true, dead = false;
+    var visible = true, dead = false, shown = false;
+    var veil = document.getElementById("heroVeil");
+
+    /* 영상은 "정말 재생 가능해졌을 때" 만 드러낸다.
+       처음부터 보이게 두면 못 받아 오는 망에서 검은 판이 별자리를 덮은 채로 남는다. */
+    function reveal(){
+      if(shown || dead) return;
+      shown = true;
+      v.hidden = false;
+      if(veil) veil.hidden = false;
+      document.body.classList.add("herovid");   /* 이때만 별자리를 접는다 */
+    }
 
     function seekStart(){
       try{ if(v.currentTime < START || v.currentTime >= END) v.currentTime = START; }catch(e){}
@@ -1201,6 +1219,8 @@ HERO_JS = '''  /* --------------------------------------------------------------
     function pause(){ try{ v.pause(); }catch(e){} }
 
     v.addEventListener("loadedmetadata", function(){ seekStart(); play(); });
+    v.addEventListener("canplay", reveal);
+    v.addEventListener("playing", reveal);
     /* 구간 반복 — timeupdate 는 초당 4~5회라 종료 지점을 살짝 넘길 수 있다.
        되돌린 뒤 다시 재생시켜 루프 순간 멈추는 것을 막는다. */
     v.addEventListener("timeupdate", function(){
@@ -1208,18 +1228,22 @@ HERO_JS = '''  /* --------------------------------------------------------------
     });
     v.addEventListener("ended", function(){ v.currentTime = START; play(); });
 
+    /* 영상을 못 쓰게 됐다. 숨긴 채로 두면 별자리가 그대로 히어로가 된다.
+       V4-1 과 같은 화면이 되는 것이라 "빈 첫 화면" 이 생기지 않는다. */
     function fail(){
       if(dead) return;
-      dead = true;
+      dead = true; shown = false;
       v.hidden = true;
-      var veil = document.getElementById("heroVeil");
-      if(veil) veil.hidden = true;               /* 영상 없이 딤만 남으면 더 어색하다 */
+      if(veil) veil.hidden = true;
+      document.body.classList.remove("herovid");
       pause();
     }
     v.addEventListener("error", fail, true);
     var srcEl = v.querySelector("source");
     if(srcEl) srcEl.addEventListener("error", fail);
-    setTimeout(function(){ if(!dead && v.readyState < 2) fail(); }, 8000);
+    /* 사내망·원격 데스크톱에서는 8초를 넘기는 일이 흔하다. 20초까지 기다리고,
+       그동안에도 별자리가 히어로로 떠 있으므로 사용자는 기다림을 느끼지 않는다. */
+    setTimeout(function(){ if(!shown && v.readyState < 2) fail(); }, 20000);
 
     document.addEventListener("visibilitychange", function(){
       if(document.hidden) pause(); else play();
@@ -1277,6 +1301,8 @@ def v4_2(s: str) -> str:
 
     new_block = (
         '  <section class="sec screen" id="secHome">\n'
+        # 별자리 캔버스를 지우지 않고 남긴다. 영상이 막힌 망에서는 이것이 히어로다.
+        + '    <canvas id="pxNet" aria-hidden="true"></canvas>\n'
         + HERO_MEDIA
         + '    <div class="home-inner">\n\n'
         + hero_html
@@ -1314,8 +1340,9 @@ def v4_2(s: str) -> str:
     s = sub1(
         s,
         "  #pxNet{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;pointer-events:none}",
-        HERO_CSS.rstrip("\n"),
-        "V4-2-c 히어로 영상 CSS (별자리 캔버스 CSS 대체)",
+        "  #pxNet{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;pointer-events:none}\n"
+        + HERO_CSS.rstrip("\n"),
+        "V4-2-c 히어로 영상 CSS (별자리 위에 얹는다)",
     )
     s = sub1(
         s,
@@ -1323,16 +1350,17 @@ def v4_2(s: str) -> str:
         "     scrollHeight 를 부풀렸다 → 대시보드가 늘 .tighter 로 눌린 채 여백만 남았다. */\n"
         "  .sec.screen.measuring #pxNet{display:none}",
         "     배경 레이어가 .measuring 중 scrollHeight 를 부풀리면 대시보드가 늘 .tighter 로\n"
-        "     눌린 채 여백만 남는다. 측정 동안만 빼 둔다. (V3 의 #pxNet 자리) */\n"
+        "     눌린 채 여백만 남는다. 측정 동안만 빼 둔다. */\n"
+        "  .sec.screen.measuring #pxNet,\n"
         "  .sec.screen.measuring #heroVideo,\n  .sec.screen.measuring #heroVeil{display:none}",
         "V4-2-d 측정 보정 대상 교체",
     )
 
-    # 파티클 IIFE 통째로 교체
-    p0 = s.index("  /* ---------------------------------------------------------------\n     1) 히어로 파티클 네트워크")
+    # 파티클 IIFE 는 그대로 두고 영상 제어를 그 뒤에 붙인다.
+    # 영상이 못 뜨는 망에서는 별자리가 그대로 히어로가 된다 — 빈 화면이 남지 않는다.
     p1 = s.index("  /* ---------------------------------------------------------------\n     2) 스크롤 리빌")
-    s = s[:p0] + HERO_JS + "\n\n" + s[p1:]
-    print("  ✓ V4-2-e 파티클 IIFE → 히어로 영상 제어로 교체")
+    s = s[:p1] + HERO_JS + "\n\n" + s[p1:]
+    print("  ✓ V4-2-e 히어로 영상 제어 추가 (별자리는 폴백으로 유지)")
 
     # ---- 네비·CTA 를 대시보드 화면으로 ----------------------------------
     s = sub1(s, '<a href="#secHome">대시보드</a>', '<a href="#secDash">대시보드</a>',
@@ -1404,10 +1432,10 @@ def main() -> None:
     OUT2.write_text(v2, encoding="utf-8")
     print(f"출력: {OUT2.relative_to(ROOT)}  ({len(v2):,} bytes)  build {b2}")
 
-    # 주석 속 이력 표기는 남겨 두므로, 실제로 살아 있는 참조만 잡는다
-    for tag in ('id="pxNet"', 'getElementById("pxNet")', "#pxNet{", "particleNet"):
-        if tag in v2:
-            print(f"  주의: V4-2 에 살아 있는 참조 '{tag}' 가 남아 있습니다 — 확인 필요")
+    # V4-2 도 별자리를 폴백으로 갖는다. 두 배경이 모두 있어야 정상이다.
+    for tag in ('id="pxNet"', 'id="heroVideo"'):
+        if tag not in v2:
+            print(f"  주의: V4-2 에 '{tag}' 가 없습니다 — 히어로가 비어 보일 수 있습니다")
 
 
 if __name__ == "__main__":

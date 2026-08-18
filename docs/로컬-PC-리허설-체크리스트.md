@@ -65,7 +65,6 @@ python3 tools/make_rehearsal_zip.py --rebuild      # → dist/MAPS-실험-<스�
 
 ```
 MAPS-실험-645e2148\      폴더 이름 뒤 8자리가 빌드 스탬프다
-   ├ 선택화면.html          화면을 고르는 첫 페이지 (index- 접두사가 없다)
    ├ index-v4-1.html       →  /v4-1/
    ├ index-v4-2.html       →  /v4-2/
    ├ data\dashboards.json  카드 목록. addr 을 채우면 그 카드가 켜진다
@@ -87,12 +86,12 @@ MAPS-실험-645e2148\      폴더 이름 뒤 8자리가 빌드 스탬프다
 1. 관리자 권한 확인
 2. IIS + **ASP.NET** 기능 켜기 — `dism /online /enable-feature` 를 기능마다 한 번씩
    (ASP.NET 은 등록요청 업로드를 받기 위한 것. .NET Framework 는 Windows 에 이미 있다)
-3. `index-*.html` 을 훑어 **파일마다 폴더 하나씩** 배포 + 선택 화면을 루트에 +
-   `agents\` 를 루트에 한 벌 + `api\` 를 화면 폴더마다 + `versions.js` 생성 +
+3. `index-*.html` 을 훑어 **파일마다 폴더 하나씩** 배포 + `MAIN` 화면을 루트에도 한 벌 +
+   `agents\` 를 루트에 한 벌 + `data\`·`api\` 를 화면 폴더마다와 루트에 +
    `agents\` 와 **웹 밖의 `maps-data\`** 에만 쓰기 권한(`icacls`)
 4. 방화벽 인바운드 TCP 80 허용 (`MAPS-Rehearsal-HTTP-80` 규칙)
 5. `w3svc` 기동
-6. `curl` 로 **선택 화면과 각 버전 주소**를 스스로 호출해 200 인지 확인하고,
+6. `curl` 로 **첫 화면과 각 버전 주소**를 스스로 호출해 200 인지 확인하고,
    꾸러미 파일과 **서버가 실제로 내보낸 응답**에서 빌드 스탬프를 뽑아 대조하고,
    `ipconfig` 에서 찾은 사내 IP 로 살아 있는 주소를 전부 찍는다
 
@@ -126,22 +125,22 @@ MAPS-실험-645e2148\      폴더 이름 뒤 8자리가 빌드 스탬프다
 index-v4-1.html   →   http://10.x.x.x/v4-1/
 index-v4-2.html   →   http://10.x.x.x/v4-2/
 index-v5.html     →   http://10.x.x.x/v5/      (파일만 넣고 배치 재실행)
-http://10.x.x.x/  →   선택 화면 (살아 있는 화면을 카드로 보여준다)
+http://10.x.x.x/  →   MAIN 화면이 바로 뜬다 (기본 v4-2 · 고르는 화면 없음)
 ```
 
-배치가 `index-*.html` 을 훑어 파일마다 폴더를 만든다. 버전이 늘어도 배치를 고칠 필요가
-없고, 배포하면서 `versions.js` 를 함께 써 두어 **선택 화면에도 카드가 자동으로 늘어난다.**
-(새 화면을 넣었는데 선택 화면에 안 보이면 "올렸는데 안 뜬다" 로 또 시간을 버린다)
+배치가 `index-*.html` 을 훑어 파일마다 폴더를 만든다. 버전이 늘어도 배치를 고칠 필요가 없다.
 
-> 선택 화면 파일 이름이 `선택화면.html` 인 이유가 여기 있다. `index-` 로 시작하면
-> 저 규칙에 걸려 선택 화면 자체가 주소로 만들어진다.
+**주소창에 IP 만 치면 곧바로 화면이 뜬다.** 고르는 화면은 없앴다 — 매번 한 번 더
+누르게 만드는 것이 그대로 불편이었다. 루트에 놓을 화면은 배치 안의 `set "MAIN=v4-2"`
+한 줄로 정하고, 그 이름의 화면이 없으면 첫 번째 것을 쓴다.
 
 폴더 구조는 이렇게 나뉜다.
 
 ```
 C:\inetpub\wwwroot\
-   ├ index.html              선택 화면
-   ├ versions.js             배치가 만든 목록
+   ├ index.html              MAIN 화면 (기본 v4-2) — 주소창에 IP 만 쳐도 이것이 뜬다
+   ├ data\dashboards.json    루트에서도 상대 경로로 읽는다
+   ├ api\                    루트에서도 등록요청을 받는다
    ├ agents\                 올린 자료 — 화면 버전과 무관하게 한 벌만
    ├ v4-1\index.html + v4-1\data\dashboards.json
    └ v4-2\index.html + v4-2\data\dashboards.json

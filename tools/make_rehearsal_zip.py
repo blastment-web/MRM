@@ -44,7 +44,8 @@ SCREENS = {
     "v4-1": ROOT / "releases" / "MAPS-V4-1" / "index.standalone.html",
     "v4-2": ROOT / "releases" / "MAPS-V4-2" / "index.standalone.html",
 }
-FLAT = ["1_서버켜기.bat", "2_서버끄기.bat", "3_에이전트연결.bat", "읽어보세요.txt", "선택화면.html"]
+# 선택 화면은 없앴다 - 주소창에 IP 만 치면 곧바로 MAIN 화면이 뜬다.
+FLAT = ["1_서버켜기.bat", "2_서버끄기.bat", "3_에이전트연결.bat", "읽어보세요.txt"]
 TREES = ["api", "agents"]
 
 # 샘플 카드 하나를 LIVE 로 켜 둔다 — 팝업이 실제로 열리는지 바로 볼 수 있게.

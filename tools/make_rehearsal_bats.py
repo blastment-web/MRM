@@ -11,12 +11,11 @@ UTF-8 로 저장하면 cmd 창에서 한글이 전부 깨져 안내문 자체가
     index-v4-1.html  ->  http://IP/v4-1/
     index-v5.html    ->  http://IP/v5/
 
-배치를 고치지 않고 파일만 넣으면 버전이 늘어난다. 선택 화면도 배치가 함께
-써 주는 `versions.js` 를 읽어 자동으로 카드를 늘린다 — 새 버전을 넣었는데
-선택 화면에 안 보이면 "올렸는데 안 뜬다" 로 시간을 버리기 때문이다.
+배치를 고치지 않고 파일만 넣으면 버전이 늘어난다.
 
-선택 화면 파일 이름이 `선택화면.html` 인 이유도 이 규칙 때문이다.
-`index-` 로 시작하면 위 글롭에 걸려 엉뚱한 주소가 생긴다.
+주소창에 IP 만 치면 **바로 화면이 뜬다.** 고르는 화면은 두지 않는다 — 매번
+한 번 더 클릭해야 하는 것이 그대로 불편이었다. 루트에 놓을 화면은 배치 안의
+`set "MAIN=v4-2"` 한 줄로 정한다. 그 이름의 화면이 없으면 첫 번째 것을 쓴다.
 
 `agents\\` 는 버전 폴더 안에 넣지 않고 루트에 한 벌만 둔다. dashboards.json 의
 addr 이 전체 URL 이라 버전과 무관하게 열리기 때문이다. 상대 경로로 읽히는
@@ -49,7 +48,6 @@ echo   [1/6] 관리자 권한 ............ OK
 
 rem ---------------- 2. 꾸러미 파일 확인 ----------------
 rem index-<이름>.html 하나가 주소 하나가 된다. 몇 개든 상관없다.
-if not exist "%~dp0선택화면.html" goto NOFILE
 if not exist "%~dp0data\dashboards.json" goto NOFILE
 set /a NV=0
 for %%F in ("%~dp0index-*.html") do set /a NV+=1
@@ -82,11 +80,11 @@ echo   [3/6] IIS .................... 이미 켜져 있음
 
 rem ---------------- 4. 배포 ----------------
 if exist "%WWW%\index.html" if not exist "%WWW%\index.html.maps-backup" copy /y "%WWW%\index.html" "%WWW%\index.html.maps-backup" >nul
-copy /y "%~dp0선택화면.html" "%WWW%\index.html" >nul
-if errorlevel 1 goto NOCOPY
 
-rem 선택 화면이 읽을 목록. 배열 끝의 쉼표는 자바스크립트에서 허용된다.
-> "%WWW%\versions.js" echo window.MAPS_VERSIONS = [
+rem 주소창에 IP 만 치면 바로 이 화면이 뜬다. 고르는 화면은 두지 않는다.
+rem 다른 것을 기본으로 하고 싶으면 아래 한 줄의 이름만 바꾸면 된다
+rem (index-v4-1.html 이면 v4-1). 그 이름의 화면이 없으면 첫 번째 화면을 쓴다.
+set "MAIN=v4-2"
 
 set "SLUGS="
 set "FIRST="
@@ -101,12 +99,21 @@ for %%F in ("%~dp0index-*.html") do (
     if exist "%~dp0hero.mp4" copy /y "%~dp0hero.mp4" "%WWW%\!SLUG!\hero.mp4" >nul
     rem 앱이 api/* 를 상대 경로로 부르므로 화면 폴더마다 둔다 (data 와 같은 이유)
     if exist "%~dp0api" xcopy "%~dp0api" "%WWW%\!SLUG!\api" /e /i /y >nul 2>&1
-    >> "%WWW%\versions.js" echo   {"slug":"!SLUG!"},
     set "SLUGS=!SLUGS! !SLUG!"
     if not defined FIRST set "FIRST=!SLUG!"
     echo         /!SLUG!/
 )
->> "%WWW%\versions.js" echo ];
+
+rem 지정한 기본 화면이 없으면 첫 번째 것으로 대신한다.
+if not exist "%WWW%\%MAIN%\index.html" set "MAIN=%FIRST%"
+rem 루트에도 한 벌 놓는다. 앱이 data/ 와 api/ 를 상대 경로로 읽으므로 같이 옮긴다.
+if not exist "%WWW%\data" mkdir "%WWW%\data" >nul 2>&1
+copy /y "%WWW%\%MAIN%\index.html" "%WWW%\index.html" >nul
+if errorlevel 1 goto NOCOPY
+copy /y "%~dp0data\dashboards.json" "%WWW%\data\dashboards.json" >nul
+if exist "%~dp0hero.mp4" copy /y "%~dp0hero.mp4" "%WWW%\hero.mp4" >nul
+if exist "%~dp0api" xcopy "%~dp0api" "%WWW%\api" /e /i /y >nul 2>&1
+echo         /            ^(%MAIN%^)
 
 rem 올린 자료는 버전과 무관하게 한 벌만 둔다 (addr 이 전체 URL 이라 어디서든 열린다)
 if exist "%~dp0agents" xcopy "%~dp0agents" "%WWW%\agents" /e /i /y >nul 2>&1
@@ -145,7 +152,7 @@ if exist "%SystemRoot%\System32\curl.exe" (
 )
 echo --------------------------------------------------------------
 if defined C0 (
-    echo   자체 확인 : 선택 화면 !C0!    ^(200 이면 정상^)
+    echo   자체 확인 : 첫 화면 !C0!    ^(200 이면 정상^)
     echo.
     echo   화면별 상태와 빌드 대조
     echo   ^(꾸러미와 서버의 빌드가 다르면 이 배치가 복사를 못 한 것입니다^)
@@ -229,7 +236,7 @@ goto END
 echo   [중단] 꾸러미에서 빠진 파일이 있습니다.
 echo.
 echo   이 폴더에 아래가 있어야 합니다.
-echo        선택화면.html
+echo        index-이름.html  ^(하나 이상^)
 echo        data\dashboards.json
 echo   지금 폴더 : %~dp0
 goto END
@@ -285,6 +292,8 @@ echo   [2/4] 웹 서비스 중지 ......... OK
 
 rem 켤 때와 같은 목록을 훑어 자기가 만든 폴더만 지운다.
 if exist "%WWW%\index.html"   del /f /q "%WWW%\index.html"   >nul 2>&1
+if exist "%WWW%\hero.mp4"     del /f /q "%WWW%\hero.mp4"     >nul 2>&1
+rem 예전 판이 남긴 선택 화면 목록. 지금은 만들지 않지만 있으면 지운다.
 if exist "%WWW%\versions.js"  del /f /q "%WWW%\versions.js"  >nul 2>&1
 for %%F in ("%~dp0index-*.html") do (
     set "FN=%%~nF"
@@ -293,6 +302,7 @@ for %%F in ("%~dp0index-*.html") do (
 )
 if exist "%WWW%\agents" rd /s /q "%WWW%\agents" >nul 2>&1
 if exist "%WWW%\data"   rd /s /q "%WWW%\data"   >nul 2>&1
+if exist "%WWW%\api"    rd /s /q "%WWW%\api"    >nul 2>&1
 echo   [3/4] 배치한 파일 삭제 ....... OK  (원본은 꾸러미 폴더에 그대로 있습니다)
 rem %SystemDrive%\inetpub\maps-data 는 지우지 않는다 - 올라온 요청과 승인 이력이 들어 있다.
 rem 완전히 지우려면 그 폴더를 직접 삭제하면 된다.
@@ -463,14 +473,15 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
 
   3. 1_서버켜기.bat 을 우클릭 -> "관리자 권한으로 실행" 을 다시 합니다.
 
-  끝입니다. 새 주소가 생기고 선택 화면에도 카드가 자동으로 늘어납니다.
+  끝입니다. 새 주소가 생깁니다.
   검은 창 마지막에 지금 살아 있는 주소가 전부 찍힙니다.
 
   ※ 지우고 싶으면 그 index-이름.html 파일을 폴더에서 지우고
      2_서버끄기.bat -> 1_서버켜기.bat 순서로 다시 실행하세요.
 
-  ※ 선택화면.html 은 이름에 index- 가 없습니다. 일부러 그렇게 두었습니다.
-     그래야 선택 화면 자체가 주소로 만들어지지 않습니다.
+  ※ 주소창에 IP 만 치면 곧바로 화면이 뜹니다. 고르는 화면은 없앴습니다.
+     루트에 뜨는 화면을 바꾸려면 1_서버켜기.bat 을 메모장으로 열어
+     set "MAIN=v4-2" 한 줄에서 이름만 바꾸면 됩니다 (index-v4-1.html 이면 v4-1).
 
 
 ■ 지금 들어 있는 화면
@@ -479,6 +490,7 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
      index-v4-2.html    영상 히어로.    첫 화면은 영상만, 대시보드는 아래 화면으로.
                         영상은 사내 홈페이지에서 받아오므로 외부 통신이 있습니다.
 
+  기본은 v4-2 입니다. 주소창에 IP 만 치면 이것이 뜹니다.
   두 주소는 동시에 살아 있습니다. 갈아 끼울 필요가 없습니다.
   화면 파일을 고쳐서 다시 올릴 때만 1_서버켜기.bat 을 한 번 더 실행하고,
   브라우저는 Ctrl+F5 로 새로고침하세요.
@@ -660,7 +672,9 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
       -> "인터넷 정보 서비스" 체크 -> 확인 -> 설치 대기
 
   (2) C:\\inetpub\\wwwroot\\ 안에 아래처럼 넣습니다.
-         index.html                 <- 선택화면.html 의 이름을 바꾼 것
+         index.html                 <- index-v4-2.html 의 이름을 바꾼 것
+         data\\dashboards.json
+         api\\                       <- 이 폴더의 api 폴더를 통째로
          v4-1\\index.html            <- index-v4-1.html
          v4-1\\data\\dashboards.json
          v4-2\\index.html            <- index-v4-2.html
@@ -705,7 +719,9 @@ write_bat("3_에이전트연결.bat", CONNECT)
     b"\xef\xbb\xbf" + README_TXT.replace("\n", "\r\n").encode("utf-8")
 )
 
-for stale in ("3_화면바꾸기.bat", "4_에이전트연결.bat", "4_요청확인.bat", "index-선택화면.html"):
+# 선택 화면은 없앴다. 예전 꾸러미에서 올라온 사람도 파일이 남지 않게 지운다.
+for stale in ("3_화면바꾸기.bat", "4_에이전트연결.bat", "4_요청확인.bat",
+              "index-선택화면.html", "선택화면.html"):
     q = OUT / stale
     if q.exists():
         q.unlink()

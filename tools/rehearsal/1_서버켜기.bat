@@ -20,7 +20,6 @@ echo   [1/6] 관리자 권한 ............ OK
 
 rem ---------------- 2. 꾸러미 파일 확인 ----------------
 rem index-<이름>.html 하나가 주소 하나가 된다. 몇 개든 상관없다.
-if not exist "%~dp0선택화면.html" goto NOFILE
 if not exist "%~dp0data\dashboards.json" goto NOFILE
 set /a NV=0
 for %%F in ("%~dp0index-*.html") do set /a NV+=1
@@ -53,11 +52,11 @@ echo   [3/6] IIS .................... 이미 켜져 있음
 
 rem ---------------- 4. 배포 ----------------
 if exist "%WWW%\index.html" if not exist "%WWW%\index.html.maps-backup" copy /y "%WWW%\index.html" "%WWW%\index.html.maps-backup" >nul
-copy /y "%~dp0선택화면.html" "%WWW%\index.html" >nul
-if errorlevel 1 goto NOCOPY
 
-rem 선택 화면이 읽을 목록. 배열 끝의 쉼표는 자바스크립트에서 허용된다.
-> "%WWW%\versions.js" echo window.MAPS_VERSIONS = [
+rem 주소창에 IP 만 치면 바로 이 화면이 뜬다. 고르는 화면은 두지 않는다.
+rem 다른 것을 기본으로 하고 싶으면 아래 한 줄의 이름만 바꾸면 된다
+rem (index-v4-1.html 이면 v4-1). 그 이름의 화면이 없으면 첫 번째 화면을 쓴다.
+set "MAIN=v4-2"
 
 set "SLUGS="
 set "FIRST="
@@ -72,12 +71,21 @@ for %%F in ("%~dp0index-*.html") do (
     if exist "%~dp0hero.mp4" copy /y "%~dp0hero.mp4" "%WWW%\!SLUG!\hero.mp4" >nul
     rem 앱이 api/* 를 상대 경로로 부르므로 화면 폴더마다 둔다 (data 와 같은 이유)
     if exist "%~dp0api" xcopy "%~dp0api" "%WWW%\!SLUG!\api" /e /i /y >nul 2>&1
-    >> "%WWW%\versions.js" echo   {"slug":"!SLUG!"},
     set "SLUGS=!SLUGS! !SLUG!"
     if not defined FIRST set "FIRST=!SLUG!"
     echo         /!SLUG!/
 )
->> "%WWW%\versions.js" echo ];
+
+rem 지정한 기본 화면이 없으면 첫 번째 것으로 대신한다.
+if not exist "%WWW%\%MAIN%\index.html" set "MAIN=%FIRST%"
+rem 루트에도 한 벌 놓는다. 앱이 data/ 와 api/ 를 상대 경로로 읽으므로 같이 옮긴다.
+if not exist "%WWW%\data" mkdir "%WWW%\data" >nul 2>&1
+copy /y "%WWW%\%MAIN%\index.html" "%WWW%\index.html" >nul
+if errorlevel 1 goto NOCOPY
+copy /y "%~dp0data\dashboards.json" "%WWW%\data\dashboards.json" >nul
+if exist "%~dp0hero.mp4" copy /y "%~dp0hero.mp4" "%WWW%\hero.mp4" >nul
+if exist "%~dp0api" xcopy "%~dp0api" "%WWW%\api" /e /i /y >nul 2>&1
+echo         /            ^(%MAIN%^)
 
 rem 올린 자료는 버전과 무관하게 한 벌만 둔다 (addr 이 전체 URL 이라 어디서든 열린다)
 if exist "%~dp0agents" xcopy "%~dp0agents" "%WWW%\agents" /e /i /y >nul 2>&1
@@ -116,7 +124,7 @@ if exist "%SystemRoot%\System32\curl.exe" (
 )
 echo --------------------------------------------------------------
 if defined C0 (
-    echo   자체 확인 : 선택 화면 !C0!    ^(200 이면 정상^)
+    echo   자체 확인 : 첫 화면 !C0!    ^(200 이면 정상^)
     echo.
     echo   화면별 상태와 빌드 대조
     echo   ^(꾸러미와 서버의 빌드가 다르면 이 배치가 복사를 못 한 것입니다^)
@@ -200,7 +208,7 @@ goto END
 echo   [중단] 꾸러미에서 빠진 파일이 있습니다.
 echo.
 echo   이 폴더에 아래가 있어야 합니다.
-echo        선택화면.html
+echo        index-이름.html  ^(하나 이상^)
 echo        data\dashboards.json
 echo   지금 폴더 : %~dp0
 goto END

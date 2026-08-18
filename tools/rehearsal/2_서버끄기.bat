@@ -23,6 +23,8 @@ echo   [2/4] 웹 서비스 중지 ......... OK
 
 rem 켤 때와 같은 목록을 훑어 자기가 만든 폴더만 지운다.
 if exist "%WWW%\index.html"   del /f /q "%WWW%\index.html"   >nul 2>&1
+if exist "%WWW%\hero.mp4"     del /f /q "%WWW%\hero.mp4"     >nul 2>&1
+rem 예전 판이 남긴 선택 화면 목록. 지금은 만들지 않지만 있으면 지운다.
 if exist "%WWW%\versions.js"  del /f /q "%WWW%\versions.js"  >nul 2>&1
 for %%F in ("%~dp0index-*.html") do (
     set "FN=%%~nF"
@@ -31,6 +33,7 @@ for %%F in ("%~dp0index-*.html") do (
 )
 if exist "%WWW%\agents" rd /s /q "%WWW%\agents" >nul 2>&1
 if exist "%WWW%\data"   rd /s /q "%WWW%\data"   >nul 2>&1
+if exist "%WWW%\api"    rd /s /q "%WWW%\api"    >nul 2>&1
 echo   [3/4] 배치한 파일 삭제 ....... OK  (원본은 꾸러미 폴더에 그대로 있습니다)
 rem %SystemDrive%\inetpub\maps-data 는 지우지 않는다 - 올라온 요청과 승인 이력이 들어 있다.
 rem 완전히 지우려면 그 폴더를 직접 삭제하면 된다.
