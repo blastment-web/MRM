@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="maps-build" content="dfdbfff6"><!--maps-build-stamp-->
+<meta name="maps-build" content="b4507441"><!--maps-build-stamp-->
 <title>MAPS · 생산기술혁신센터 AI 플랫폼</title>
 <style>
 
@@ -2268,7 +2268,7 @@
     </div>
   </div>
   <div class="foot-legal">
-    <span>생산기술혁신센터 AI 플랫폼 v1.0 · build dfdbfff6 · 사내 전용</span>
+    <span>생산기술혁신센터 AI 플랫폼 v1.0 · build b4507441 · 사내 전용</span>
     <span class="footer-credit">Made by 생산기술혁신센터</span>
     <span id="updated"></span>
   </div>
@@ -4951,14 +4951,27 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     var visible = true, dead = false, shown = false;
     var veil = document.getElementById("heroVeil");
 
-    /* 영상은 "정말 재생 가능해졌을 때" 만 드러낸다.
-       처음부터 보이게 두면 못 받아 오는 망에서 검은 판이 별자리를 덮은 채로 남는다. */
+    /* 별자리를 접는 조건은 하나다 — 영상이 "실제로 그림을 내고 있는가".
+       canplay 만 믿으면 안 된다. 코덱·Range 미지원·디코더 실패에서도 canplay 는 뜨는데
+       화면에는 검은 판만 남는다. 그 상태로 별자리를 접으면 첫 화면이 통째로 검어진다.
+       그래서 timeupdate 가 실제로 진행되고 videoWidth 가 잡힐 때만 드러낸다. */
+    var lastAdvance = 0;
+    function canShow(){ return v.readyState >= 3 && v.videoWidth > 0 && v.currentTime > 0; }
     function reveal(){
-      if(shown || dead) return;
+      if(shown || dead || !canShow()) return;
       shown = true;
       v.hidden = false;
       if(veil) veil.hidden = false;
       document.body.classList.add("herovid");   /* 이때만 별자리를 접는다 */
+    }
+    /* 드러낸 뒤에 멈춰 버리면 되돌린다. 되돌리면 별자리가 다시 히어로가 된다.
+       dead 로 만들지 않는 이유 — 잠깐 끊긴 것이면 다음 timeupdate 에 다시 드러난다. */
+    function unreveal(){
+      if(!shown) return;
+      shown = false;
+      v.hidden = true;
+      if(veil) veil.hidden = true;
+      document.body.classList.remove("herovid");
     }
 
     function seekStart(){
@@ -4972,23 +4985,26 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     function pause(){ try{ v.pause(); }catch(e){} }
 
     v.addEventListener("loadedmetadata", function(){ seekStart(); play(); });
-    v.addEventListener("canplay", reveal);
-    v.addEventListener("playing", reveal);
     /* 구간 반복 — timeupdate 는 초당 4~5회라 종료 지점을 살짝 넘길 수 있다.
        되돌린 뒤 다시 재생시켜 루프 순간 멈추는 것을 막는다. */
     v.addEventListener("timeupdate", function(){
       if(v.currentTime >= END){ v.currentTime = START; play(); }
+      if(canShow()){ lastAdvance = Date.now(); reveal(); }
     });
+    /* 드러낸 뒤 6초 넘게 진행이 없으면(멈춤·버퍼링) 별자리로 되돌린다.
+       일부러 세운 경우(스크롤 중·화면 밖·탭 비활성)는 제외한다. */
+    setInterval(function(){
+      if(dead || !shown || v.paused || document.hidden || !visible) return;
+      if(Date.now() - lastAdvance > 6000) unreveal();
+    }, 2000);
     v.addEventListener("ended", function(){ v.currentTime = START; play(); });
 
     /* 영상을 못 쓰게 됐다. 숨긴 채로 두면 별자리가 그대로 히어로가 된다.
        V4-1 과 같은 화면이 되는 것이라 "빈 첫 화면" 이 생기지 않는다. */
     function fail(){
       if(dead) return;
-      dead = true; shown = false;
-      v.hidden = true;
-      if(veil) veil.hidden = true;
-      document.body.classList.remove("herovid");
+      dead = true;
+      unreveal();
       pause();
     }
     v.addEventListener("error", fail, true);
