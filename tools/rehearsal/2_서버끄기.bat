@@ -24,6 +24,7 @@ echo   [2/4] 웹 서비스 중지 ......... OK
 rem 켤 때와 같은 목록을 훑어 자기가 만든 폴더만 지운다.
 if exist "%WWW%\index.html"   del /f /q "%WWW%\index.html"   >nul 2>&1
 if exist "%WWW%\hero.mp4"     del /f /q "%WWW%\hero.mp4"     >nul 2>&1
+if exist "%WWW%\hero.webm"    del /f /q "%WWW%\hero.webm"    >nul 2>&1
 rem 예전 판이 남긴 선택 화면 목록. 지금은 만들지 않지만 있으면 지운다.
 if exist "%WWW%\versions.js"  del /f /q "%WWW%\versions.js"  >nul 2>&1
 for %%F in ("%~dp0index-*.html") do (

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="maps-build" content="b4507441"><!--maps-build-stamp-->
+<meta name="maps-build" content="9825a050"><!--maps-build-stamp-->
 <title>MAPS · 생산기술혁신센터 AI 플랫폼</title>
 <style>
 
@@ -2035,6 +2035,7 @@
          본체는 재생 시점에 받기 시작해서 초반이 끊긴다. -->
     <video id="heroVideo" aria-hidden="true" autoplay muted playsinline preload="auto" hidden>
       <source src="hero.mp4#t=3,8" type="video/mp4">
+      <source src="hero.webm#t=3,8" type="video/webm">
       <source src="https://www.lgensol.com/inc/video/video_main01.mp4#t=3,8" type="video/mp4">
     </video>
     <div id="heroVeil" aria-hidden="true" hidden></div>
@@ -2268,7 +2269,7 @@
     </div>
   </div>
   <div class="foot-legal">
-    <span>생산기술혁신센터 AI 플랫폼 v1.0 · build b4507441 · 사내 전용</span>
+    <span>생산기술혁신센터 AI 플랫폼 v1.0 · build 9825a050 · 사내 전용</span>
     <span class="footer-credit">Made by 생산기술혁신센터</span>
     <span id="updated"></span>
   </div>
@@ -4956,7 +4957,12 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
        화면에는 검은 판만 남는다. 그 상태로 별자리를 접으면 첫 화면이 통째로 검어진다.
        그래서 timeupdate 가 실제로 진행되고 videoWidth 가 잡힐 때만 드러낸다. */
     var lastAdvance = 0;
-    function canShow(){ return v.readyState >= 3 && v.videoWidth > 0 && v.currentTime > 0; }
+    /* 조건은 "그림이 실제로 있는가" 다.
+       readyState >= 2(HAVE_CURRENT_DATA) 면 디코딩된 프레임이 있어 화면에 그려진다.
+       videoWidth > 0 은 그 프레임이 진짜 영상이라는 뜻이다(코덱 실패면 0 이다).
+       재생 여부는 넣지 않는다 - 회사 정책으로 자동재생이 막혀도 첫 프레임은 나오므로
+       검은 판이 되지 않는다. 자동재생이 막힌 경우는 아래에서 첫 조작에 다시 시도한다. */
+    function canShow(){ return v.readyState >= 2 && v.videoWidth > 0; }
     function reveal(){
       if(shown || dead || !canShow()) return;
       shown = true;
@@ -4985,6 +4991,16 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     function pause(){ try{ v.pause(); }catch(e){} }
 
     v.addEventListener("loadedmetadata", function(){ seekStart(); play(); });
+    v.addEventListener("loadeddata", function(){ lastAdvance = Date.now(); reveal(); });
+    /* 자동재생이 막혔다가 나중에 시작하면 0초부터 흐른다. 그때 한 번만 구간으로 옮긴다.
+       매 프레임 확인하지 않는 이유 - Range 를 못 쓰는 서버에서는 seek 마다 다시 받느라
+       버퍼링이 끝나지 않는다. 한 번이면 충분하다. */
+    var fixedStart = false;
+    v.addEventListener("playing", function(){
+      if(fixedStart) return;
+      fixedStart = true;
+      if(v.currentTime < START - 0.5) seekStart();
+    });
     /* 구간 반복 — timeupdate 는 초당 4~5회라 종료 지점을 살짝 넘길 수 있다.
        되돌린 뒤 다시 재생시켜 루프 순간 멈추는 것을 막는다. */
     v.addEventListener("timeupdate", function(){
@@ -4993,10 +5009,24 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
     });
     /* 드러낸 뒤 6초 넘게 진행이 없으면(멈춤·버퍼링) 별자리로 되돌린다.
        일부러 세운 경우(스크롤 중·화면 밖·탭 비활성)는 제외한다. */
+    /* 이벤트에만 기대지 않는다. preload="auto" 라 스크립트가 붙기 전에 loadeddata 가
+       이미 지나갔을 수 있고, 자동재생이 막히면 timeupdate 도 오지 않는다.
+       그러면 조건이 충족됐는데도 영영 드러나지 않는다. 짧은 주기로 직접 확인한다. */
     setInterval(function(){
-      if(dead || !shown || v.paused || document.hidden || !visible) return;
+      if(dead) return;
+      if(!shown){ if(canShow()){ lastAdvance = Date.now(); reveal(); } return; }
+      if(v.paused || document.hidden || !visible) return;
+      /* 재생 중인데 6초 넘게 진행이 없다 = 버퍼링으로 멈춘 것. 별자리로 되돌린다. */
       if(Date.now() - lastAdvance > 6000) unreveal();
-    }, 2000);
+    }, 500);
+    reveal();   /* 이미 준비돼 있었다면 기다릴 이유가 없다 */
+    /* 자동재생이 막힌 경우 첫 조작에 한 번 더 시도한다. 첫 프레임은 이미 떠 있다. */
+    ["pointerdown","keydown","scroll"].forEach(function(ev){
+      window.addEventListener(ev, function once(){
+        window.removeEventListener(ev, once);
+        play();
+      }, { once:true, passive:true });
+    });
     v.addEventListener("ended", function(){ v.currentTime = START; play(); });
 
     /* 영상을 못 쓰게 됐다. 숨긴 채로 두면 별자리가 그대로 히어로가 된다.
@@ -5007,9 +5037,12 @@ if(navigator.sendBeacon){try{navigator.sendBeacon("api/site-visit");}catch(e){}}
       unreveal();
       pause();
     }
-    v.addEventListener("error", fail, true);
-    var srcEl = v.querySelector("source");
-    if(srcEl) srcEl.addEventListener("error", fail);
+    /* <source> 하나가 실패하는 것은 정상이다 - "다음 것을 써라" 라는 뜻이다.
+       그것을 치명적 실패로 처리하면, 뒤에 멀쩡한 소스가 있어도 영상이 영영 안 뜬다.
+       (hero.mp4 가 없는 상태에서 첫 소스가 404 나면 바로 이 일이 벌어졌다.)
+       진짜 실패는 <video> 자신의 error 다 - 모든 소스를 다 써 보고 난 뒤에만 뜬다.
+       capture 로 듣지 않는 것도 같은 이유다. capture 면 자식 <source> 의 error 까지 잡힌다. */
+    v.addEventListener("error", function(e){ if(e.target === v) fail(); });
     /* 사내망·원격 데스크톱에서는 8초를 넘기는 일이 흔하다. 20초까지 기다리고,
        그동안에도 별자리가 히어로로 떠 있으므로 사용자는 기다림을 느끼지 않는다. */
     setTimeout(function(){ if(!shown && v.readyState < 2) fail(); }, 20000);

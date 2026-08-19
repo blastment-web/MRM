@@ -34,6 +34,9 @@ set "WWW=%SystemDrive%\inetpub\wwwroot"
 set "MDATA=%SystemDrive%\inetpub\maps-data"
 set "LOG=%TEMP%\maps-iis-setup.log"
 set "RULE=MAPS-Rehearsal-HTTP-80"
+rem V4-2 히어로 영상. 다른 영상을 쓰려면 이 주소를 바꾸거나,
+rem 원하는 파일을 이 폴더에 hero.mp4 라는 이름으로 넣으면 된다.
+set "HEROURL=https://www.lgensol.com/inc/video/video_main01.mp4"
 
 echo.
 echo ==============================================================
@@ -78,6 +81,34 @@ goto IISDONE
 echo   [3/6] IIS .................... 이미 켜져 있음
 :IISDONE
 
+rem ---------------- 3.5 히어로 영상 ----------------
+rem V4-2 의 첫 화면은 배경 영상이다. 페이지가 볼 때마다 사내 홈페이지로 나가면
+rem 회사 프록시에 막히거나 느려서 영상이 안 뜬다. 그래서 여기서 한 번만 받아
+rem 이 PC 에 두고, 그 뒤로는 이 서버가 내보낸다. 이미 있으면 다시 받지 않는다.
+rem 직접 만든 영상을 쓰려면 이 폴더에 hero.mp4 로 넣어 두면 된다.
+set "HERO=%~dp0hero.mp4"
+set "HEROSZ=0"
+if exist "%HERO%" for %%A in ("%HERO%") do set "HEROSZ=%%~zA"
+rem mp4 를 못 구하면 webm 도 받아 준다. 화면이 두 형식을 모두 시도한다.
+if exist "%~dp0hero.webm" for %%A in ("%~dp0hero.webm") do set "HEROSZ=%%~zA"
+if !HEROSZ! GTR 100000 goto HEROOK
+if not exist "%SystemRoot%\System32\curl.exe" goto HERONO
+echo   [3.5] 히어로 영상 받는 중 .... 처음 한 번만 받습니다 ^(20~60초^)
+curl -L -s --max-time 180 -o "%HERO%" "%HEROURL%"
+set "HEROSZ=0"
+if exist "%HERO%" for %%A in ("%HERO%") do set "HEROSZ=%%~zA"
+if !HEROSZ! GTR 100000 goto HEROOK
+rem 받다 만 파일이나 오류 페이지가 남으면 다음 실행에서 또 헷갈린다. 지운다.
+if exist "%HERO%" del /f /q "%HERO%" >nul 2>&1
+:HERONO
+set "HEROSZ=0"
+echo   [3.5] 히어로 영상 ............ 받지 못했습니다 - 첫 화면은 별자리로 나옵니다
+goto HERODONE
+:HEROOK
+set /a HEROMB=!HEROSZ!/1048576
+echo   [3.5] 히어로 영상 ............ OK  -  이 PC 에 있음 ^(!HEROMB! MB^)
+:HERODONE
+
 rem ---------------- 4. 배포 ----------------
 if exist "%WWW%\index.html" if not exist "%WWW%\index.html.maps-backup" copy /y "%WWW%\index.html" "%WWW%\index.html.maps-backup" >nul
 
@@ -96,7 +127,8 @@ for %%F in ("%~dp0index-*.html") do (
     rem 상대 경로로 읽히는 유일한 파일이라 버전 폴더마다 넣는다.
     copy /y "%~dp0data\dashboards.json" "%WWW%\!SLUG!\data\dashboards.json" >nul
     rem hero.mp4 를 넣어 두면 영상을 사내 홈페이지 대신 이 서버에서 받는다 (없으면 건너뛴다)
-    if exist "%~dp0hero.mp4" copy /y "%~dp0hero.mp4" "%WWW%\!SLUG!\hero.mp4" >nul
+    if exist "%~dp0hero.mp4"  copy /y "%~dp0hero.mp4"  "%WWW%\!SLUG!\hero.mp4"  >nul
+    if exist "%~dp0hero.webm" copy /y "%~dp0hero.webm" "%WWW%\!SLUG!\hero.webm" >nul
     rem 앱이 api/* 를 상대 경로로 부르므로 화면 폴더마다 둔다 (data 와 같은 이유)
     if exist "%~dp0api" xcopy "%~dp0api" "%WWW%\!SLUG!\api" /e /i /y >nul 2>&1
     set "SLUGS=!SLUGS! !SLUG!"
@@ -111,7 +143,8 @@ if not exist "%WWW%\data" mkdir "%WWW%\data" >nul 2>&1
 copy /y "%WWW%\%MAIN%\index.html" "%WWW%\index.html" >nul
 if errorlevel 1 goto NOCOPY
 copy /y "%~dp0data\dashboards.json" "%WWW%\data\dashboards.json" >nul
-if exist "%~dp0hero.mp4" copy /y "%~dp0hero.mp4" "%WWW%\hero.mp4" >nul
+if exist "%~dp0hero.mp4"  copy /y "%~dp0hero.mp4"  "%WWW%\hero.mp4"  >nul
+if exist "%~dp0hero.webm" copy /y "%~dp0hero.webm" "%WWW%\hero.webm" >nul
 if exist "%~dp0api" xcopy "%~dp0api" "%WWW%\api" /e /i /y >nul 2>&1
 echo         /            ^(%MAIN%^)
 
@@ -194,6 +227,15 @@ goto SHOWEND
 echo        사내 IP 를 찾지 못했습니다 - 네트워크 연결을 확인하세요
 :SHOWEND
 echo.
+if !HEROSZ! GTR 100000 (
+    echo   히어로 영상   : 이 PC 에서 바로 재생됩니다 ^(외부 통신 없음^)
+) else (
+    echo   히어로 영상   : 없음 - 첫 화면은 별자리 배경으로 나옵니다.
+    echo                   영상으로 보려면 브라우저에서 아래 주소를 열어 저장한 뒤
+    echo                   이 폴더에 hero.mp4 ^(또는 hero.webm^) 이름으로 넣고
+    echo                   이 배치를 다시 실행하세요.
+    echo                   %HEROURL%
+)
 if defined ASPOK (
     echo   등록요청 받기 : 준비됨
     echo      관리자 1차 : admin   / maps2026!
@@ -293,6 +335,7 @@ echo   [2/4] 웹 서비스 중지 ......... OK
 rem 켤 때와 같은 목록을 훑어 자기가 만든 폴더만 지운다.
 if exist "%WWW%\index.html"   del /f /q "%WWW%\index.html"   >nul 2>&1
 if exist "%WWW%\hero.mp4"     del /f /q "%WWW%\hero.mp4"     >nul 2>&1
+if exist "%WWW%\hero.webm"    del /f /q "%WWW%\hero.webm"    >nul 2>&1
 rem 예전 판이 남긴 선택 화면 목록. 지금은 만들지 않지만 있으면 지운다.
 if exist "%WWW%\versions.js"  del /f /q "%WWW%\versions.js"  >nul 2>&1
 for %%F in ("%~dp0index-*.html") do (
@@ -488,7 +531,17 @@ README_TXT = """MAPS 실험 - 지금 쓰는 PC 를 잠깐 서버로 만들어 �
 
      index-v4-1.html    별자리 히어로.  외부 통신 0건.
      index-v4-2.html    영상 히어로.    첫 화면은 영상만, 대시보드는 아래 화면으로.
-                        영상은 사내 홈페이지에서 받아오므로 외부 통신이 있습니다.
+
+  영상은 1_서버켜기.bat 이 처음 한 번 받아 이 PC 에 둡니다(hero.mp4).
+  그 뒤로는 이 서버가 내보내므로 외부 통신이 없고 바로 뜹니다.
+  검은 창에 "히어로 영상 : 이 PC 에서 바로 재생됩니다" 라고 나오면 준비된 것입니다.
+
+  "받지 못했습니다" 가 나오면 회사망이 그 주소를 막은 것입니다. 그때는
+  브라우저로 아래 주소를 열어 영상을 저장한 뒤, 이 폴더에 hero.mp4 라는 이름으로
+  넣고 1_서버켜기.bat 을 다시 실행하세요. hero.webm 도 됩니다.
+     https://www.lgensol.com/inc/video/video_main01.mp4
+
+  영상이 없으면 첫 화면은 별자리 배경으로 나옵니다(검은 화면이 되지 않습니다).
 
   기본은 v4-2 입니다. 주소창에 IP 만 치면 이것이 뜹니다.
   두 주소는 동시에 살아 있습니다. 갈아 끼울 필요가 없습니다.
